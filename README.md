@@ -32,21 +32,20 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 - Tecla Aplicações ou Shift+F10 abre cópia, marcador e leitura em voz alta.
 - O menu `Item atual`, acessível com `Alt+I`, oferece as mesmas operações.
 - `Ctrl+Alt+C` copia o texto; `Ctrl+Alt+R` copia referência e texto; `Ctrl+Alt+M` alterna o marcador.
-- Alto contraste opcional na seção Configurações.
 - Tamanho do texto ajustável com `Ctrl+mais` e `Ctrl+menos`.
 - Voz offline do Windows por meio do Qt TextToSpeech, quando disponível.
 
 ## Continuidade e marcadores
 
-O aplicativo salva automaticamente tradução, testamento, livro, capítulo e item atual. A seção Configurações permite escolher se o aplicativo deve retomar essa posição. Os marcadores ficam em `data/user_data.db`, separado do banco bíblico.
+O aplicativo salva automaticamente tradução, testamento, livro, capítulo e item atual e retorna a esse ponto na próxima abertura. Os marcadores ficam em `data/user_data.db`, separado do banco bíblico.
 
 A seção **Licenças e leis** apresenta um único texto simples, somente leitura, com a legislação, a justificativa geral, as quatro fontes e suas condições de utilização. Não há seletores ou conteúdo HTML nessa área.
 
 ## Configurações e IA opcional
 
-A seção Configurações oferece tamanho do texto, alto contraste, velocidade da voz interna e retomada da última posição. Ela também pode gerar resumo do livro atual, resumo do capítulo atual ou explicação do versículo selecionado.
+A seção Configurações contém somente uma lista navegável com cima/baixo: “Colar ou alterar chave da API” e “Escolher modelo”. Enter abre a opção em um diálogo; na chave, basta colar e pressionar Enter. Tab sai da lista e leva ao botão “Salvar configurações”.
 
-A IA usa a Responses API da OpenAI e a chave da própria pessoa. A chave aparece mascarada e fica somente na memória: não é salva em configurações, banco, logs ou GitHub. A chamada usa internet, pode consumir o saldo da conta da API e mantém `store: false`. O resultado é uma lista de parágrafos navegável com cima/baixo e pode ser copiado.
+A chave é criptografada pela DPAPI para a conta atual do Windows e recuperada nas próximas aberturas; nunca é publicada no GitHub. A IA usa a Responses API com `store: false`, pode consumir o saldo da conta e exige internet. Aplicações ou Shift+F10 oferece resumo no livro selecionado, resumo no capítulo selecionado e explicação no versículo selecionado. O resultado abre em um diálogo de parágrafos navegáveis e pode ser copiado.
 
 Consulte [docs/ARQUITETURA.md](docs/ARQUITETURA.md) para a explicação de todos os arquivos e fluxos.
 

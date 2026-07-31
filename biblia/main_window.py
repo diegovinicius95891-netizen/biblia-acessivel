@@ -22,9 +22,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication,
-    QCheckBox,
     QComboBox,
-    QDoubleSpinBox,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -37,14 +35,15 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
 from .ai_client import AiServiceError, create_bible_analysis
 from .database import BibleDatabase
+from .dialogs import AccessibleResultDialog, ApiKeyDialog, ModelDialog
 from .legal import LEGAL_TEXT
+from .secure_store import SecureStoreError, protect_text, unprotect_text
 from .user_data import UserDataDatabase
 
 try:
@@ -72,6 +71,7 @@ class BookList(QListWidget):
 
     testamentRequested = Signal(int)
     chaptersRequested = Signal()
+    applicationsRequested = Signal()
 
     def keyPressEvent(self, event):
         """Converte setas horizontais em troca de testamento."""
@@ -81,6 +81,12 @@ class BookList(QListWidget):
             return
         if event.key() == Qt.Key_Right:
             self.testamentRequested.emit(1)
+            event.accept()
+            return
+        applications_key = event.key() == Qt.Key_Menu
+        shift_f10 = event.key() == Qt.Key_F10 and bool(event.modifiers() & Qt.ShiftModifier)
+        if applications_key or shift_f10:
+            self.applicationsRequested.emit()
             event.accept()
             return
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
@@ -94,9 +100,16 @@ class ChapterList(QListWidget):
     """Lista em que Espaço ou Enter abre o capítulo destacado."""
 
     openRequested = Signal()
+    applicationsRequested = Signal()
 
     def keyPressEvent(self, event):
         """Solicita a abertura sem alterar o comportamento das setas."""
+        applications_key = event.key() == Qt.Key_Menu
+        shift_f10 = event.key() == Qt.Key_F10 and bool(event.modifiers() & Qt.ShiftModifier)
+        if applications_key or shift_f10:
+            self.applicationsRequested.emit()
+            event.accept()
+            return
         if event.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
             self.openRequested.emit()
             event.accept()
@@ -176,6 +189,10 @@ class MainWindow(QMainWindow):
         self.db = BibleDatabase(database_path)
         self.user_data = UserDataDatabase(database_path.with_name("user_data.db"))
         self.settings = QSettings()
+        self.api_key = self._load_saved_api_key()
+        self.pending_api_key = self.api_key
+        self.ai_model = self.settings.value("ai/model", "gpt-5.6-luna")
+        self.pending_ai_model = self.ai_model
         self.tts = None
         self._tts_checked = False
         self._loading = False
@@ -187,6 +204,7 @@ class MainWindow(QMainWindow):
         self.active_book_code = ""
         self.active_book_name = ""
         self.active_chapter = 1
+        self._ai_result_title = "Resultado da inteligência artificial"
 
         self.setWindowTitle("Bíblia Acessível")
         self.resize(1100, 760)
@@ -194,7 +212,6 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._build_menu()
         self._build_shortcuts()
-        self.apply_preferences(show_message=False)
         self._load_translations_and_restore()
         self.statusBar().showMessage(
             "Pronto. Tab muda de seção; setas navegam dentro da seção. F1 abre a ajuda."
@@ -248,12 +265,16 @@ class MainWindow(QMainWindow):
         self.book_list = BookList()
         self.book_list.setAccessibleName("Seção Livros")
         self.book_list.setAccessibleDescription(
-            "Mostra somente o testamento atual. Use esquerda e direita para trocar de testamento."
+            "Mostra somente o testamento atual. Esquerda e direita trocam o testamento. "
+            "Aplicações ou Shift F10 permite gerar resumo do livro."
         )
         self.book_list.testamentRequested.connect(self.switch_testament)
         self.book_list.chaptersRequested.connect(self.focus_chapters)
+        self.book_list.applicationsRequested.connect(self.show_book_menu)
         self.book_list.currentItemChanged.connect(self._book_highlighted)
         self.book_list.itemDoubleClicked.connect(lambda _item: self.focus_chapters())
+        self.book_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.book_list.customContextMenuRequested.connect(self.show_book_menu_at)
         books_layout.addWidget(self.book_list)
         books_group.setFocusProxy(self.book_list)
         selection_row.addWidget(books_group, 1)
@@ -264,10 +285,14 @@ class MainWindow(QMainWindow):
         self.chapter_list = ChapterList()
         self.chapter_list.setAccessibleName("Seção Capítulos")
         self.chapter_list.setAccessibleDescription(
-            "Use cima e baixo para escolher e Enter para abrir o capítulo."
+            "Use cima e baixo para escolher e Enter para abrir. "
+            "Aplicações ou Shift F10 permite gerar resumo do capítulo."
         )
         self.chapter_list.openRequested.connect(self.open_selected_chapter)
+        self.chapter_list.applicationsRequested.connect(self.show_chapter_menu)
         self.chapter_list.itemDoubleClicked.connect(lambda _item: self.open_selected_chapter())
+        self.chapter_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.chapter_list.customContextMenuRequested.connect(self.show_chapter_menu_at)
         chapters_layout.addWidget(self.chapter_list)
         chapters_group.setFocusProxy(self.chapter_list)
         selection_row.addWidget(chapters_group, 1)
@@ -343,96 +368,23 @@ class MainWindow(QMainWindow):
         return section
 
     def _build_settings_section(self):
-        """Cria preferências acessíveis e a análise opcional pela OpenAI."""
+        """Cria uma lista simples para chave/modelo e um único botão de salvar."""
         section = QGroupBox("Seção &Configurações")
         layout = QVBoxLayout(section)
-
-        preferences = QFormLayout()
-        self.font_size_spin = QSpinBox()
-        self.font_size_spin.setRange(8, 28)
-        self.font_size_spin.setValue(int(self.settings.value("preferences/font_size", 10)))
-        self.font_size_spin.setSuffix(" pontos")
-        self.font_size_spin.setAccessibleName("Tamanho do texto")
-        preferences.addRow("&Tamanho do texto:", self.font_size_spin)
-
-        self.speech_rate_spin = QDoubleSpinBox()
-        self.speech_rate_spin.setRange(-1.0, 1.0)
-        self.speech_rate_spin.setSingleStep(0.1)
-        self.speech_rate_spin.setValue(float(self.settings.value("preferences/speech_rate", 0.0)))
-        self.speech_rate_spin.setAccessibleName("Velocidade da voz interna")
-        preferences.addRow("&Velocidade da voz:", self.speech_rate_spin)
-
-        self.high_contrast_check = QCheckBox("Usar &alto contraste")
-        self.high_contrast_check.setChecked(
-            self.settings.value("preferences/high_contrast", False, type=bool)
+        layout.addWidget(
+            QLabel("Use cima e baixo para escolher. Pressione Enter para abrir a configuração.")
         )
-        preferences.addRow("Aparência:", self.high_contrast_check)
-
-        self.restore_position_check = QCheckBox("&Continuar da última posição ao iniciar")
-        self.restore_position_check.setChecked(
-            self.settings.value("preferences/restore_position", True, type=bool)
+        self.settings_options = QListWidget()
+        self.settings_options.setAccessibleName("Opções de configurações")
+        self.settings_options.setAccessibleDescription(
+            "Cima e baixo navegam. Enter abre o diálogo da opção selecionada."
         )
-        preferences.addRow("Inicialização:", self.restore_position_check)
-        layout.addLayout(preferences)
-
+        self.settings_options.itemActivated.connect(self.open_settings_option)
+        layout.addWidget(self.settings_options)
+        self._refresh_settings_options()
         self.save_settings_button = QPushButton("&Salvar configurações")
-        self.save_settings_button.clicked.connect(self.apply_preferences)
+        self.save_settings_button.clicked.connect(self.save_ai_settings)
         layout.addWidget(self.save_settings_button)
-
-        ai_group = QGroupBox("Resumo e explicação por &IA")
-        ai_layout = QFormLayout(ai_group)
-        self.api_key_edit = QLineEdit()
-        self.api_key_edit.setEchoMode(QLineEdit.Password)
-        self.api_key_edit.setAccessibleName("Chave pessoal da API OpenAI")
-        self.api_key_edit.setAccessibleDescription(
-            "A chave fica somente na memória enquanto o aplicativo estiver aberto."
-        )
-        self.api_key_edit.setPlaceholderText("Cole sua chave da API; ela não será salva")
-        ai_layout.addRow("&Chave da API:", self.api_key_edit)
-
-        self.ai_model_combo = QComboBox()
-        self.ai_model_combo.setAccessibleName("Modelo de inteligência artificial")
-        self.ai_model_combo.addItem("Econômico — GPT-5.6 Luna", "gpt-5.6-luna")
-        self.ai_model_combo.addItem("Equilibrado — GPT-5.6 Terra", "gpt-5.6-terra")
-        self.ai_model_combo.addItem("Maior qualidade — GPT-5.6 Sol", "gpt-5.6-sol")
-        saved_model = self.settings.value("ai/model", "gpt-5.6-luna")
-        model_index = self.ai_model_combo.findData(saved_model)
-        self.ai_model_combo.setCurrentIndex(max(0, model_index))
-        ai_layout.addRow("&Modelo:", self.ai_model_combo)
-
-        self.ai_task_combo = QComboBox()
-        self.ai_task_combo.setAccessibleName("Tipo de conteúdo gerado por IA")
-        self.ai_task_combo.addItem("Resumo do livro atual", "book")
-        self.ai_task_combo.addItem("Resumo do capítulo atual", "chapter")
-        self.ai_task_combo.addItem("Explicação do versículo selecionado", "verse")
-        ai_layout.addRow("&Tarefa:", self.ai_task_combo)
-
-        self.ai_detail_combo = QComboBox()
-        self.ai_detail_combo.setAccessibleName("Nível de detalhes da resposta")
-        self.ai_detail_combo.addItem("Curto", "curto")
-        self.ai_detail_combo.addItem("Médio", "médio")
-        self.ai_detail_combo.addItem("Detalhado", "detalhado")
-        self.ai_detail_combo.setCurrentIndex(1)
-        ai_layout.addRow("&Detalhamento:", self.ai_detail_combo)
-
-        self.ai_generate_button = QPushButton("&Gerar com IA")
-        self.ai_generate_button.clicked.connect(self.generate_ai_content)
-        ai_layout.addRow(self.ai_generate_button)
-        layout.addWidget(ai_group)
-
-        self.ai_status = QLabel(
-            "A IA é opcional, usa internet e pode gerar custos na conta vinculada à sua chave."
-        )
-        self.ai_status.setAccessibleName("Estado da inteligência artificial")
-        self.ai_status.setWordWrap(True)
-        layout.addWidget(self.ai_status)
-        self.ai_result = ReadingTextList("Resultado gerado por inteligência artificial")
-        self.ai_result.setMinimumHeight(180)
-        layout.addWidget(self.ai_result)
-        self.ai_copy_button = QPushButton("Copiar &resultado da IA")
-        self.ai_copy_button.clicked.connect(self.copy_ai_result)
-        self.ai_copy_button.setEnabled(False)
-        layout.addWidget(self.ai_copy_button)
         return section
 
     def _build_legal_section(self):
@@ -458,16 +410,17 @@ class MainWindow(QMainWindow):
             "Em Traduções, Espaço ou Enter marca uma edição. Em Livros, esquerda mostra o Antigo "
             "Testamento e direita mostra o Novo. Enter em Livros leva aos capítulos; Enter em "
             "Capítulos abre a leitura.\n\n"
-            "AÇÕES DO TEXTO\n"
-            "Aplicações ou Shift+F10 abre cópia, marcador e leitura em voz alta.\n\n"
+            "INTELIGÊNCIA ARTIFICIAL\n"
+            "Aplicações ou Shift+F10 em Livros gera resumo do livro; em Capítulos gera resumo "
+            "do capítulo; e na Leitura oferece explicação do número selecionado.\n\n"
             "ATALHOS\n"
             "Ctrl+L: referência. Ctrl+F: pesquisa. Ctrl+Seta esquerda/direita: capítulo anterior ou "
             "seguinte. F5: ouvir. Ctrl+Alt+C: copiar texto. Ctrl+Alt+R: "
             "copiar referência e texto. Ctrl+Alt+M: marcador. Escape: parar voz. F1: ajuda.\n\n"
             "CONTINUIDADE E PRIVACIDADE\n"
-            "A posição e os marcadores permanecem locais. A seção Configurações controla fonte, "
-            "contraste, voz, retomada da posição e análise opcional por IA. A chave da API fica "
-            "somente na memória e é esquecida quando o aplicativo fecha."
+            "A posição e os marcadores permanecem locais. Em Configurações, cima e baixo escolhem "
+            "Chave da API ou Modelo; Enter abre o diálogo e Tab leva a Salvar configurações. "
+            "A chave é gravada criptografada para a conta atual do Windows."
         )
         self.help_text.setMinimumHeight(180)
         layout.addWidget(self.help_text)
@@ -528,10 +481,7 @@ class MainWindow(QMainWindow):
     def _load_translations_and_restore(self):
         """Preenche traduções e retoma livro, capítulo e item salvos."""
         translations = self.db.translations()
-        restore = self.settings.value("preferences/restore_position", True, type=bool)
-        saved_translation = (
-            self.settings.value("position/translation", "bpm") if restore else "bpm"
-        )
+        saved_translation = self.settings.value("position/translation", "bpm")
         self._loading = True
         for translation in translations:
             item = QListWidgetItem(translation["name"])
@@ -550,9 +500,9 @@ class MainWindow(QMainWindow):
             self.translation_list.item(0).setCheckState(Qt.Checked)
         self._loading = False
 
-        saved_book = self.settings.value("position/book", "GEN") if restore else "GEN"
-        saved_chapter = int(self.settings.value("position/chapter", 1)) if restore else 1
-        saved_verse = self.settings.value("position/verse", "1") if restore else "1"
+        saved_book = self.settings.value("position/book", "GEN")
+        saved_chapter = int(self.settings.value("position/chapter", 1))
+        saved_verse = self.settings.value("position/verse", "1")
         all_books = self.db.books(self.current_translation_id())
         book_row = next((book for book in all_books if book["book_code"] == saved_book), all_books[0])
         self.testament = self.OLD_TESTAMENT if int(book_row["book_number"]) <= 39 else self.NEW_TESTAMENT
@@ -575,18 +525,8 @@ class MainWindow(QMainWindow):
                 self.search_edit,
                 self.search_button,
                 self.search_results,
-                self.font_size_spin,
-                self.speech_rate_spin,
-                self.high_contrast_check,
-                self.restore_position_check,
+                self.settings_options,
                 self.save_settings_button,
-                self.api_key_edit,
-                self.ai_model_combo,
-                self.ai_task_combo,
-                self.ai_detail_combo,
-                self.ai_generate_button,
-                self.ai_result,
-                self.ai_copy_button,
                 self.legal_text,
                 self.help_text,
             )
@@ -840,6 +780,40 @@ class MainWindow(QMainWindow):
         self.verse_list.setFocus()
 
     # Menu Aplicações ---------------------------------------------------
+    def show_book_menu_at(self, position):
+        """Seleciona o livro apontado pelo mouse antes de abrir suas ações."""
+        item = self.book_list.itemAt(position)
+        if item:
+            self.book_list.setCurrentItem(item)
+        self.show_book_menu(position)
+
+    def show_book_menu(self, position=None):
+        """Oferece a geração de resumo para o livro destacado."""
+        if not self.book_list.currentItem():
+            return
+        menu = QMenu(self)
+        generate = menu.addAction("Gerar &resumo do livro com IA")
+        selected = menu.exec(self._menu_global_position(self.book_list, position))
+        if selected is generate:
+            self.generate_ai_for_scope("book")
+
+    def show_chapter_menu_at(self, position):
+        """Seleciona o capítulo apontado pelo mouse antes de abrir suas ações."""
+        item = self.chapter_list.itemAt(position)
+        if item:
+            self.chapter_list.setCurrentItem(item)
+        self.show_chapter_menu(position)
+
+    def show_chapter_menu(self, position=None):
+        """Oferece a geração de resumo para o capítulo destacado."""
+        if not self.chapter_list.currentItem():
+            return
+        menu = QMenu(self)
+        generate = menu.addAction("Gerar &resumo do capítulo com IA")
+        selected = menu.exec(self._menu_global_position(self.chapter_list, position))
+        if selected is generate:
+            self.generate_ai_for_scope("chapter")
+
     def _current_verse_key(self):
         """Produz a chave composta usada pelos marcadores e ações do texto."""
         item = self.verse_list.currentItem()
@@ -874,13 +848,18 @@ class MainWindow(QMainWindow):
         self.action_bookmark.setText("&Remover marcador" if marked else "&Adicionar marcador")
         menu.addAction(self.action_bookmark)
         menu.addAction(self.action_speak)
+        menu.addSeparator()
+        explain = menu.addAction("Gerar &explicação do versículo com IA")
+        selected = menu.exec(self._menu_global_position(self.verse_list, position))
+        if selected is explain:
+            self.generate_ai_for_scope("verse")
 
-        if position is None:
-            rectangle = self.verse_list.visualItemRect(self.verse_list.currentItem())
-            global_position = self.verse_list.viewport().mapToGlobal(rectangle.center())
-        else:
-            global_position = self.verse_list.viewport().mapToGlobal(position)
-        menu.exec(global_position)
+    def _menu_global_position(self, widget: QListWidget, position=None):
+        """Calcula uma posição adequada para menus abertos por teclado ou mouse."""
+        if position is not None:
+            return widget.viewport().mapToGlobal(position)
+        rectangle = widget.visualItemRect(widget.currentItem())
+        return widget.viewport().mapToGlobal(rectangle.center())
 
     def copy_verse_text(self):
         """Copia apenas o texto, sem referência ou nome da edição."""
@@ -941,84 +920,118 @@ class MainWindow(QMainWindow):
         self._show_location(row["book_code"], int(row["chapter"]), row["verse"])
 
     # Configurações e IA -----------------------------------------------
-    def apply_preferences(self, show_message=True):
-        """Aplica preferências visuais, de voz e de retomada, salvando-as localmente."""
-        font_size = self.font_size_spin.value()
-        font = self.font()
-        font.setPointSize(font_size)
-        self.setFont(font)
-        self.setStyleSheet(
-            "QWidget { background: #000000; color: #ffffff; } "
-            "QLineEdit, QListWidget, QComboBox, QSpinBox, QDoubleSpinBox { "
-            "background: #000000; color: #ffffff; border: 2px solid #ffffff; } "
-            "QPushButton { background: #000000; color: #ffffff; border: 2px solid #ffffff; padding: 5px; }"
-            if self.high_contrast_check.isChecked()
-            else ""
-        )
-        if self.tts:
-            self.tts.setRate(self.speech_rate_spin.value())
-        self.settings.setValue("preferences/font_size", font_size)
-        self.settings.setValue("preferences/speech_rate", self.speech_rate_spin.value())
-        self.settings.setValue("preferences/high_contrast", self.high_contrast_check.isChecked())
-        self.settings.setValue("preferences/restore_position", self.restore_position_check.isChecked())
-        self.settings.setValue("ai/model", self.ai_model_combo.currentData())
-        self.settings.sync()
-        if show_message:
-            self.statusBar().showMessage("Configurações salvas neste computador.")
+    def _load_saved_api_key(self) -> str:
+        """Recupera a chave criptografada, mantendo o aplicativo utilizável em caso de falha."""
+        encrypted = self.settings.value("ai/api_key_protected", "")
+        if not encrypted:
+            return ""
+        try:
+            return unprotect_text(str(encrypted))
+        except SecureStoreError:
+            return ""
 
-    def generate_ai_content(self):
-        """Prepara o escopo atual e inicia a requisição sem bloquear a interface."""
+    def _refresh_settings_options(self):
+        """Atualiza os dois itens sem acrescentar outros controles à seção."""
+        selected = self.settings_options.currentRow()
+        self.settings_options.clear()
+        key_state = "configurada" if self.pending_api_key else "não configurada"
+        key_item = QListWidgetItem(f"Colar ou alterar chave da API — {key_state}")
+        key_item.setData(Qt.UserRole, "api_key")
+        self.settings_options.addItem(key_item)
+        model_name = next(
+            (label for label, model_id in ModelDialog.MODELS if model_id == self.pending_ai_model),
+            self.pending_ai_model,
+        )
+        model_item = QListWidgetItem(f"Escolher modelo — {model_name}")
+        model_item.setData(Qt.UserRole, "model")
+        self.settings_options.addItem(model_item)
+        self.settings_options.setCurrentRow(max(0, selected))
+
+    def open_settings_option(self, item: QListWidgetItem):
+        """Abre o diálogo correspondente ao item ativado com Enter."""
+        if item.data(Qt.UserRole) == "api_key":
+            key, accepted = ApiKeyDialog.get_key(self, self.pending_api_key)
+            if accepted:
+                self.pending_api_key = key
+                self._refresh_settings_options()
+            return
+        model, accepted = ModelDialog.get_model(self, self.pending_ai_model)
+        if accepted:
+            self.pending_ai_model = model
+            self._refresh_settings_options()
+
+    def save_ai_settings(self):
+        """Criptografa a chave e salva somente chave e modelo para os próximos inícios."""
+        try:
+            encrypted = protect_text(self.pending_api_key) if self.pending_api_key else ""
+        except SecureStoreError as error:
+            self._warn("Não foi possível salvar", str(error))
+            return
+        self.settings.setValue("ai/api_key_protected", encrypted)
+        self.settings.setValue("ai/model", self.pending_ai_model)
+        self.settings.sync()
+        self.api_key = self.pending_api_key
+        self.ai_model = self.pending_ai_model
+        self._refresh_settings_options()
+        self._announce_for(self.settings_options, "Configurações da inteligência artificial salvas.")
+
+    def generate_ai_for_scope(self, task: str):
+        """Prepara o escopo do menu atual e inicia a requisição sem bloquear a interface."""
         if self._ai_busy:
             self.statusBar().showMessage("Aguarde a solicitação de IA atual terminar.")
             return
-        api_key = self.api_key_edit.text().strip()
-        if not api_key:
-            self._warn("Chave necessária", "Informe sua chave pessoal da API OpenAI.")
-            self.api_key_edit.setFocus()
+        if not self.api_key:
+            self._warn(
+                "Chave necessária",
+                "Configure e salve sua chave pessoal da API OpenAI na seção Configurações.",
+            )
             return
-        task = self.ai_task_combo.currentData()
         prepared = self._prepare_ai_task(task)
         if prepared is None:
             return
-        task_instruction, bible_text = prepared
-        model = self.ai_model_combo.currentData()
-        detail = self.ai_detail_combo.currentData()
-        self.settings.setValue("ai/model", model)
+        task_instruction, bible_text, title = prepared
+        self._ai_result_title = title
         self._ai_busy = True
-        self.ai_generate_button.setEnabled(False)
-        self.ai_status.setText("Gerando conteúdo com IA. Aguarde; isso pode levar alguns instantes.")
-        self.statusBar().showMessage(self.ai_status.text())
+        self.statusBar().showMessage("Gerando conteúdo com IA. Aguarde alguns instantes.")
         threading.Thread(
             target=self._run_ai_request,
-            args=(api_key, model, task_instruction, bible_text, detail),
+            args=(self.api_key, self.ai_model, task_instruction, bible_text, "médio"),
             daemon=True,
         ).start()
 
     def _prepare_ai_task(self, task: str):
         """Monta instrução e texto do livro, capítulo ou item atualmente selecionado."""
-        if not self.active_book_code:
-            self._warn("Leitura necessária", "Abra um livro e um capítulo antes de usar a IA.")
+        book_item = self.book_list.currentItem()
+        chapter_item = self.chapter_list.currentItem()
+        if not book_item:
+            self._warn("Livro necessário", "Selecione um livro antes de usar a IA.")
             return None
+        book_code = book_item.data(Qt.UserRole)
+        book_name = book_item.text()
         if task == "book":
-            rows = self.db.book(self.current_translation_id(), self.active_book_code)
+            rows = self.db.book(self.current_translation_id(), book_code)
             text = "\n".join(
                 f"Capítulo {row['chapter']}, {row['verse']}. {row['text']}" for row in rows
             )
             instruction = (
-                f"Resuma o livro de {self.active_book_name}, destacando sua progressão e temas "
+                f"Resuma o livro de {book_name}, destacando sua progressão e temas "
                 "principais sem substituir a leitura do texto completo."
             )
-            return instruction, text
+            return instruction, text, f"Resumo de {book_name}"
         if task == "chapter":
+            if not chapter_item:
+                self._warn("Capítulo necessário", "Selecione um capítulo antes de usar a IA.")
+                return None
+            chapter = int(chapter_item.data(Qt.UserRole))
             rows = self.db.chapter(
-                self.current_translation_id(), self.active_book_code, self.active_chapter
+                self.current_translation_id(), book_code, chapter
             )
             text = "\n".join(f"{row['verse']}. {row['text']}" for row in rows)
             instruction = (
-                f"Resuma {self.active_book_name}, capítulo {self.active_chapter}, apresentando "
+                f"Resuma {book_name}, capítulo {chapter}, apresentando "
                 "a sequência do texto e suas ideias centrais."
             )
-            return instruction, text
+            return instruction, text, f"Resumo de {book_name}, capítulo {chapter}"
         item = self.verse_list.currentItem()
         if not item or item.data(Qt.UserRole + 1) is None:
             self._warn("Texto necessário", "Selecione um número da seção Leitura para pedir a explicação.")
@@ -1028,7 +1041,8 @@ class MainWindow(QMainWindow):
             f"Explique {self.active_book_name} {self.active_chapter}:{number} em linguagem simples. "
             "Indique o sentido observável no texto e evite afirmar uma única interpretação doutrinária."
         )
-        return instruction, f"{number}. {item.data(Qt.UserRole)}"
+        title = f"Explicação de {self.active_book_name} {self.active_chapter}:{number}"
+        return instruction, f"{number}. {item.data(Qt.UserRole)}", title
 
     def _run_ai_request(self, api_key, model, instruction, bible_text, detail):
         """Executa a chamada de rede em uma thread de segundo plano."""
@@ -1042,28 +1056,15 @@ class MainWindow(QMainWindow):
             self.ai_signals.finished.emit(result)
 
     def _ai_finished(self, result: str):
-        """Apresenta o resultado como parágrafos navegáveis pelo leitor de tela."""
+        """Apresenta o resultado em um diálogo navegável e acessível."""
         self._ai_busy = False
-        self.ai_generate_button.setEnabled(True)
-        self.ai_result.set_text(result)
-        self.ai_copy_button.setEnabled(True)
-        self.ai_status.setText("Conteúdo de IA concluído. Use cima e baixo para ler o resultado.")
-        self.ai_result.setFocus()
-        self._announce_for(self.ai_result, "Conteúdo de IA concluído.")
+        self.statusBar().showMessage("Conteúdo de IA concluído.")
+        AccessibleResultDialog(self, self._ai_result_title, result).exec()
 
     def _ai_failed(self, message: str):
         """Restaura os controles e anuncia uma falha segura da API."""
         self._ai_busy = False
-        self.ai_generate_button.setEnabled(True)
-        self.ai_status.setText(message)
-        self._announce_for(self.ai_status, message)
-
-    def copy_ai_result(self):
-        """Copia todos os parágrafos gerados para a área de transferência."""
-        text = "\n\n".join(self.ai_result.item(i).text() for i in range(self.ai_result.count()))
-        if text:
-            QApplication.clipboard().setText(text)
-            self.statusBar().showMessage("Resultado da IA copiado.")
+        self._warn("Falha na inteligência artificial", message)
 
     # Voz e utilidades --------------------------------------------------
     def speak_current_verse(self):
@@ -1078,7 +1079,6 @@ class MainWindow(QMainWindow):
         if not self.tts:
             self.statusBar().showMessage("A voz interna não está disponível; use o leitor de tela.")
             return
-        self.tts.setRate(self.speech_rate_spin.value())
         self.tts.stop()
         if item.data(Qt.UserRole + 2) == "ending":
             self.tts.say(item.data(Qt.UserRole))
@@ -1092,10 +1092,12 @@ class MainWindow(QMainWindow):
             self.tts.stop()
 
     def change_font_size(self, amount: int):
-        """Ajusta o tamanho global dentro de limites utilizáveis."""
-        self.font_size_spin.setValue(self.font_size_spin.value() + amount)
-        self.apply_preferences(show_message=False)
-        self.statusBar().showMessage(f"Tamanho do texto: {self.font_size_spin.value()} pontos.")
+        """Ajusta temporariamente o tamanho global dentro de limites utilizáveis."""
+        font = self.font()
+        current = font.pointSize() if font.pointSize() > 0 else 10
+        font.setPointSize(max(8, min(28, current + amount)))
+        self.setFont(font)
+        self.statusBar().showMessage(f"Tamanho do texto: {font.pointSize()} pontos.")
 
     def _focus_reference(self):
         """Leva Ctrl+L ao campo de referência e seleciona seu conteúdo."""

@@ -3,14 +3,16 @@
 import os
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication
-    from biblia.main_window import MainWindow, VerseList
+    from PySide6.QtWidgets import QApplication, QDialog, QLineEdit
+    from biblia.dialogs import ApiKeyDialog
+    from biblia.main_window import BookList, ChapterList, MainWindow, VerseList
 except ImportError:  # Permite validar o banco antes da instalação da interface.
     QApplication = None
     MainWindow = None
@@ -82,26 +84,40 @@ class GuiSmokeTests(unittest.TestCase):
         window.close()
 
     def test_applications_key_is_detected(self):
-        """Garante que a tecla Aplicações emite o pedido de menu."""
-        verse_list = VerseList()
-        requested = []
-        verse_list.applicationsRequested.connect(lambda: requested.append(True))
-        QTest.keyClick(verse_list, Qt.Key_Menu)
-        self.assertEqual([True], requested)
+        """Garante que Aplicações funciona em livros, capítulos e leitura."""
+        for list_type in (BookList, ChapterList, VerseList):
+            widget = list_type()
+            requested = []
+            widget.applicationsRequested.connect(lambda: requested.append(True))
+            QTest.keyClick(widget, Qt.Key_Menu)
+            self.assertEqual([True], requested)
 
     def test_settings_and_ai_section_are_accessible_without_notes(self):
         """Confere configurações, tarefas de IA e remoção completa da interface de notas."""
         window = MainWindow(DB_PATH)
         self.assertFalse(hasattr(window, "action_edit_note"))
         self.assertFalse(hasattr(window, "note_book_widgets"))
-        self.assertEqual("Chave pessoal da API OpenAI", window.api_key_edit.accessibleName())
-        self.assertEqual(3, window.ai_task_combo.count())
-        self.assertEqual(3, window.ai_model_combo.count())
+        self.assertEqual("Opções de configurações", window.settings_options.accessibleName())
+        self.assertEqual(2, window.settings_options.count())
+        self.assertIn("chave da API", window.settings_options.item(0).text())
+        self.assertIn("modelo", window.settings_options.item(1).text())
+        with patch("biblia.main_window.ApiKeyDialog.get_key", return_value=("sk-teste", True)):
+            window.open_settings_option(window.settings_options.item(0))
+        self.assertEqual("sk-teste", window.pending_api_key)
         window._show_location("JHN", 3, "16", focus_reading=False)
-        instruction, text = window._prepare_ai_task("verse")
+        instruction, text, title = window._prepare_ai_task("verse")
         self.assertIn("João 3:16", instruction)
         self.assertTrue(text.startswith("16."))
+        self.assertIn("João 3:16", title)
         window.close()
+
+    def test_api_key_dialog_is_masked_and_enter_confirms(self):
+        """Confere a caixa protegida e a confirmação direta pelo Enter."""
+        dialog = ApiKeyDialog(None, "sk-exemplo")
+        self.assertEqual("Chave da API OpenAI", dialog.editor.accessibleName())
+        self.assertEqual(QLineEdit.Password, dialog.editor.echoMode())
+        QTest.keyClick(dialog.editor, Qt.Key_Return)
+        self.assertEqual(QDialog.Accepted, dialog.result())
 
 
 if __name__ == "__main__":
