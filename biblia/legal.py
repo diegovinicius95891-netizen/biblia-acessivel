@@ -4,7 +4,7 @@ LEGAL_TEXT = """INFORMAÇÕES LEGAIS E JUSTIFICATIVA DE USO
 
 Finalidade
 
-Este aplicativo oferece leitura bíblica acessível, navegação por teclado, compatibilidade com leitores de tela, voz opcional, notas e marcadores locais. As informações abaixo registram por que os textos podem ser incluídos. Elas não substituem um parecer jurídico.
+Este aplicativo oferece leitura bíblica acessível, navegação por teclado, compatibilidade com leitores de tela, voz opcional e marcadores locais. As informações abaixo registram por que os textos podem ser incluídos. Elas não substituem um parecer jurídico.
 
 LEGISLAÇÃO BRASILEIRA
 

@@ -2,19 +2,15 @@
 
 import os
 from pathlib import Path
-from tempfile import TemporaryDirectory
 import unittest
-from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QDialogButtonBox
-    from biblia.dialogs import NoteDialog
+    from PySide6.QtWidgets import QApplication
     from biblia.main_window import MainWindow, VerseList
-    from biblia.user_data import UserDataDatabase
 except ImportError:  # Permite validar o banco antes da instalação da interface.
     QApplication = None
     MainWindow = None
@@ -93,34 +89,19 @@ class GuiSmokeTests(unittest.TestCase):
         QTest.keyClick(verse_list, Qt.Key_Menu)
         self.assertEqual([True], requested)
 
-    def test_note_dialog_has_accessible_editor_and_buttons(self):
-        """Confere nomes acessíveis nos controles do editor de notas."""
-        dialog = NoteDialog(None, "João 3:16", "Texto inicial")
-        self.assertEqual("Texto da nota de João 3:16", dialog.editor.accessibleName())
-        self.assertEqual("Texto inicial", dialog.editor.toPlainText())
-        self.assertTrue(dialog.buttons.button(QDialogButtonBox.Save).accessibleName())
-        self.assertTrue(dialog.buttons.button(QDialogButtonBox.Cancel).accessibleName())
-        dialog.close()
-
-    def test_note_action_saves_through_accessible_dialog(self):
-        """Simula confirmação e verifica persistência e agrupamento."""
-        with TemporaryDirectory() as directory:
-            window = MainWindow(DB_PATH)
-            window.user_data.close()
-            window.user_data = UserDataDatabase(Path(directory) / "user.db")
-            window.reference_edit.setText("João 3:16")
-            window.go_to_reference()
-            with patch("biblia.main_window.NoteDialog.get_note", return_value=("Nota acessível", True)):
-                window.edit_note()
-            self.assertEqual(
-                "Nota acessível", window.user_data.note(window.current_translation_id(), "JHN", 3, "16")
-            )
-            self.assertEqual(1, len(window.note_book_widgets))
-            notes_book = window.note_book_widgets[0]
-            self.assertIn("1 nota", notes_book.button.text())
-            self.assertFalse(notes_book.button.isChecked())
-            self.assertTrue(notes_book.list.isHidden())
-            window.close()
+    def test_settings_and_ai_section_are_accessible_without_notes(self):
+        """Confere configurações, tarefas de IA e remoção completa da interface de notas."""
+        window = MainWindow(DB_PATH)
+        self.assertFalse(hasattr(window, "action_edit_note"))
+        self.assertFalse(hasattr(window, "note_book_widgets"))
+        self.assertEqual("Chave pessoal da API OpenAI", window.api_key_edit.accessibleName())
+        self.assertEqual(3, window.ai_task_combo.count())
+        self.assertEqual(3, window.ai_model_combo.count())
+        window._show_location("JHN", 3, "16", focus_reading=False)
+        instruction, text = window._prepare_ai_task("verse")
+        self.assertIn("João 3:16", instruction)
+        self.assertTrue(text.startswith("16."))
+        window.close()
 
 
 if __name__ == "__main__":

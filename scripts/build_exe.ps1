@@ -23,10 +23,16 @@ python -m PyInstaller `
     --specpath $specPath `
     $entryPoint
 
+# O PowerShell não interrompe automaticamente quando um programa externo
+# devolve erro. Esta verificação impede que um EXE antigo seja confundido com
+# uma compilação bem-sucedida, por exemplo quando o aplicativo está aberto.
+if ($LASTEXITCODE -ne 0) {
+    throw "O PyInstaller falhou com o código $LASTEXITCODE. Feche o aplicativo e tente novamente."
+}
+
 # Confirma de forma clara onde o resultado foi colocado.
 $executable = Join-Path $projectRoot 'BibliaAcessivel.exe'
 if (-not (Test-Path -LiteralPath $executable)) {
     throw 'O executável não foi criado.'
 }
 Write-Output "Executável criado em: $executable"
-

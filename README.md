@@ -1,6 +1,6 @@
 # Bíblia Acessível
 
-Aplicativo desktop offline em Python para leitura da Bíblia com teclado, leitor de tela e voz opcional.
+Aplicativo desktop em Python para leitura acessível da Bíblia. A leitura, a pesquisa e a voz funcionam offline; somente o recurso opcional de IA exige internet.
 
 ## Iniciar
 
@@ -29,22 +29,24 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 - Na seção Leitura, esquerda volta um capítulo e direita avança um capítulo do mesmo livro.
 - Depois do último item aparece “Fim do capítulo” ou “Fim do livro. Não há capítulos seguintes”.
 - Ajuda e Leis são listas de parágrafos; cima/baixo lê o conteúdo sem repetir o nome da seção.
-- Tecla Aplicações ou Shift+F10 abre nota, cópia, marcador e leitura em voz alta.
+- Tecla Aplicações ou Shift+F10 abre cópia, marcador e leitura em voz alta.
 - O menu `Item atual`, acessível com `Alt+I`, oferece as mesmas operações.
-- `Ctrl+Alt+N` edita a nota; `Ctrl+Alt+L` lê a nota; `Ctrl+Alt+C` copia o texto; `Ctrl+Alt+R` copia referência e texto; `Ctrl+Alt+M` alterna o marcador.
-- Sem cores ou temas impostos: o aplicativo respeita o tema e o alto contraste do sistema.
+- `Ctrl+Alt+C` copia o texto; `Ctrl+Alt+R` copia referência e texto; `Ctrl+Alt+M` alterna o marcador.
+- Alto contraste opcional na seção Configurações.
 - Tamanho do texto ajustável com `Ctrl+mais` e `Ctrl+menos`.
 - Voz offline do Windows por meio do Qt TextToSpeech, quando disponível.
 
-## Continuidade, notas e marcadores
+## Continuidade e marcadores
 
-O aplicativo salva automaticamente tradução, testamento, livro, capítulo e item atual. Ao abrir novamente, retorna ao mesmo ponto. Notas e marcadores ficam em `data/user_data.db`, separados do banco bíblico, para não serem apagados quando os textos forem reconstruídos.
+O aplicativo salva automaticamente tradução, testamento, livro, capítulo e item atual. A seção Configurações permite escolher se o aplicativo deve retomar essa posição. Os marcadores ficam em `data/user_data.db`, separado do banco bíblico.
 
 A seção **Licenças e leis** apresenta um único texto simples, somente leitura, com a legislação, a justificativa geral, as quatro fontes e suas condições de utilização. Não há seletores ou conteúdo HTML nessa área.
 
-## Seção Notas
+## Configurações e IA opcional
 
-Depois que a primeira nota é confirmada, a seção Notas cria um botão recolhido para o livro correspondente. Livros sem notas não aparecem. Ao expandir um livro, cima/baixo percorrem as notas e Enter abre a referência e o editor.
+A seção Configurações oferece tamanho do texto, alto contraste, velocidade da voz interna e retomada da última posição. Ela também pode gerar resumo do livro atual, resumo do capítulo atual ou explicação do versículo selecionado.
+
+A IA usa a Responses API da OpenAI e a chave da própria pessoa. A chave aparece mascarada e fica somente na memória: não é salva em configurações, banco, logs ou GitHub. A chamada usa internet, pode consumir o saldo da conta da API e mantém `store: false`. O resultado é uma lista de parágrafos navegável com cima/baixo e pode ser copiado.
 
 Consulte [docs/ARQUITETURA.md](docs/ARQUITETURA.md) para a explicação de todos os arquivos e fluxos.
 
@@ -56,7 +58,7 @@ O script `scripts/build_database.py` baixa as fontes oficiais/indicadas e normal
 python scripts/build_database.py --otb-dir "C:\caminho\open-bible\lang\pt-BR"
 ```
 
-O processo de construção exige internet; a utilização do aplicativo não exige.
+O processo de construção exige internet. Depois disso, somente o recurso opcional de IA precisa de conexão.
 
 ## Recriar o executável
 

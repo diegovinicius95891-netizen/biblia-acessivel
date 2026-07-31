@@ -11,8 +11,8 @@ O aplicativo possui uma única página rolável. Não existem `QTabWidget`, guia
 3. Capítulos.
 4. Leitura.
 5. Referência direta.
-6. Notas, quando existirem.
-7. Pesquisa.
+6. Pesquisa.
+7. Configurações e IA opcional.
 8. Licenças e leis.
 9. Ajuda.
 
@@ -27,21 +27,21 @@ Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de lista
 
 ## Pacote `biblia`
 
-- `main_window.py`: controles acessíveis, seções, teclado, voz, pesquisa, leitura, notas recolhíveis e continuidade.
+- `main_window.py`: controles acessíveis, seções, teclado, voz, pesquisa, configurações, IA e continuidade.
+- `ai_client.py`: chamada mínima à Responses API, extração do texto e erros seguros.
 - `database.py`: consultas somente leitura ao banco bíblico.
-- `user_data.py`: banco separado de notas e marcadores.
-- `dialogs.py`: editor de notas e leitor de texto com nomes e foco acessíveis.
+- `user_data.py`: banco separado de marcadores.
+- `dialogs.py`: leitor de texto com nomes e foco acessíveis.
 - `legal.py`: texto jurídico único e simples.
 
-## Fluxo de uma nota
+## Fluxo da IA opcional
 
-1. A pessoa seleciona um item na seção Leitura.
-2. Aplicações, Shift+F10, Alt+I ou Ctrl+Alt+N chama `edit_note`.
-3. `NoteDialog` abre um editor associado à referência atual.
-4. Confirmar chama `UserDataDatabase.save_note`.
-5. `refresh_notes_section` consulta todas as notas.
-6. Somente livros presentes no resultado recebem um `NotesBookWidget`.
-7. Cada widget começa recolhido e sua lista entra no fluxo de foco apenas quando expandida.
+1. A pessoa informa sua chave da OpenAI, escolhe modelo, tarefa e detalhamento.
+2. `MainWindow` monta somente o livro, capítulo ou texto necessário.
+3. Uma thread de segundo plano chama `create_bible_analysis`, sem bloquear teclado ou leitor de tela.
+4. A requisição usa a Responses API com `store: false`.
+5. O resultado retorna por sinais do Qt e é dividido em parágrafos navegáveis.
+6. A chave nunca é gravada; as demais preferências usam `QSettings`.
 
 O arquivo `data/user_data.db` é ignorado pelo Git para impedir a publicação de dados pessoais.
 
@@ -58,5 +58,6 @@ Ajuda e Leis usam `ReadingTextList`, que apresenta um parágrafo por item. Isso 
 ## Testes
 
 - `test_database.py`: integridade das edições e pesquisa.
-- `test_user_data.py`: notas e marcadores em banco temporário.
-- `test_gui_smoke.py`: página sem guias, teclado, diálogo acessível, seção recolhível e navegação.
+- `test_user_data.py`: marcadores em banco temporário.
+- `test_ai_client.py`: contrato do cliente de IA sem chamadas externas.
+- `test_gui_smoke.py`: página sem guias, teclado, configurações, IA e navegação.

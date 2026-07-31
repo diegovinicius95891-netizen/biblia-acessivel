@@ -63,6 +63,17 @@ class BibleDatabase:
             (translation_id, book_code, chapter),
         ).fetchall()
 
+    def book(self, translation_id: str, book_code: str):
+        """Carrega um livro completo, preservando capítulos e ordem dos itens."""
+        return self.connection.execute(
+            """
+            SELECT chapter, verse, text FROM verses
+            WHERE translation_id=? AND book_code=?
+            ORDER BY chapter, verse_sort, verse
+            """,
+            (translation_id, book_code),
+        ).fetchall()
+
     def resolve_book(self, translation_id: str, query: str):
         """Resolve nome completo, prefixo ou abreviação digitada pelo usuário."""
         normalized = _normalize(query)
