@@ -1,0 +1,25 @@
+# Dados pessoais: notas e marcadores nunca devem ser enviados ao repositório.
+data/user_data.db
+data/user_data.db-*
+
+# Arquivos temporários e caches do Python/Qt.
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# Ambientes, empacotamento e IDEs.
+.venv/
+venv/
+build/
+dist/
+*.spec
+.idea/
+.vscode/
+
+# Configurações e arquivos temporários do sistema operacional.
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+
