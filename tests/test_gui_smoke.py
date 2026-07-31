@@ -11,7 +11,7 @@ try:
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QDialog, QLineEdit
-    from biblia.dialogs import ApiKeyDialog, ModelDialog
+    from biblia.dialogs import ApiKeyDialog, ApplicationsDialog, ModelDialog
     from biblia.main_window import BookList, ChapterList, MainWindow, VerseList
 except ImportError:  # Permite validar o banco antes da instalação da interface.
     QApplication = None
@@ -92,13 +92,26 @@ class GuiSmokeTests(unittest.TestCase):
             QTest.keyClick(widget, Qt.Key_Menu)
             self.assertEqual([True], requested)
 
+        book_list = BookList()
+        chapters = []
+        book_list.chaptersRequested.connect(lambda: chapters.append(True))
+        QTest.keyClick(book_list, Qt.Key_Space)
+        self.assertEqual([True], chapters)
+
+        verse_list = VerseList()
+        activations = []
+        verse_list.activateRequested.connect(lambda: activations.append(True))
+        QTest.keyClick(verse_list, Qt.Key_Space)
+        QTest.keyClick(verse_list, Qt.Key_Return)
+        self.assertEqual([True, True], activations)
+
     def test_settings_and_ai_section_are_accessible_without_notes(self):
         """Confere configurações, tarefas de IA e remoção completa da interface de notas."""
         window = MainWindow(DB_PATH)
         self.assertFalse(hasattr(window, "action_edit_note"))
         self.assertFalse(hasattr(window, "note_book_widgets"))
         self.assertEqual("Opções de configurações", window.settings_options.accessibleName())
-        self.assertEqual(2, window.settings_options.count())
+        self.assertEqual(6, window.settings_options.count())
         self.assertIn("chave da API", window.settings_options.item(0).text())
         self.assertIn("modelo", window.settings_options.item(1).text())
         self.assertTrue(all(model_id.startswith("gemini-") for _label, model_id in ModelDialog.MODELS))
@@ -108,8 +121,9 @@ class GuiSmokeTests(unittest.TestCase):
         with patch("biblia.main_window.QDesktopServices.openUrl", return_value=True) as open_url:
             window.open_google_api_keys_page()
         self.assertEqual("https://aistudio.google.com/apikey", open_url.call_args.args[0].toString())
+        window.settings_options.setCurrentRow(0)
         with patch("biblia.main_window.ApiKeyDialog.get_key", return_value=("sk-teste", True)):
-            window.open_settings_option(window.settings_options.item(0))
+            QTest.keyClick(window.settings_options, Qt.Key_Space)
         self.assertEqual("sk-teste", window.pending_api_key)
         self.assertTrue(window.get_api_key_button.isHidden())
         window._show_location("JHN", 3, "16", focus_reading=False)
@@ -117,6 +131,23 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertIn("João 3:16", instruction)
         self.assertTrue(text.startswith("16."))
         self.assertIn("João 3:16", title)
+        window.close()
+
+    def test_applications_dialog_and_buttons_accept_space_or_enter(self):
+        """Valida o popup acessível e a ativação explícita dos botões."""
+        dialog = ApplicationsDialog(None, "Aplicações", (("Copiar texto", "copy"),))
+        QTest.keyClick(dialog.options, Qt.Key_Space)
+        self.assertEqual(QDialog.Accepted, dialog.result())
+        self.assertEqual("copy", dialog.selected_value)
+
+        window = MainWindow(DB_PATH)
+        activated = []
+        window.save_settings_button.clicked.disconnect()
+        window.save_settings_button.clicked.connect(lambda: activated.append(True))
+        window.save_settings_button.setFocus()
+        QTest.keyClick(window.save_settings_button, Qt.Key_Space)
+        QTest.keyClick(window.save_settings_button, Qt.Key_Return)
+        self.assertEqual([True, True], activated)
         window.close()
 
     def test_api_key_dialog_is_masked_and_enter_confirms(self):

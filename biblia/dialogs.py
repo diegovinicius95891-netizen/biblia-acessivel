@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
-    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -17,6 +17,91 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+
+class ActivatableList(QListWidget):
+    """Lista acessível que ativa o item atual tanto com Espaço quanto com Enter."""
+
+    selectionRequested = Signal(QListWidgetItem)
+
+    def __init__(self, parent=None):
+        """Conecta também clique duplo à mesma rota de ativação."""
+        super().__init__(parent)
+        self.itemDoubleClicked.connect(self.selectionRequested.emit)
+
+    def keyPressEvent(self, event):
+        """Emite o item atual com Espaço/Enter e preserva as demais teclas."""
+        if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
+            item = self.currentItem()
+            if item:
+                self.selectionRequested.emit(item)
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+
+class AccessibleButton(QPushButton):
+    """Botão que garante ativação por Enter/Return além do Espaço nativo."""
+
+    def keyPressEvent(self, event):
+        """Converte Enter em clique e delega Espaço e demais teclas ao Qt."""
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self.click()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+
+class ChoiceDialog(QDialog):
+    """Apresenta escolhas em lista, navegáveis e confirmáveis sem mouse."""
+
+    def __init__(self, parent: QWidget, title: str, options, current_value=None):
+        """Preenche opções como pares de rótulo e valor e destaca a atual."""
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setAccessibleName(title)
+        self.selected_value = current_value
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Use cima e baixo. Pressione Espaço ou Enter para selecionar:"))
+        self.options = ActivatableList()
+        self.options.setAccessibleName(title)
+        selected_row = 0
+        for index, (label, value) in enumerate(options):
+            item = QListWidgetItem(label)
+            item.setData(Qt.UserRole, value)
+            self.options.addItem(item)
+            if value == current_value:
+                selected_row = index
+        self.options.setCurrentRow(selected_row)
+        self.options.selectionRequested.connect(self._choose)
+        layout.addWidget(self.options)
+        buttons = QDialogButtonBox(QDialogButtonBox.Cancel)
+        buttons.button(QDialogButtonBox.Cancel).setText("&Cancelar")
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.options.setFocus()
+
+    def _choose(self, item: QListWidgetItem):
+        """Guarda o valor associado e fecha o diálogo como confirmado."""
+        self.selected_value = item.data(Qt.UserRole)
+        self.accept()
+
+    @classmethod
+    def get_choice(cls, parent: QWidget, title: str, options, current_value=None):
+        """Executa o diálogo e devolve valor escolhido e confirmação."""
+        dialog = cls(parent, title, options, current_value)
+        accepted = dialog.exec() == QDialog.Accepted
+        return dialog.selected_value, accepted
+
+
+class ApplicationsDialog(ChoiceDialog):
+    """Popup acessível que substitui menus contextuais difíceis para leitores de tela."""
+
+    @classmethod
+    def choose(cls, parent: QWidget, title: str, options):
+        """Mostra ações como pares de rótulo e identificador e devolve a escolhida."""
+        value, accepted = cls.get_choice(parent, title, options)
+        return value if accepted else None
 
 
 class ApiKeyDialog(QDialog):
@@ -51,8 +136,8 @@ class ApiKeyDialog(QDialog):
         return dialog.editor.text().strip(), accepted
 
 
-class ModelDialog(QDialog):
-    """Permite escolher um modelo em uma caixa de combinação acessível."""
+class ModelDialog(ChoiceDialog):
+    """Permite escolher um modelo numa lista ativada por Espaço ou Enter."""
 
     MODELS = (
         ("Econômico — Gemini 2.5 Flash-Lite", "gemini-2.5-flash-lite"),
@@ -60,31 +145,15 @@ class ModelDialog(QDialog):
         ("Maior qualidade — Gemini 2.5 Pro", "gemini-2.5-pro"),
     )
 
-    def __init__(self, parent: QWidget, current_model: str):
-        """Cria o seletor e destaca o modelo atualmente configurado."""
-        super().__init__(parent)
-        self.setWindowTitle("Modelo da inteligência artificial")
-        layout = QFormLayout(self)
-        self.combo = QComboBox()
-        self.combo.setAccessibleName("Modelo da inteligência artificial")
-        for label, model_id in self.MODELS:
-            self.combo.addItem(label, model_id)
-        self.combo.setCurrentIndex(max(0, self.combo.findData(current_model)))
-        layout.addRow("&Modelo:", self.combo)
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.button(QDialogButtonBox.Ok).setText("&Confirmar")
-        buttons.button(QDialogButtonBox.Cancel).setText("&Cancelar")
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addRow(buttons)
-        self.combo.setFocus()
-
     @classmethod
     def get_model(cls, parent: QWidget, current_model: str):
         """Devolve o identificador escolhido e a confirmação do diálogo."""
-        dialog = cls(parent, current_model)
-        accepted = dialog.exec() == QDialog.Accepted
-        return dialog.combo.currentData(), accepted
+        return cls.get_choice(
+            parent,
+            "Modelo da inteligência artificial",
+            cls.MODELS,
+            current_model,
+        )
 
 
 class AccessibleResultDialog(QDialog):
@@ -106,7 +175,7 @@ class AccessibleResultDialog(QDialog):
             if normalized:
                 self.paragraphs.addItem(QListWidgetItem(normalized))
         layout.addWidget(self.paragraphs, 1)
-        self.copy_button = QPushButton("&Copiar resultado")
+        self.copy_button = AccessibleButton("&Copiar resultado")
         self.copy_button.clicked.connect(self._copy)
         layout.addWidget(self.copy_button)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)

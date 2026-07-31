@@ -21,7 +21,7 @@ class _FakeResponse:
     def read(self):
         """Devolve uma estrutura realista de ``generateContent``."""
         return json.dumps(
-            {"candidates": [{"content": {"parts": [{"text": "Resumo do Gemini."}]}}]}
+            {"candidates": [{"content": {"parts": [{"text": "**Resumo**\n\n* Item do Gemini."}]}}]}
         ).encode("utf-8")
 
 
@@ -34,7 +34,8 @@ class GeminiClientTests(unittest.TestCase):
             result = create_bible_analysis(
                 "chave-teste", "gemini-2.5-flash-lite", "Resuma", "Texto", "curto"
             )
-        self.assertEqual("Resumo do Gemini.", result)
+        self.assertEqual("Resumo\n\n- Item do Gemini.", result)
+        self.assertNotIn("*", result)
         request = mocked.call_args.args[0]
         payload = json.loads(request.data.decode("utf-8"))
         self.assertIn("contents", payload)

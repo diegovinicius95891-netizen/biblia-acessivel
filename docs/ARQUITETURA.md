@@ -37,13 +37,15 @@ Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de lista
 
 ## Fluxo da IA opcional
 
-1. A pessoa abre chave ou modelo na lista de Configurações e confirma o diálogo. Sem chave, um botão abre a página oficial do Google AI Studio.
+1. A pessoa escolhe chave, modelo, detalhamento, fonte, voz ou contraste na lista de Configurações. Espaço/Enter abre um diálogo de escolhas; sem chave, um botão abre o Google AI Studio.
 2. Salvar configurações protege a chave com DPAPI e grava somente o bloco criptografado.
 3. Aplicações no livro, capítulo ou leitura determina automaticamente a tarefa de IA.
 4. `MainWindow` monta somente o livro, capítulo ou versículo necessário.
 5. Uma thread de segundo plano chama `create_bible_analysis`, sem bloquear teclado ou leitor de tela.
 6. A requisição usa `generateContent` com a chave no cabeçalho `x-goog-api-key`.
-7. O resultado retorna por sinais do Qt e abre em diálogo de parágrafos navegáveis.
+7. O resultado retorna por sinais do Qt, perde marcas de Markdown e abre em diálogo de parágrafos navegáveis.
+
+O popup da tecla Aplicações usa `ApplicationsDialog`, não um menu visual dependente da plataforma. Todas as ações ficam numa lista com nome acessível e aceitam Espaço ou Enter.
 
 O arquivo `data/user_data.db` é ignorado pelo Git para impedir a publicação de dados pessoais.
 

@@ -32,16 +32,22 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMainWindow,
-    QMenu,
     QMessageBox,
-    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
 from .database import BibleDatabase
-from .dialogs import AccessibleResultDialog, ApiKeyDialog, ModelDialog
+from .dialogs import (
+    AccessibleResultDialog,
+    AccessibleButton,
+    ActivatableList,
+    ApiKeyDialog,
+    ApplicationsDialog,
+    ChoiceDialog,
+    ModelDialog,
+)
 from .gemini_client import GeminiServiceError, create_bible_analysis
 from .legal import LEGAL_TEXT
 from .secure_store import SecureStoreError, protect_text, unprotect_text
@@ -54,6 +60,16 @@ except ImportError:  # pragma: no cover
 
 
 GOOGLE_API_KEYS_URL = "https://aistudio.google.com/apikey"
+DETAIL_OPTIONS = (("Curto", "curto"), ("Médio", "médio"), ("Detalhado", "detalhado"))
+FONT_SIZE_OPTIONS = tuple((f"{size} pontos", size) for size in (8, 10, 12, 14, 16, 18, 20, 24, 28))
+SPEECH_RATE_OPTIONS = (
+    ("Bem lenta", -0.6),
+    ("Lenta", -0.3),
+    ("Normal", 0.0),
+    ("Rápida", 0.3),
+    ("Bem rápida", 0.6),
+)
+CONTRAST_OPTIONS = (("Desativado", False), ("Ativado", True))
 
 
 class TranslationList(QListWidget):
@@ -93,7 +109,7 @@ class BookList(QListWidget):
             self.applicationsRequested.emit()
             event.accept()
             return
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+        if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
             self.chaptersRequested.emit()
             event.accept()
             return
@@ -126,6 +142,7 @@ class VerseList(QListWidget):
 
     applicationsRequested = Signal()
     chapterRequested = Signal(int)
+    activateRequested = Signal()
 
     def keyPressEvent(self, event):
         """Abre o menu contextual pelo teclado ou delega a tecla à lista."""
@@ -141,6 +158,10 @@ class VerseList(QListWidget):
         shift_f10 = event.key() == Qt.Key_F10 and bool(event.modifiers() & Qt.ShiftModifier)
         if applications_key or shift_f10:
             self.applicationsRequested.emit()
+            event.accept()
+            return
+        if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
+            self.activateRequested.emit()
             event.accept()
             return
         super().keyPressEvent(event)
@@ -197,6 +218,14 @@ class MainWindow(QMainWindow):
         self.pending_api_key = self.api_key
         self.ai_model = self.settings.value("gemini/model", "gemini-2.5-flash-lite")
         self.pending_ai_model = self.ai_model
+        self.ai_detail = self.settings.value("gemini/detail", "médio")
+        self.pending_ai_detail = self.ai_detail
+        self.font_size = int(self.settings.value("accessibility/font_size", 10))
+        self.pending_font_size = self.font_size
+        self.speech_rate = float(self.settings.value("accessibility/speech_rate", 0.0))
+        self.pending_speech_rate = self.speech_rate
+        self.high_contrast = self.settings.value("accessibility/high_contrast", False, type=bool)
+        self.pending_high_contrast = self.high_contrast
         self.tts = None
         self._tts_checked = False
         self._loading = False
@@ -216,6 +245,7 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._build_menu()
         self._build_shortcuts()
+        self._apply_accessibility_settings()
         self._load_translations_and_restore()
         self.statusBar().showMessage(
             "Pronto. Tab muda de seção; setas navegam dentro da seção. F1 abre a ajuda."
@@ -317,7 +347,8 @@ class MainWindow(QMainWindow):
             "Cima e baixo navegam. Esquerda e direita mudam o capítulo. "
             "Enter lê em voz alta. Aplicações ou Shift F10 abre as ações do texto."
         )
-        self.verse_list.itemActivated.connect(lambda _item: self.speak_current_verse())
+        self.verse_list.activateRequested.connect(self.speak_current_verse)
+        self.verse_list.itemDoubleClicked.connect(lambda _item: self.speak_current_verse())
         self.verse_list.currentItemChanged.connect(self._verse_changed)
         self.verse_list.chapterRequested.connect(self.change_chapter_from_reading)
         self.verse_list.applicationsRequested.connect(self.show_verse_menu)
@@ -333,7 +364,7 @@ class MainWindow(QMainWindow):
         self.reference_edit.setAccessibleName("Ir para referência")
         self.reference_edit.setPlaceholderText("Exemplo: João 3:16")
         self.reference_edit.returnPressed.connect(self.go_to_reference)
-        go_button = QPushButton("&Ir")
+        go_button = AccessibleButton("&Ir")
         go_button.setFocusPolicy(Qt.NoFocus)
         go_button.clicked.connect(self.go_to_reference)
         reference_layout.addWidget(self.reference_edit)
@@ -359,15 +390,15 @@ class MainWindow(QMainWindow):
         self.search_edit.returnPressed.connect(self.perform_search)
         form.addRow("&Pesquisar:", self.search_edit)
         layout.addLayout(form)
-        self.search_button = QPushButton("&Executar pesquisa")
+        self.search_button = AccessibleButton("&Executar pesquisa")
         self.search_button.clicked.connect(self.perform_search)
         layout.addWidget(self.search_button)
         self.search_status = QLabel("Digite uma ou mais palavras.")
         self.search_status.setAccessibleName("Estado da pesquisa")
         layout.addWidget(self.search_status)
-        self.search_results = QListWidget()
+        self.search_results = ActivatableList()
         self.search_results.setAccessibleName("Resultados da pesquisa")
-        self.search_results.itemActivated.connect(self.open_search_result)
+        self.search_results.selectionRequested.connect(self.open_search_result)
         layout.addWidget(self.search_results, 1)
         return section
 
@@ -376,22 +407,22 @@ class MainWindow(QMainWindow):
         section = QGroupBox("Seção &Configurações")
         layout = QVBoxLayout(section)
         layout.addWidget(
-            QLabel("Use cima e baixo para escolher. Pressione Enter para abrir a configuração.")
+            QLabel("Use cima e baixo para escolher. Pressione Espaço ou Enter para abrir.")
         )
-        self.settings_options = QListWidget()
+        self.settings_options = ActivatableList()
         self.settings_options.setAccessibleName("Opções de configurações")
         self.settings_options.setAccessibleDescription(
-            "Cima e baixo navegam. Enter abre o diálogo da opção selecionada."
+            "Cima e baixo navegam. Espaço ou Enter abre o diálogo da opção selecionada."
         )
-        self.settings_options.itemActivated.connect(self.open_settings_option)
+        self.settings_options.selectionRequested.connect(self.open_settings_option)
         layout.addWidget(self.settings_options)
         self._refresh_settings_options()
-        self.get_api_key_button = QPushButton("&Obter chave da API do Google")
+        self.get_api_key_button = AccessibleButton("&Obter chave da API do Google")
         self.get_api_key_button.setAccessibleName("Obter chave da API do Google no navegador")
         self.get_api_key_button.clicked.connect(self.open_google_api_keys_page)
         layout.addWidget(self.get_api_key_button)
         self.get_api_key_button.setVisible(not bool(self.pending_api_key))
-        self.save_settings_button = QPushButton("&Salvar configurações")
+        self.save_settings_button = AccessibleButton("&Salvar configurações")
         self.save_settings_button.clicked.connect(self.save_ai_settings)
         layout.addWidget(self.save_settings_button)
         return section
@@ -420,15 +451,17 @@ class MainWindow(QMainWindow):
             "Testamento e direita mostra o Novo. Enter em Livros leva aos capítulos; Enter em "
             "Capítulos abre a leitura.\n\n"
             "INTELIGÊNCIA ARTIFICIAL\n"
-            "Aplicações ou Shift+F10 em Livros gera resumo do livro; em Capítulos gera resumo "
-            "do capítulo; e na Leitura oferece explicação do número selecionado.\n\n"
+            "Aplicações ou Shift+F10 abre uma lista acessível. Cima e baixo navegam; Espaço ou "
+            "Enter executa. Em Livros há resumo do livro; em Capítulos, resumo do capítulo; e "
+            "na Leitura, explicação do número selecionado.\n\n"
             "ATALHOS\n"
             "Ctrl+L: referência. Ctrl+F: pesquisa. Ctrl+Seta esquerda/direita: capítulo anterior ou "
             "seguinte. F5: ouvir. Ctrl+Alt+C: copiar texto. Ctrl+Alt+R: "
             "copiar referência e texto. Ctrl+Alt+M: marcador. Escape: parar voz. F1: ajuda.\n\n"
             "CONTINUIDADE E PRIVACIDADE\n"
-            "A posição e os marcadores permanecem locais. Em Configurações, cima e baixo escolhem "
-            "Chave da API ou Modelo; Enter abre o diálogo e Tab leva a Salvar configurações. "
+            "A posição e os marcadores permanecem locais. Em Configurações, cima e baixo navegam "
+            "por chave, modelo, detalhamento, fonte, voz e contraste. Espaço ou Enter abre a opção; "
+            "Tab leva aos botões e Espaço ou Enter os aciona. "
             "A chave do Google é gravada criptografada para a conta atual do Windows."
         )
         self.help_text.setMinimumHeight(180)
@@ -798,13 +831,15 @@ class MainWindow(QMainWindow):
         self.show_book_menu(position)
 
     def show_book_menu(self, position=None):
-        """Oferece a geração de resumo para o livro destacado."""
+        """Oferece resumo do livro num diálogo acessível por Espaço/Enter."""
         if not self.book_list.currentItem():
             return
-        menu = QMenu(self)
-        generate = menu.addAction("Gerar &resumo do livro com IA")
-        selected = menu.exec(self._menu_global_position(self.book_list, position))
-        if selected is generate:
+        selected = ApplicationsDialog.choose(
+            self,
+            f"Aplicações de {self.book_list.currentItem().text()}",
+            (("Gerar resumo do livro com inteligência artificial", "ai_book"),),
+        )
+        if selected == "ai_book":
             self.generate_ai_for_scope("book")
 
     def show_chapter_menu_at(self, position):
@@ -815,13 +850,15 @@ class MainWindow(QMainWindow):
         self.show_chapter_menu(position)
 
     def show_chapter_menu(self, position=None):
-        """Oferece a geração de resumo para o capítulo destacado."""
+        """Oferece resumo do capítulo num diálogo acessível por Espaço/Enter."""
         if not self.chapter_list.currentItem():
             return
-        menu = QMenu(self)
-        generate = menu.addAction("Gerar &resumo do capítulo com IA")
-        selected = menu.exec(self._menu_global_position(self.chapter_list, position))
-        if selected is generate:
+        selected = ApplicationsDialog.choose(
+            self,
+            f"Aplicações do capítulo {self.chapter_list.currentItem().text()}",
+            (("Gerar resumo do capítulo com inteligência artificial", "ai_chapter"),),
+        )
+        if selected == "ai_chapter":
             self.generate_ai_for_scope("chapter")
 
     def _current_verse_key(self):
@@ -842,7 +879,7 @@ class MainWindow(QMainWindow):
         self.show_verse_menu(position)
 
     def show_verse_menu(self, position=None):
-        """Monta o menu contextual com cópia, marcador e voz."""
+        """Apresenta cópia, marcador, voz e IA em lista explicitamente acessível."""
         key = self._current_verse_key()
         if not key:
             self._warn(
@@ -850,26 +887,29 @@ class MainWindow(QMainWindow):
                 "Abra um capítulo e selecione um item na seção Leitura.",
             )
             return
-        menu = QMenu(self)
-        menu.addAction(self.action_copy_text)
-        menu.addAction(self.action_copy_reference)
-        menu.addSeparator()
         marked = self.user_data.is_bookmarked(*key)
-        self.action_bookmark.setText("&Remover marcador" if marked else "&Adicionar marcador")
-        menu.addAction(self.action_bookmark)
-        menu.addAction(self.action_speak)
-        menu.addSeparator()
-        explain = menu.addAction("Gerar &explicação do versículo com IA")
-        selected = menu.exec(self._menu_global_position(self.verse_list, position))
-        if selected is explain:
+        marker_label = "Remover marcador" if marked else "Adicionar marcador"
+        selected = ApplicationsDialog.choose(
+            self,
+            f"Aplicações de {self.active_book_name} {self.active_chapter}:{key[3]}",
+            (
+                ("Copiar texto", "copy_text"),
+                ("Copiar referência e texto", "copy_reference"),
+                (marker_label, "bookmark"),
+                ("Ouvir com a voz interna", "speak"),
+                ("Gerar explicação do versículo com inteligência artificial", "ai_verse"),
+            ),
+        )
+        if selected == "copy_text":
+            self.copy_verse_text()
+        elif selected == "copy_reference":
+            self.copy_verse_with_reference()
+        elif selected == "bookmark":
+            self.toggle_bookmark()
+        elif selected == "speak":
+            self.speak_current_verse()
+        elif selected == "ai_verse":
             self.generate_ai_for_scope("verse")
-
-    def _menu_global_position(self, widget: QListWidget, position=None):
-        """Calcula uma posição adequada para menus abertos por teclado ou mouse."""
-        if position is not None:
-            return widget.viewport().mapToGlobal(position)
-        rectangle = widget.visualItemRect(widget.currentItem())
-        return widget.viewport().mapToGlobal(rectangle.center())
 
     def copy_verse_text(self):
         """Copia apenas o texto, sem referência ou nome da edição."""
@@ -941,36 +981,74 @@ class MainWindow(QMainWindow):
             return ""
 
     def _refresh_settings_options(self):
-        """Atualiza os dois itens sem acrescentar outros controles à seção."""
+        """Atualiza as opções organizadas na única lista da seção."""
         selected = self.settings_options.currentRow()
         self.settings_options.clear()
         key_state = "configurada" if self.pending_api_key else "não configurada"
-        key_item = QListWidgetItem(f"Colar ou alterar chave da API do Google — {key_state}")
-        key_item.setData(Qt.UserRole, "api_key")
-        self.settings_options.addItem(key_item)
         model_name = next(
             (label for label, model_id in ModelDialog.MODELS if model_id == self.pending_ai_model),
             self.pending_ai_model,
         )
-        model_item = QListWidgetItem(f"Escolher modelo — {model_name}")
-        model_item.setData(Qt.UserRole, "model")
-        self.settings_options.addItem(model_item)
+        entries = (
+            (f"Colar ou alterar chave da API do Google — {key_state}", "api_key"),
+            (f"Escolher modelo — {model_name}", "model"),
+            (f"Detalhamento das respostas de IA — {self._choice_label(DETAIL_OPTIONS, self.pending_ai_detail)}", "detail"),
+            (f"Tamanho do texto — {self.pending_font_size} pontos", "font_size"),
+            (f"Velocidade da voz interna — {self._choice_label(SPEECH_RATE_OPTIONS, self.pending_speech_rate)}", "speech_rate"),
+            (f"Alto contraste — {self._choice_label(CONTRAST_OPTIONS, self.pending_high_contrast)}", "high_contrast"),
+        )
+        for label, option_id in entries:
+            item = QListWidgetItem(label)
+            item.setData(Qt.UserRole, option_id)
+            self.settings_options.addItem(item)
         self.settings_options.setCurrentRow(max(0, selected))
         if hasattr(self, "get_api_key_button"):
             self.get_api_key_button.setVisible(not bool(self.pending_api_key))
 
     def open_settings_option(self, item: QListWidgetItem):
-        """Abre o diálogo correspondente ao item ativado com Enter."""
-        if item.data(Qt.UserRole) == "api_key":
+        """Abre o diálogo correspondente ao item ativado com Espaço ou Enter."""
+        option_id = item.data(Qt.UserRole)
+        if option_id == "api_key":
             key, accepted = ApiKeyDialog.get_key(self, self.pending_api_key)
             if accepted:
                 self.pending_api_key = key
                 self._refresh_settings_options()
             return
-        model, accepted = ModelDialog.get_model(self, self.pending_ai_model)
+        if option_id == "model":
+            value, accepted = ModelDialog.get_model(self, self.pending_ai_model)
+        elif option_id == "detail":
+            value, accepted = ChoiceDialog.get_choice(
+                self, "Detalhamento das respostas de IA", DETAIL_OPTIONS, self.pending_ai_detail
+            )
+        elif option_id == "font_size":
+            value, accepted = ChoiceDialog.get_choice(
+                self, "Tamanho do texto", FONT_SIZE_OPTIONS, self.pending_font_size
+            )
+        elif option_id == "speech_rate":
+            value, accepted = ChoiceDialog.get_choice(
+                self, "Velocidade da voz interna", SPEECH_RATE_OPTIONS, self.pending_speech_rate
+            )
+        else:
+            value, accepted = ChoiceDialog.get_choice(
+                self, "Alto contraste", CONTRAST_OPTIONS, self.pending_high_contrast
+            )
         if accepted:
-            self.pending_ai_model = model
+            if option_id == "model":
+                self.pending_ai_model = value
+            elif option_id == "detail":
+                self.pending_ai_detail = value
+            elif option_id == "font_size":
+                self.pending_font_size = int(value)
+            elif option_id == "speech_rate":
+                self.pending_speech_rate = float(value)
+            else:
+                self.pending_high_contrast = bool(value)
             self._refresh_settings_options()
+
+    @staticmethod
+    def _choice_label(options, current_value):
+        """Encontra o rótulo legível associado a um valor de configuração."""
+        return next((label for label, value in options if value == current_value), str(current_value))
 
     def open_google_api_keys_page(self):
         """Abre a página oficial do Google AI Studio para criar ou copiar uma chave."""
@@ -983,7 +1061,7 @@ class MainWindow(QMainWindow):
         self._announce_for(self.get_api_key_button, message)
 
     def save_ai_settings(self):
-        """Criptografa a chave e salva somente chave e modelo para os próximos inícios."""
+        """Salva chave, IA e preferências acessíveis para os próximos inícios."""
         try:
             encrypted = protect_text(self.pending_api_key) if self.pending_api_key else ""
         except SecureStoreError as error:
@@ -991,11 +1069,36 @@ class MainWindow(QMainWindow):
             return
         self.settings.setValue("gemini/api_key_protected", encrypted)
         self.settings.setValue("gemini/model", self.pending_ai_model)
+        self.settings.setValue("gemini/detail", self.pending_ai_detail)
+        self.settings.setValue("accessibility/font_size", self.pending_font_size)
+        self.settings.setValue("accessibility/speech_rate", self.pending_speech_rate)
+        self.settings.setValue("accessibility/high_contrast", self.pending_high_contrast)
         self.settings.sync()
         self.api_key = self.pending_api_key
         self.ai_model = self.pending_ai_model
+        self.ai_detail = self.pending_ai_detail
+        self.font_size = self.pending_font_size
+        self.speech_rate = self.pending_speech_rate
+        self.high_contrast = self.pending_high_contrast
+        self._apply_accessibility_settings()
         self._refresh_settings_options()
-        self._announce_for(self.settings_options, "Configurações da inteligência artificial salvas.")
+        self._announce_for(self.settings_options, "Configurações salvas.")
+
+    def _apply_accessibility_settings(self):
+        """Aplica fonte, contraste e velocidade da voz sem recriar a interface."""
+        font = self.font()
+        font.setPointSize(max(8, min(28, int(self.font_size))))
+        self.setFont(font)
+        self.setStyleSheet(
+            "QWidget { background: #000000; color: #ffffff; } "
+            "QLineEdit, QListWidget, QComboBox { background: #000000; color: #ffffff; "
+            "border: 2px solid #ffffff; } "
+            "QPushButton { background: #000000; color: #ffffff; border: 2px solid #ffffff; padding: 5px; }"
+            if self.high_contrast
+            else ""
+        )
+        if self.tts:
+            self.tts.setRate(self.speech_rate)
 
     def generate_ai_for_scope(self, task: str):
         """Prepara o escopo do menu atual e inicia a requisição sem bloquear a interface."""
@@ -1025,7 +1128,7 @@ class MainWindow(QMainWindow):
         )
         threading.Thread(
             target=self._run_ai_request,
-            args=(self.api_key, self.ai_model, task_instruction, bible_text, "médio"),
+            args=(self.api_key, self.ai_model, task_instruction, bible_text, self.ai_detail),
             daemon=True,
         ).start()
 
@@ -1109,6 +1212,7 @@ class MainWindow(QMainWindow):
         if not self.tts:
             self.statusBar().showMessage("A voz interna não está disponível; use o leitor de tela.")
             return
+        self.tts.setRate(self.speech_rate)
         self.tts.stop()
         if item.data(Qt.UserRole + 2) == "ending":
             self.tts.say(item.data(Qt.UserRole))
@@ -1123,11 +1227,11 @@ class MainWindow(QMainWindow):
 
     def change_font_size(self, amount: int):
         """Ajusta temporariamente o tamanho global dentro de limites utilizáveis."""
-        font = self.font()
-        current = font.pointSize() if font.pointSize() > 0 else 10
-        font.setPointSize(max(8, min(28, current + amount)))
-        self.setFont(font)
-        self.statusBar().showMessage(f"Tamanho do texto: {font.pointSize()} pontos.")
+        self.font_size = max(8, min(28, int(self.font_size) + amount))
+        self.pending_font_size = self.font_size
+        self._apply_accessibility_settings()
+        self._refresh_settings_options()
+        self.statusBar().showMessage(f"Tamanho do texto: {self.font_size} pontos.")
 
     def _focus_reference(self):
         """Leva Ctrl+L ao campo de referência e seleciona seu conteúdo."""

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -34,6 +35,8 @@ def create_bible_analysis(
         "Baseie-se apenas no texto bíblico fornecido. Diferencie resumo textual de "
         "interpretação e avise brevemente que a resposta é gerada por IA e pode conter "
         "erros. Não invente citações, contexto histórico ou doutrina."
+        " Responda somente em texto simples: não use Markdown, asteriscos, cerquilhas, "
+        "sublinhados, crases ou tabelas. Use frases e parágrafos comuns."
     )
     payload = {
         "system_instruction": {"parts": [{"text": system_instruction}]},
@@ -71,7 +74,7 @@ def create_bible_analysis(
             if part.get("text"):
                 text_parts.append(part["text"].strip())
     if text_parts:
-        return "\n\n".join(text_parts)
+        return _plain_text("\n\n".join(text_parts))
 
     block_reason = result.get("promptFeedback", {}).get("blockReason")
     if block_reason:
@@ -85,6 +88,16 @@ def create_bible_analysis(
             "O Gemini terminou sem produzir texto. Motivo: " + ", ".join(finish_reasons) + "."
         )
     raise GeminiServiceError("O Gemini respondeu, mas não devolveu nenhum texto.")
+
+
+def _plain_text(text: str) -> str:
+    """Remove marcas comuns de Markdown que atrapalham a leitura por voz."""
+    text = re.sub(r"(?m)^\s{0,3}#{1,6}\s*", "", text)
+    text = re.sub(r"\[([^]]+)]\([^)]+\)", r"\1", text)
+    text = re.sub(r"(?m)^[ \t]*[*+][ \t]+", "- ", text)
+    text = text.replace("*", "").replace("_", "").replace("`", "")
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    return text.strip()
 
 
 def _api_error_message(error: HTTPError) -> str:

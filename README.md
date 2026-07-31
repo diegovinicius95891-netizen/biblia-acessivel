@@ -29,7 +29,7 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 - Na seção Leitura, esquerda volta um capítulo e direita avança um capítulo do mesmo livro.
 - Depois do último item aparece “Fim do capítulo” ou “Fim do livro. Não há capítulos seguintes”.
 - Ajuda e Leis são listas de parágrafos; cima/baixo lê o conteúdo sem repetir o nome da seção.
-- Tecla Aplicações ou Shift+F10 abre cópia, marcador e leitura em voz alta.
+- Tecla Aplicações ou Shift+F10 abre um diálogo de ações; cima/baixo navegam e Espaço ou Enter executa.
 - O menu `Item atual`, acessível com `Alt+I`, oferece as mesmas operações.
 - `Ctrl+Alt+C` copia o texto; `Ctrl+Alt+R` copia referência e texto; `Ctrl+Alt+M` alterna o marcador.
 - Tamanho do texto ajustável com `Ctrl+mais` e `Ctrl+menos`.
@@ -43,9 +43,9 @@ A seção **Licenças e leis** apresenta um único texto simples, somente leitur
 
 ## Configurações e IA opcional
 
-A seção Configurações contém somente uma lista navegável com cima/baixo: “Colar ou alterar chave da API do Google” e “Escolher modelo”. Enter abre a opção em um diálogo; na chave, basta colar e pressionar Enter. Quando nenhuma chave foi informada, o botão “Obter chave da API do Google” abre a página oficial do Google AI Studio. Tab leva aos botões disponíveis e a “Salvar configurações”.
+A seção Configurações usa uma única lista navegável com cima/baixo. Ela contém chave da API, modelo, detalhamento das respostas, tamanho do texto, velocidade da voz e alto contraste. Espaço ou Enter abre qualquer opção em um diálogo também navegável. Quando nenhuma chave foi informada, o botão “Obter chave da API do Google” abre a página oficial do Google AI Studio. Tab leva aos botões disponíveis; Espaço ou Enter os aciona.
 
-A chave do Gemini é criptografada pela DPAPI para a conta atual do Windows e recuperada nas próximas aberturas; nunca é publicada no GitHub. A IA usa o endpoint `generateContent` da API Google Gemini, pode consumir a cota ou o saldo da conta e exige internet. Aplicações ou Shift+F10 oferece resumo no livro selecionado, resumo no capítulo selecionado e explicação no versículo selecionado. O resultado abre em um diálogo de parágrafos navegáveis e pode ser copiado.
+A chave do Gemini é criptografada pela DPAPI para a conta atual do Windows e recuperada nas próximas aberturas; nunca é publicada no GitHub. A IA usa o endpoint `generateContent` da API Google Gemini, pode consumir a cota ou o saldo da conta e exige internet. Aplicações ou Shift+F10 oferece resumo no livro selecionado, resumo no capítulo selecionado e explicação no versículo selecionado. O resultado é convertido para texto simples, sem asteriscos ou outras marcas de Markdown, e abre em diálogo de parágrafos navegáveis.
 
 Consulte [docs/ARQUITETURA.md](docs/ARQUITETURA.md) para a explicação de todos os arquivos e fluxos.
 
