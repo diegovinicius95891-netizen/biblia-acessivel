@@ -12,11 +12,12 @@ import re
 import threading
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QSettings, Qt, Signal
+from PySide6.QtCore import QObject, QSettings, Qt, QUrl, Signal
 from PySide6.QtGui import (
     QAccessible,
     QAccessibleAnnouncementEvent,
     QAction,
+    QDesktopServices,
     QKeySequence,
     QShortcut,
 )
@@ -39,9 +40,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .ai_client import AiServiceError, create_bible_analysis
 from .database import BibleDatabase
 from .dialogs import AccessibleResultDialog, ApiKeyDialog, ModelDialog
+from .gemini_client import GeminiServiceError, create_bible_analysis
 from .legal import LEGAL_TEXT
 from .secure_store import SecureStoreError, protect_text, unprotect_text
 from .user_data import UserDataDatabase
@@ -50,6 +51,9 @@ try:
     from PySide6.QtTextToSpeech import QTextToSpeech
 except ImportError:  # pragma: no cover
     QTextToSpeech = None
+
+
+GOOGLE_API_KEYS_URL = "https://aistudio.google.com/apikey"
 
 
 class TranslationList(QListWidget):
@@ -191,7 +195,7 @@ class MainWindow(QMainWindow):
         self.settings = QSettings()
         self.api_key = self._load_saved_api_key()
         self.pending_api_key = self.api_key
-        self.ai_model = self.settings.value("ai/model", "gpt-5.6-luna")
+        self.ai_model = self.settings.value("gemini/model", "gemini-2.5-flash-lite")
         self.pending_ai_model = self.ai_model
         self.tts = None
         self._tts_checked = False
@@ -382,6 +386,11 @@ class MainWindow(QMainWindow):
         self.settings_options.itemActivated.connect(self.open_settings_option)
         layout.addWidget(self.settings_options)
         self._refresh_settings_options()
+        self.get_api_key_button = QPushButton("&Obter chave da API do Google")
+        self.get_api_key_button.setAccessibleName("Obter chave da API do Google no navegador")
+        self.get_api_key_button.clicked.connect(self.open_google_api_keys_page)
+        layout.addWidget(self.get_api_key_button)
+        self.get_api_key_button.setVisible(not bool(self.pending_api_key))
         self.save_settings_button = QPushButton("&Salvar configurações")
         self.save_settings_button.clicked.connect(self.save_ai_settings)
         layout.addWidget(self.save_settings_button)
@@ -420,7 +429,7 @@ class MainWindow(QMainWindow):
             "CONTINUIDADE E PRIVACIDADE\n"
             "A posição e os marcadores permanecem locais. Em Configurações, cima e baixo escolhem "
             "Chave da API ou Modelo; Enter abre o diálogo e Tab leva a Salvar configurações. "
-            "A chave é gravada criptografada para a conta atual do Windows."
+            "A chave do Google é gravada criptografada para a conta atual do Windows."
         )
         self.help_text.setMinimumHeight(180)
         layout.addWidget(self.help_text)
@@ -526,6 +535,7 @@ class MainWindow(QMainWindow):
                 self.search_button,
                 self.search_results,
                 self.settings_options,
+                self.get_api_key_button,
                 self.save_settings_button,
                 self.legal_text,
                 self.help_text,
@@ -922,7 +932,7 @@ class MainWindow(QMainWindow):
     # Configurações e IA -----------------------------------------------
     def _load_saved_api_key(self) -> str:
         """Recupera a chave criptografada, mantendo o aplicativo utilizável em caso de falha."""
-        encrypted = self.settings.value("ai/api_key_protected", "")
+        encrypted = self.settings.value("gemini/api_key_protected", "")
         if not encrypted:
             return ""
         try:
@@ -935,7 +945,7 @@ class MainWindow(QMainWindow):
         selected = self.settings_options.currentRow()
         self.settings_options.clear()
         key_state = "configurada" if self.pending_api_key else "não configurada"
-        key_item = QListWidgetItem(f"Colar ou alterar chave da API — {key_state}")
+        key_item = QListWidgetItem(f"Colar ou alterar chave da API do Google — {key_state}")
         key_item.setData(Qt.UserRole, "api_key")
         self.settings_options.addItem(key_item)
         model_name = next(
@@ -946,6 +956,8 @@ class MainWindow(QMainWindow):
         model_item.setData(Qt.UserRole, "model")
         self.settings_options.addItem(model_item)
         self.settings_options.setCurrentRow(max(0, selected))
+        if hasattr(self, "get_api_key_button"):
+            self.get_api_key_button.setVisible(not bool(self.pending_api_key))
 
     def open_settings_option(self, item: QListWidgetItem):
         """Abre o diálogo correspondente ao item ativado com Enter."""
@@ -960,6 +972,16 @@ class MainWindow(QMainWindow):
             self.pending_ai_model = model
             self._refresh_settings_options()
 
+    def open_google_api_keys_page(self):
+        """Abre a página oficial do Google AI Studio para criar ou copiar uma chave."""
+        opened = QDesktopServices.openUrl(QUrl(GOOGLE_API_KEYS_URL))
+        message = (
+            "Página de chaves do Google aberta no navegador."
+            if opened
+            else "Não foi possível abrir o navegador. Acesse aistudio.google.com/apikey."
+        )
+        self._announce_for(self.get_api_key_button, message)
+
     def save_ai_settings(self):
         """Criptografa a chave e salva somente chave e modelo para os próximos inícios."""
         try:
@@ -967,8 +989,8 @@ class MainWindow(QMainWindow):
         except SecureStoreError as error:
             self._warn("Não foi possível salvar", str(error))
             return
-        self.settings.setValue("ai/api_key_protected", encrypted)
-        self.settings.setValue("ai/model", self.pending_ai_model)
+        self.settings.setValue("gemini/api_key_protected", encrypted)
+        self.settings.setValue("gemini/model", self.pending_ai_model)
         self.settings.sync()
         self.api_key = self.pending_api_key
         self.ai_model = self.pending_ai_model
@@ -983,7 +1005,7 @@ class MainWindow(QMainWindow):
         if not self.api_key:
             self._warn(
                 "Chave necessária",
-                "Configure e salve sua chave pessoal da API OpenAI na seção Configurações.",
+                "Configure e salve sua chave da API do Google Gemini na seção Configurações.",
             )
             return
         prepared = self._prepare_ai_task(task)
@@ -992,7 +1014,15 @@ class MainWindow(QMainWindow):
         task_instruction, bible_text, title = prepared
         self._ai_result_title = title
         self._ai_busy = True
-        self.statusBar().showMessage("Gerando conteúdo com IA. Aguarde alguns instantes.")
+        source_widget = {
+            "book": self.book_list,
+            "chapter": self.chapter_list,
+            "verse": self.verse_list,
+        }[task]
+        self._announce_for(
+            source_widget,
+            "Gerando conteúdo com o Google Gemini. Aguarde alguns instantes.",
+        )
         threading.Thread(
             target=self._run_ai_request,
             args=(self.api_key, self.ai_model, task_instruction, bible_text, "médio"),
@@ -1048,7 +1078,7 @@ class MainWindow(QMainWindow):
         """Executa a chamada de rede em uma thread de segundo plano."""
         try:
             result = create_bible_analysis(api_key, model, instruction, bible_text, detail)
-        except AiServiceError as error:
+        except GeminiServiceError as error:
             self.ai_signals.failed.emit(str(error))
         except Exception:
             self.ai_signals.failed.emit("Ocorreu uma falha inesperada ao gerar o conteúdo de IA.")

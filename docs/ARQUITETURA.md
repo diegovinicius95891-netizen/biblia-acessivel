@@ -28,7 +28,7 @@ Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de lista
 ## Pacote `biblia`
 
 - `main_window.py`: controles acessíveis, seções, teclado, voz, pesquisa, configurações, IA e continuidade.
-- `ai_client.py`: chamada mínima à Responses API, extração do texto e erros seguros.
+- `gemini_client.py`: chamada mínima ao `generateContent` do Google Gemini, extração do texto e erros seguros.
 - `secure_store.py`: proteção e recuperação da chave por DPAPI, vinculada ao usuário do Windows.
 - `database.py`: consultas somente leitura ao banco bíblico.
 - `user_data.py`: banco separado de marcadores.
@@ -37,12 +37,12 @@ Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de lista
 
 ## Fluxo da IA opcional
 
-1. A pessoa abre chave ou modelo na lista de Configurações e confirma o diálogo.
+1. A pessoa abre chave ou modelo na lista de Configurações e confirma o diálogo. Sem chave, um botão abre a página oficial do Google AI Studio.
 2. Salvar configurações protege a chave com DPAPI e grava somente o bloco criptografado.
 3. Aplicações no livro, capítulo ou leitura determina automaticamente a tarefa de IA.
 4. `MainWindow` monta somente o livro, capítulo ou versículo necessário.
 5. Uma thread de segundo plano chama `create_bible_analysis`, sem bloquear teclado ou leitor de tela.
-6. A requisição usa a Responses API com `store: false`.
+6. A requisição usa `generateContent` com a chave no cabeçalho `x-goog-api-key`.
 7. O resultado retorna por sinais do Qt e abre em diálogo de parágrafos navegáveis.
 
 O arquivo `data/user_data.db` é ignorado pelo Git para impedir a publicação de dados pessoais.
@@ -61,6 +61,6 @@ Ajuda e Leis usam `ReadingTextList`, que apresenta um parágrafo por item. Isso 
 
 - `test_database.py`: integridade das edições e pesquisa.
 - `test_user_data.py`: marcadores em banco temporário.
-- `test_ai_client.py`: contrato do cliente de IA sem chamadas externas.
+- `test_gemini_client.py`: contrato do cliente Gemini sem chamadas externas.
 - `test_secure_store.py`: proteção e recuperação da chave pela DPAPI.
 - `test_gui_smoke.py`: página sem guias, teclado, configurações, IA e navegação.

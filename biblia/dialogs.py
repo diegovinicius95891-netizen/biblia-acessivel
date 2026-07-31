@@ -20,20 +20,20 @@ from PySide6.QtWidgets import (
 
 
 class ApiKeyDialog(QDialog):
-    """Solicita a chave pessoal em uma caixa mascarada confirmada com Enter."""
+    """Solicita a chave do Google Gemini em caixa mascarada confirmada com Enter."""
 
     def __init__(self, parent: QWidget, current_key: str = ""):
         """Cria o editor e preenche a chave atual sem expô-la visualmente."""
         super().__init__(parent)
-        self.setWindowTitle("Chave da API OpenAI")
-        self.setAccessibleName("Configurar chave da API OpenAI")
+        self.setWindowTitle("Chave da API do Google Gemini")
+        self.setAccessibleName("Configurar chave da API do Google Gemini")
         layout = QFormLayout(self)
         self.editor = QLineEdit(current_key)
         self.editor.setEchoMode(QLineEdit.Password)
-        self.editor.setAccessibleName("Chave da API OpenAI")
+        self.editor.setAccessibleName("Chave da API do Google Gemini")
         self.editor.setAccessibleDescription("Cole a chave e pressione Enter para confirmar.")
         self.editor.returnPressed.connect(self.accept)
-        layout.addRow("&Chave da API:", self.editor)
+        layout.addRow("&Chave do Google Gemini:", self.editor)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Ok).setText("&Confirmar")
         buttons.button(QDialogButtonBox.Cancel).setText("&Cancelar")
@@ -55,9 +55,9 @@ class ModelDialog(QDialog):
     """Permite escolher um modelo em uma caixa de combinação acessível."""
 
     MODELS = (
-        ("Econômico — GPT-5.6 Luna", "gpt-5.6-luna"),
-        ("Equilibrado — GPT-5.6 Terra", "gpt-5.6-terra"),
-        ("Maior qualidade — GPT-5.6 Sol", "gpt-5.6-sol"),
+        ("Econômico — Gemini 2.5 Flash-Lite", "gemini-2.5-flash-lite"),
+        ("Equilibrado — Gemini 2.5 Flash", "gemini-2.5-flash"),
+        ("Maior qualidade — Gemini 2.5 Pro", "gemini-2.5-pro"),
     )
 
     def __init__(self, parent: QWidget, current_model: str):

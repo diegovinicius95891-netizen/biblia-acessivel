@@ -43,9 +43,9 @@ A seção **Licenças e leis** apresenta um único texto simples, somente leitur
 
 ## Configurações e IA opcional
 
-A seção Configurações contém somente uma lista navegável com cima/baixo: “Colar ou alterar chave da API” e “Escolher modelo”. Enter abre a opção em um diálogo; na chave, basta colar e pressionar Enter. Tab sai da lista e leva ao botão “Salvar configurações”.
+A seção Configurações contém somente uma lista navegável com cima/baixo: “Colar ou alterar chave da API do Google” e “Escolher modelo”. Enter abre a opção em um diálogo; na chave, basta colar e pressionar Enter. Quando nenhuma chave foi informada, o botão “Obter chave da API do Google” abre a página oficial do Google AI Studio. Tab leva aos botões disponíveis e a “Salvar configurações”.
 
-A chave é criptografada pela DPAPI para a conta atual do Windows e recuperada nas próximas aberturas; nunca é publicada no GitHub. A IA usa a Responses API com `store: false`, pode consumir o saldo da conta e exige internet. Aplicações ou Shift+F10 oferece resumo no livro selecionado, resumo no capítulo selecionado e explicação no versículo selecionado. O resultado abre em um diálogo de parágrafos navegáveis e pode ser copiado.
+A chave do Gemini é criptografada pela DPAPI para a conta atual do Windows e recuperada nas próximas aberturas; nunca é publicada no GitHub. A IA usa o endpoint `generateContent` da API Google Gemini, pode consumir a cota ou o saldo da conta e exige internet. Aplicações ou Shift+F10 oferece resumo no livro selecionado, resumo no capítulo selecionado e explicação no versículo selecionado. O resultado abre em um diálogo de parágrafos navegáveis e pode ser copiado.
 
 Consulte [docs/ARQUITETURA.md](docs/ARQUITETURA.md) para a explicação de todos os arquivos e fluxos.
 

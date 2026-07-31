@@ -11,7 +11,7 @@ try:
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QDialog, QLineEdit
-    from biblia.dialogs import ApiKeyDialog
+    from biblia.dialogs import ApiKeyDialog, ModelDialog
     from biblia.main_window import BookList, ChapterList, MainWindow, VerseList
 except ImportError:  # Permite validar o banco antes da instalação da interface.
     QApplication = None
@@ -101,9 +101,17 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertEqual(2, window.settings_options.count())
         self.assertIn("chave da API", window.settings_options.item(0).text())
         self.assertIn("modelo", window.settings_options.item(1).text())
+        self.assertTrue(all(model_id.startswith("gemini-") for _label, model_id in ModelDialog.MODELS))
+        window.pending_api_key = ""
+        window._refresh_settings_options()
+        self.assertFalse(window.get_api_key_button.isHidden())
+        with patch("biblia.main_window.QDesktopServices.openUrl", return_value=True) as open_url:
+            window.open_google_api_keys_page()
+        self.assertEqual("https://aistudio.google.com/apikey", open_url.call_args.args[0].toString())
         with patch("biblia.main_window.ApiKeyDialog.get_key", return_value=("sk-teste", True)):
             window.open_settings_option(window.settings_options.item(0))
         self.assertEqual("sk-teste", window.pending_api_key)
+        self.assertTrue(window.get_api_key_button.isHidden())
         window._show_location("JHN", 3, "16", focus_reading=False)
         instruction, text, title = window._prepare_ai_task("verse")
         self.assertIn("João 3:16", instruction)
@@ -114,7 +122,7 @@ class GuiSmokeTests(unittest.TestCase):
     def test_api_key_dialog_is_masked_and_enter_confirms(self):
         """Confere a caixa protegida e a confirmação direta pelo Enter."""
         dialog = ApiKeyDialog(None, "sk-exemplo")
-        self.assertEqual("Chave da API OpenAI", dialog.editor.accessibleName())
+        self.assertEqual("Chave da API do Google Gemini", dialog.editor.accessibleName())
         self.assertEqual(QLineEdit.Password, dialog.editor.echoMode())
         QTest.keyClick(dialog.editor, Qt.Key_Return)
         self.assertEqual(QDialog.Accepted, dialog.result())
