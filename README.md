@@ -29,7 +29,7 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 - Na seção Leitura, esquerda volta um capítulo e direita avança um capítulo do mesmo livro.
 - Depois do último item aparece “Fim do capítulo” ou “Fim do livro. Não há capítulos seguintes”.
 - Ajuda e Leis são listas de parágrafos; cima/baixo lê o conteúdo sem repetir o nome da seção.
-- Tecla Aplicações ou Shift+F10 abre um diálogo de ações; cima/baixo navegam e Espaço ou Enter executa.
+- Tecla Aplicações ou Shift+F10 abre “Menu do livro”, “Menu do capítulo” ou “Menu do versículo”. A ação de IA correspondente recebe o foco inicial; cima/baixo navegam e Espaço ou Enter executa. As demais ações do versículo continuam disponíveis.
 - O menu `Item atual`, acessível com `Alt+I`, oferece as mesmas operações.
 - `Ctrl+Alt+C` copia o texto; `Ctrl+Alt+R` copia referência e texto; `Ctrl+Alt+M` alterna o marcador.
 - Tamanho do texto ajustável com `Ctrl+mais` e `Ctrl+menos`.

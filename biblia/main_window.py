@@ -836,7 +836,7 @@ class MainWindow(QMainWindow):
             return
         selected = ApplicationsDialog.choose(
             self,
-            f"Aplicações de {self.book_list.currentItem().text()}",
+            f"Menu do livro {self.book_list.currentItem().text()}",
             (("Gerar resumo do livro com inteligência artificial", "ai_book"),),
         )
         if selected == "ai_book":
@@ -855,7 +855,7 @@ class MainWindow(QMainWindow):
             return
         selected = ApplicationsDialog.choose(
             self,
-            f"Aplicações do capítulo {self.chapter_list.currentItem().text()}",
+            f"Menu do capítulo {self.chapter_list.currentItem().text()}",
             (("Gerar resumo do capítulo com inteligência artificial", "ai_chapter"),),
         )
         if selected == "ai_chapter":
@@ -891,13 +891,13 @@ class MainWindow(QMainWindow):
         marker_label = "Remover marcador" if marked else "Adicionar marcador"
         selected = ApplicationsDialog.choose(
             self,
-            f"Aplicações de {self.active_book_name} {self.active_chapter}:{key[3]}",
+            f"Menu do versículo {self.active_book_name} {self.active_chapter}:{key[3]}",
             (
+                ("Gerar explicação do versículo com inteligência artificial", "ai_verse"),
                 ("Copiar texto", "copy_text"),
                 ("Copiar referência e texto", "copy_reference"),
                 (marker_label, "bookmark"),
                 ("Ouvir com a voz interna", "speak"),
-                ("Gerar explicação do versículo com inteligência artificial", "ai_verse"),
             ),
         )
         if selected == "copy_text":

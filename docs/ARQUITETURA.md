@@ -45,7 +45,7 @@ Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de lista
 6. A requisição usa `generateContent` com a chave no cabeçalho `x-goog-api-key`.
 7. O resultado retorna por sinais do Qt, perde marcas de Markdown e abre em diálogo de parágrafos navegáveis.
 
-O popup da tecla Aplicações usa `ApplicationsDialog`, não um menu visual dependente da plataforma. Todas as ações ficam numa lista com nome acessível e aceitam Espaço ou Enter.
+O popup da tecla Aplicações usa `ApplicationsDialog`, não um menu visual dependente da plataforma. O título identifica “Menu do livro”, “Menu do capítulo” ou “Menu do versículo”; a ação de IA fica na primeira linha e recebe foco. Todas as ações aceitam Espaço ou Enter.
 
 O arquivo `data/user_data.db` é ignorado pelo Git para impedir a publicação de dados pessoais.
 

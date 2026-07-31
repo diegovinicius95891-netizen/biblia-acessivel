@@ -136,6 +136,10 @@ class GuiSmokeTests(unittest.TestCase):
     def test_applications_dialog_and_buttons_accept_space_or_enter(self):
         """Valida o popup acessível e a ativação explícita dos botões."""
         dialog = ApplicationsDialog(None, "Aplicações", (("Copiar texto", "copy"),))
+        dialog.show()
+        self.app.processEvents()
+        self.assertEqual(0, dialog.options.currentRow())
+        self.assertTrue(dialog.options.hasFocus())
         QTest.keyClick(dialog.options, Qt.Key_Space)
         self.assertEqual(QDialog.Accepted, dialog.result())
         self.assertEqual("copy", dialog.selected_value)
@@ -148,6 +152,34 @@ class GuiSmokeTests(unittest.TestCase):
         QTest.keyClick(window.save_settings_button, Qt.Key_Space)
         QTest.keyClick(window.save_settings_button, Qt.Key_Return)
         self.assertEqual([True, True], activated)
+        window.close()
+
+    def test_application_menus_focus_ai_and_preserve_verse_actions(self):
+        """Confere títulos, foco inicial na IA e ações existentes do versículo."""
+        window = MainWindow(DB_PATH)
+
+        with patch("biblia.main_window.ApplicationsDialog.choose", return_value=None) as choose:
+            window.show_book_menu()
+            _parent, title, options = choose.call_args.args
+            self.assertTrue(title.startswith("Menu do livro "))
+            self.assertEqual("ai_book", options[0][1])
+
+            window.show_chapter_menu()
+            _parent, title, options = choose.call_args.args
+            self.assertTrue(title.startswith("Menu do capítulo "))
+            self.assertEqual("ai_chapter", options[0][1])
+
+            window._show_location("JHN", 3, "16", focus_reading=False)
+            window.show_verse_menu()
+            _parent, title, options = choose.call_args.args
+            self.assertTrue(title.startswith("Menu do versículo "))
+            action_ids = [action_id for _label, action_id in options]
+            self.assertEqual("ai_verse", action_ids[0])
+            self.assertEqual(
+                {"copy_text", "copy_reference", "bookmark", "speak"},
+                set(action_ids[1:]),
+            )
+
         window.close()
 
     def test_api_key_dialog_is_masked_and_enter_confirms(self):
