@@ -23,7 +23,14 @@ def main() -> int:
     app.setApplicationName("Bíblia Acessível")
     app.setOrganizationName("Projeto Bíblia Acessível")
 
-    database = Path(__file__).resolve().parent / "data" / "biblia.db"
+    # No executável de arquivo único, ``__file__`` aponta para a pasta
+    # temporária interna. Os dados editáveis continuam ao lado do EXE.
+    application_dir = (
+        Path(sys.executable).resolve().parent
+        if getattr(sys, "frozen", False)
+        else Path(__file__).resolve().parent
+    )
+    database = application_dir / "data" / "biblia.db"
     if not database.exists():
         QMessageBox.critical(
             None,

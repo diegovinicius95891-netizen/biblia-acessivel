@@ -53,14 +53,36 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertEqual(3, window.active_chapter)
         self.assertTrue(window.verse_list.currentItem().text().startswith("16. "))
         self.assertNotIn("Versículo", window.verse_list.currentItem().text())
+        self.assertEqual("Fim do capítulo.", window.verse_list.item(window.verse_list.count() - 1).text())
+
+        window.verse_list.setFocus()
+        QTest.keyClick(window.verse_list, Qt.Key_Right)
+        self.assertEqual(4, window.active_chapter)
+        QTest.keyClick(window.verse_list, Qt.Key_Left)
+        self.assertEqual(3, window.active_chapter)
 
         window.search_edit.setText("bom pastor")
         window.perform_search()
         self.assertGreater(window.search_results.count(), 0)
 
-        self.assertTrue(window.legal_text.isReadOnly())
-        self.assertIn("LEGISLAÇÃO BRASILEIRA", window.legal_text.toPlainText())
-        self.assertIn("CC BY-SA 4.0", window.legal_text.toPlainText())
+        legal_content = " ".join(
+            window.legal_text.item(index).text()
+            for index in range(window.legal_text.count())
+        )
+        self.assertIn("LEGISLAÇÃO BRASILEIRA", legal_content)
+        self.assertIn("CC BY-SA 4.0", legal_content)
+        self.assertGreater(window.help_text.count(), 1)
+        window.close()
+
+    def test_end_of_book_is_announced_and_does_not_cross_books(self):
+        """Mantém direita no último capítulo e adiciona a mensagem terminal."""
+        window = MainWindow(DB_PATH)
+        window._show_location("JHN", 21, focus_reading=False)
+        ending = window.verse_list.item(window.verse_list.count() - 1)
+        self.assertEqual("Fim do livro. Não há capítulos seguintes.", ending.text())
+        QTest.keyClick(window.verse_list, Qt.Key_Right)
+        self.assertEqual("JHN", window.active_book_code)
+        self.assertEqual(21, window.active_chapter)
         window.close()
 
     def test_applications_key_is_detected(self):

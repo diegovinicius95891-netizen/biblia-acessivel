@@ -20,9 +20,10 @@ Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de lista
 
 ## Arquivos de execução
 
-- `app.py`: configura o Qt, localiza o banco e abre a janela.
-- `iniciar.bat`: inicializador de duplo clique para Windows.
+- `BibliaAcessivel.exe`: aplicativo pronto para duplo clique, mantido na raiz.
+- `app.py`: configura o Qt, localiza o banco ao lado do EXE e abre a janela.
 - `requirements.txt`: dependência da interface PySide6.
+- `scripts/build_exe.ps1`: recompila o EXE na raiz e mantém intermediários fora do projeto.
 
 ## Pacote `biblia`
 
@@ -48,9 +49,14 @@ O arquivo `data/user_data.db` é ignorado pelo Git para impedir a publicação d
 
 `data/biblia.db` contém somente textos e metadados distribuíveis. `scripts/build_database.py` documenta e reproduz a importação das quatro fontes. `THIRD_PARTY_NOTICES.md` registra atribuições e condições.
 
+## Limites e navegação da leitura
+
+A lista acrescenta um item terminal depois do conteúdo. Nos capítulos intermediários ele contém “Fim do capítulo”. No último capítulo do livro contém “Fim do livro. Não há capítulos seguintes”. Esquerda e direita mudam capítulos somente dentro do livro atual; a seleção de outro livro continua sendo feita na seção Livros.
+
+Ajuda e Leis usam `ReadingTextList`, que apresenta um parágrafo por item. Isso evita a repetição do nome da seção observada com controles de edição somente leitura.
+
 ## Testes
 
 - `test_database.py`: integridade das edições e pesquisa.
 - `test_user_data.py`: notas e marcadores em banco temporário.
 - `test_gui_smoke.py`: página sem guias, teclado, diálogo acessível, seção recolhível e navegação.
-

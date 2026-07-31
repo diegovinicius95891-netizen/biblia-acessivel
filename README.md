@@ -4,9 +4,9 @@ Aplicativo desktop offline em Python para leitura da Bíblia com teclado, leitor
 
 ## Iniciar
 
-1. Instale o Python 3.11 ou mais recente.
-2. Execute `python -m pip install -r requirements.txt`.
-3. Dê duplo clique em `iniciar.bat` ou execute `python app.py`.
+Dê duplo clique em `BibliaAcessivel.exe`, localizado na pasta principal. O executável não exige uma instalação separada do Python.
+
+O diretório `data`, contendo `biblia.db`, deve permanecer ao lado do executável. O arquivo pessoal `user_data.db` é criado nessa pasta durante o uso e não é publicado no GitHub.
 
 O banco distribuído contém quatro textos identificados separadamente:
 
@@ -26,6 +26,9 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 - A seção Livros mostra apenas o testamento atual; esquerda seleciona o Antigo e direita seleciona o Novo.
 - Enter em Livros leva aos capítulos; Enter em Capítulos abre a seção Leitura.
 - Lista de leitura adequada para navegação linha a linha com NVDA, JAWS ou Narrador.
+- Na seção Leitura, esquerda volta um capítulo e direita avança um capítulo do mesmo livro.
+- Depois do último item aparece “Fim do capítulo” ou “Fim do livro. Não há capítulos seguintes”.
+- Ajuda e Leis são listas de parágrafos; cima/baixo lê o conteúdo sem repetir o nome da seção.
 - Tecla Aplicações ou Shift+F10 abre nota, cópia, marcador e leitura em voz alta.
 - O menu `Item atual`, acessível com `Alt+I`, oferece as mesmas operações.
 - `Ctrl+Alt+N` edita a nota; `Ctrl+Alt+L` lê a nota; `Ctrl+Alt+C` copia o texto; `Ctrl+Alt+R` copia referência e texto; `Ctrl+Alt+M` alterna o marcador.
@@ -54,3 +57,13 @@ python scripts/build_database.py --otb-dir "C:\caminho\open-bible\lang\pt-BR"
 ```
 
 O processo de construção exige internet; a utilização do aplicativo não exige.
+
+## Recriar o executável
+
+Para desenvolvimento, instale `requirements.txt` e PyInstaller. Depois execute:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build_exe.ps1
+```
+
+O script coloca `BibliaAcessivel.exe` diretamente na raiz e usa a pasta temporária do Windows para arquivos intermediários. Nenhuma pasta `dist` é criada no projeto.

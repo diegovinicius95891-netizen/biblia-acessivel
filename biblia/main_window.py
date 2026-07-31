@@ -12,7 +12,13 @@ import re
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt, Signal
-from PySide6.QtGui import QAction, QKeySequence, QShortcut, QTextCursor
+from PySide6.QtGui import (
+    QAccessible,
+    QAccessibleAnnouncementEvent,
+    QAction,
+    QKeySequence,
+    QShortcut,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -27,7 +33,6 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
-    QPlainTextEdit,
     QScrollArea,
     QToolButton,
     QVBoxLayout,
@@ -100,9 +105,18 @@ class VerseList(QListWidget):
     """Lista de leitura que reconhece Aplicações e Shift+F10."""
 
     applicationsRequested = Signal()
+    chapterRequested = Signal(int)
 
     def keyPressEvent(self, event):
         """Abre o menu contextual pelo teclado ou delega a tecla à lista."""
+        if event.key() == Qt.Key_Left:
+            self.chapterRequested.emit(-1)
+            event.accept()
+            return
+        if event.key() == Qt.Key_Right:
+            self.chapterRequested.emit(1)
+            event.accept()
+            return
         applications_key = event.key() == Qt.Key_Menu
         shift_f10 = event.key() == Qt.Key_F10 and bool(event.modifiers() & Qt.ShiftModifier)
         if applications_key or shift_f10:
@@ -110,6 +124,34 @@ class VerseList(QListWidget):
             event.accept()
             return
         super().keyPressEvent(event)
+
+
+class ReadingTextList(QListWidget):
+    """Apresenta textos longos como parágrafos navegáveis com cima/baixo.
+
+    ``QPlainTextEdit`` pode fazer certos leitores anunciarem apenas o nome do
+    grupo repetidamente. Itens de lista expõem cada parágrafo como texto
+    acessível independente e seguem o mesmo padrão de navegação do aplicativo.
+    """
+
+    def __init__(self, accessible_name: str, parent=None):
+        """Configura uma lista de leitura sem edição ou seleção múltipla."""
+        super().__init__(parent)
+        self.setAccessibleName(accessible_name)
+        self.setAccessibleDescription(
+            "Use as setas cima e baixo para ler o texto por parágrafos."
+        )
+        self.setWordWrap(True)
+
+    def set_text(self, text: str):
+        """Divide o documento em parágrafos que leitores de tela anunciam."""
+        self.clear()
+        for paragraph in re.split(r"\n\s*\n", text.strip()):
+            normalized = " ".join(paragraph.split())
+            if normalized:
+                self.addItem(QListWidgetItem(normalized))
+        if self.count():
+            self.setCurrentRow(0)
 
 
 class NotesBookWidget(QWidget):
@@ -291,10 +333,12 @@ class MainWindow(QMainWindow):
         self.verse_list = VerseList()
         self.verse_list.setAccessibleName("Seção Leitura, versículos")
         self.verse_list.setAccessibleDescription(
-            "Cima e baixo navegam. Enter lê em voz alta. A tecla Aplicações ou Shift F10 abre notas e cópia."
+            "Cima e baixo navegam. Esquerda e direita mudam o capítulo. "
+            "Enter lê em voz alta. Aplicações ou Shift F10 abre notas e cópia."
         )
         self.verse_list.itemActivated.connect(lambda _item: self.speak_current_verse())
         self.verse_list.currentItemChanged.connect(self._verse_changed)
+        self.verse_list.chapterRequested.connect(self.change_chapter_from_reading)
         self.verse_list.applicationsRequested.connect(self.show_verse_menu)
         self.verse_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.verse_list.customContextMenuRequested.connect(self.show_verse_menu_at)
@@ -366,18 +410,12 @@ class MainWindow(QMainWindow):
         return section
 
     def _build_legal_section(self):
-        """Expõe a fundamentação em texto simples, sem HTML ou seletor."""
+        """Expõe a fundamentação como parágrafos acessíveis por setas."""
         section = QGroupBox("Seção Licenças e &leis")
         layout = QVBoxLayout(section)
-        layout.addWidget(QLabel("Texto único sobre legislação, licenças e justificativa de uso:"))
-        self.legal_text = QPlainTextEdit()
-        self.legal_text.setReadOnly(True)
-        self.legal_text.setAccessibleName("Texto único de leis, licenças e justificativa de uso")
-        self.legal_text.setAccessibleDescription(
-            "Texto somente leitura. Use as setas ou comandos do leitor de tela para navegar."
-        )
-        self.legal_text.setPlainText(LEGAL_TEXT)
-        self.legal_text.moveCursor(QTextCursor.Start)
+        layout.addWidget(QLabel("Use cima e baixo para ler legislação e justificativas:"))
+        self.legal_text = ReadingTextList("Leis e justificativa de uso")
+        self.legal_text.set_text(LEGAL_TEXT)
         self.legal_text.setMinimumHeight(220)
         layout.addWidget(self.legal_text, 1)
         return section
@@ -386,10 +424,8 @@ class MainWindow(QMainWindow):
         """Mantém a ajuda acessível como a última seção da mesma página."""
         section = QGroupBox("Seção A&juda")
         layout = QVBoxLayout(section)
-        self.help_text = QPlainTextEdit()
-        self.help_text.setReadOnly(True)
-        self.help_text.setAccessibleName("Ajuda e atalhos de acessibilidade")
-        self.help_text.setPlainText(
+        self.help_text = ReadingTextList("Ajuda e atalhos")
+        self.help_text.set_text(
             "BÍBLIA ACESSÍVEL\n\n"
             "NAVEGAÇÃO POR SEÇÕES\n"
             "Tab e Shift+Tab percorrem as seções. Cima e baixo navegam dentro da seção atual.\n"
@@ -406,7 +442,6 @@ class MainWindow(QMainWindow):
             "CONTINUIDADE E PRIVACIDADE\n"
             "A posição é salva automaticamente. Notas, marcadores e pesquisas permanecem locais."
         )
-        self.help_text.moveCursor(QTextCursor.Start)
         self.help_text.setMinimumHeight(180)
         layout.addWidget(self.help_text)
         return section
@@ -741,7 +776,22 @@ class MainWindow(QMainWindow):
             )
             item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
             self.verse_list.addItem(item)
-        elif self.verse_list.count():
+        else:
+            # O item final faz o leitor de tela anunciar claramente o limite.
+            maximum = self.db.chapter_count(
+                self.current_translation_id(), self.active_book_code
+            )
+            ending = (
+                "Fim do livro. Não há capítulos seguintes."
+                if self.active_chapter >= maximum
+                else "Fim do capítulo."
+            )
+            ending_item = QListWidgetItem(ending)
+            ending_item.setData(Qt.UserRole, ending)
+            ending_item.setData(Qt.UserRole + 1, None)
+            ending_item.setData(Qt.UserRole + 2, "ending")
+            self.verse_list.addItem(ending_item)
+        if rows and self.verse_list.count():
             self.verse_list.setCurrentRow(selected_row)
         self._loading = False
         self.chapter_heading.setText(
@@ -760,7 +810,12 @@ class MainWindow(QMainWindow):
 
     def _verse_changed(self, current, _previous=None):
         """Salva o número atual e anuncia presença de nota ou marcador."""
-        if self._loading or not current or current.data(Qt.UserRole + 1) is None:
+        if self._loading or not current:
+            return
+        if current.data(Qt.UserRole + 2) == "ending":
+            self.statusBar().showMessage(current.data(Qt.UserRole))
+            return
+        if current.data(Qt.UserRole + 1) is None:
             return
         verse = str(current.data(Qt.UserRole + 1))
         self.settings.setValue("position/verse", verse)
@@ -809,29 +864,31 @@ class MainWindow(QMainWindow):
         self.open_selected_chapter(focus_verse=verse, focus_reading=focus_reading)
 
     def previous_chapter(self):
-        """Vai ao capítulo anterior, atravessando livros quando necessário."""
+        """Vai ao capítulo anterior do mesmo livro ou anuncia o limite."""
         if not self.active_book_code:
             return
-        books = self.db.books(self.current_translation_id())
-        index = next(i for i, book in enumerate(books) if book["book_code"] == self.active_book_code)
         if self.active_chapter > 1:
             self._show_location(self.active_book_code, self.active_chapter - 1)
-        elif index > 0:
-            previous = books[index - 1]
-            last = self.db.chapter_count(self.current_translation_id(), previous["book_code"])
-            self._show_location(previous["book_code"], last)
+        else:
+            self._announce("Início do livro. Não há capítulos anteriores.")
 
     def next_chapter(self):
-        """Vai ao capítulo seguinte, atravessando livros quando necessário."""
+        """Vai ao capítulo seguinte do mesmo livro ou anuncia o fim do livro."""
         if not self.active_book_code:
             return
-        books = self.db.books(self.current_translation_id())
-        index = next(i for i, book in enumerate(books) if book["book_code"] == self.active_book_code)
         maximum = self.db.chapter_count(self.current_translation_id(), self.active_book_code)
         if self.active_chapter < maximum:
             self._show_location(self.active_book_code, self.active_chapter + 1)
-        elif index + 1 < len(books):
-            self._show_location(books[index + 1]["book_code"], 1)
+        else:
+            self._announce("Fim do livro. Não há capítulos seguintes.")
+
+    def change_chapter_from_reading(self, direction: int):
+        """Conecta esquerda/direita da Leitura à navegação entre capítulos."""
+        if direction < 0:
+            self.previous_chapter()
+        else:
+            self.next_chapter()
+        self.verse_list.setFocus()
 
     # Menu Aplicações ---------------------------------------------------
     def _current_verse_key(self):
@@ -986,8 +1043,11 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("A voz interna não está disponível; use o leitor de tela.")
             return
         self.tts.stop()
-        # Somente o número, como aparece na seção Leitura.
-        self.tts.say(f"{item.data(Qt.UserRole + 1)}. {item.data(Qt.UserRole)}")
+        if item.data(Qt.UserRole + 2) == "ending":
+            self.tts.say(item.data(Qt.UserRole))
+        else:
+            # Somente o número, como aparece na seção Leitura.
+            self.tts.say(f"{item.data(Qt.UserRole + 1)}. {item.data(Qt.UserRole)}")
 
     def stop_speech(self):
         """Interrompe imediatamente a síntese de voz, quando ativa."""
@@ -1015,11 +1075,19 @@ class MainWindow(QMainWindow):
     def _focus_help(self):
         """F1 leva diretamente ao texto da ajuda na página única."""
         self.help_text.setFocus()
-        self.help_text.moveCursor(QTextCursor.Start)
+        if self.help_text.count():
+            self.help_text.setCurrentRow(0)
 
     def _warn(self, title: str, message: str):
         """Exibe mensagens operacionais em diálogo nativo acessível."""
         QMessageBox.warning(self, title, message)
+
+    def _announce(self, message: str):
+        """Envia uma mensagem imediata ao leitor de tela e à barra de estado."""
+        self.statusBar().showMessage(message)
+        QAccessible.updateAccessibility(
+            QAccessibleAnnouncementEvent(self.verse_list, message)
+        )
 
     def closeEvent(self, event):
         """Libera voz e bancos antes de confirmar o fechamento."""
