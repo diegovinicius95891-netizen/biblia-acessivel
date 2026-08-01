@@ -21,29 +21,32 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 
 - Controles com nomes e descrições acessíveis.
 - Navegação por seções: Tab e Shift+Tab mudam de seção; cima e baixo navegam dentro dela.
-- Uma única página rolável, sem guias ou páginas escondidas.
-- A seção Traduções usa itens com estado de caixa de seleção; Espaço ou Enter marca uma única edição.
+- A tela principal mostra somente Livros, Capítulos, Versículos, Área de leitura e Mais opções.
+- Mais opções reúne Traduções, referência direta, pesquisa, devocional, anotações, configurações, leis e ajuda. Cada recurso abre numa tela interna limpa; Escape volta à Bíblia.
+- A tela Traduções usa itens com estado de caixa de seleção; Espaço ou Enter marca uma única edição.
 - A seção Livros mostra apenas o testamento atual; esquerda seleciona o Antigo e direita seleciona o Novo.
-- Enter em Livros leva aos capítulos; Enter em Capítulos abre a seção Leitura.
+- Enter em Livros leva aos capítulos; Enter em Capítulos abre a seção Versículos.
 - Lista de leitura adequada para navegação linha a linha com NVDA, JAWS ou Narrador.
-- Na seção Leitura, esquerda volta um capítulo e direita avança um capítulo do mesmo livro.
+- Na seção Versículos, esquerda volta um capítulo e direita avança um capítulo do mesmo livro. A Área de leitura mostra somente a referência e o texto selecionado.
 - Depois do último item aparece “Fim do capítulo” ou “Fim do livro. Não há capítulos seguintes”.
-- Ajuda e Leis são listas de parágrafos; cima/baixo lê o conteúdo sem repetir o nome da seção.
+- Ajuda e Leis abrem em telas próprias como listas de parágrafos; cima/baixo lê o conteúdo sem repetir o nome da seção.
 - Tecla Aplicações ou Shift+F10 abre “Menu do livro”, “Menu do capítulo” ou “Menu do versículo”. A ação de IA correspondente recebe o foco inicial; cima/baixo navegam e Espaço ou Enter executa. As demais ações do versículo continuam disponíveis.
 - O menu `Item atual`, acessível com `Alt+I`, oferece as mesmas operações.
 - `Ctrl+Alt+C` copia o texto; `Ctrl+Alt+R` copia referência e texto; `Ctrl+Alt+M` alterna o marcador.
 - Tamanho do texto ajustável com `Ctrl+mais` e `Ctrl+menos`.
 - Voz offline do Windows por meio do Qt TextToSpeech, quando disponível.
 
-## Continuidade e marcadores
+## Continuidade, anotações e devocionais
 
-O aplicativo salva automaticamente tradução, testamento, livro, capítulo e item atual e retorna a esse ponto na próxima abertura. Os marcadores ficam em `data/user_data.db`, separado do banco bíblico.
+O aplicativo salva automaticamente tradução, testamento, livro, capítulo e item atual e retorna a esse ponto na próxima abertura. Marcadores e anotações ficam em `data/user_data.db`, separado do banco bíblico. “Criar anotação” aparece no menu Aplicações do versículo; Mais opções organiza as anotações por dia e por título e permite ler tanto o dia completo quanto uma nota isolada.
 
-A seção **Licenças e leis** apresenta um único texto simples, somente leitura, com a legislação, a justificativa geral, as quatro fontes e suas condições de utilização. Não há seletores ou conteúdo HTML nessa área.
+“Fazer devocional” começa com a referência e o texto selecionados. A referência pode ser trocada dentro da própria tela. O editor oferece campos para título e reflexão e salva um arquivo `.txt` UTF-8 na pasta escolhida pela pessoa.
+
+A tela **Licenças e leis** apresenta um único texto simples, somente leitura, com a legislação, a justificativa geral, as quatro fontes e suas condições de utilização. Não há seletores ou conteúdo HTML nessa área.
 
 ## Configurações e IA opcional
 
-A seção Configurações usa uma única lista navegável com cima/baixo. Ela contém chave da API, modelo, detalhamento das respostas, tamanho do texto, velocidade da voz e alto contraste. Espaço ou Enter abre qualquer opção em um diálogo também navegável. Quando nenhuma chave foi informada, o botão “Obter chave da API do Google” abre a página oficial do Google AI Studio. Tab leva aos botões disponíveis; Espaço ou Enter os aciona.
+A tela Configurações, aberta por Mais opções, usa uma única lista navegável com cima/baixo. Ela contém chave da API, modelo, detalhamento das respostas, tamanho do texto, velocidade da voz e alto contraste. Espaço ou Enter abre qualquer opção em um diálogo também navegável. Quando nenhuma chave foi informada, o botão “Obter chave da API do Google” abre a página oficial do Google AI Studio. Tab leva aos botões disponíveis; Espaço ou Enter os aciona.
 
 A chave do Gemini é criptografada pela DPAPI para a conta atual do Windows e recuperada nas próximas aberturas; nunca é publicada no GitHub. A IA usa o endpoint `generateContent` da API Google Gemini, pode consumir a cota ou o saldo da conta e exige internet. Aplicações ou Shift+F10 oferece resumo no livro selecionado, resumo no capítulo selecionado e explicação no versículo selecionado. O resultado é convertido para texto simples, sem asteriscos ou outras marcas de Markdown, e abre em diálogo de parágrafos navegáveis.
 

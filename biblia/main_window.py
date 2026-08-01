@@ -1,4 +1,4 @@
-"""Interface principal acessível, organizada em uma página única de seções.
+"""Interface acessível com uma tela bíblica limpa e páginas internas.
 
 As classes de lista especializam somente o comportamento do teclado. A classe
 ``MainWindow`` coordena apresentação, navegação, persistência e ações sobre o
@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import re
 import threading
+from collections import defaultdict
+from datetime import date, datetime
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QSettings, Qt, QUrl, Signal
@@ -24,6 +26,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -33,7 +36,8 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMainWindow,
     QMessageBox,
-    QScrollArea,
+    QPlainTextEdit,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -41,12 +45,14 @@ from PySide6.QtWidgets import (
 from .database import BibleDatabase
 from .dialogs import (
     AccessibleResultDialog,
+    AccessibleTextDialog,
     AccessibleButton,
     ActivatableList,
     ApiKeyDialog,
     ApplicationsDialog,
     ChoiceDialog,
     ModelDialog,
+    NoteEditorDialog,
 )
 from .gemini_client import GeminiServiceError, create_bible_analysis
 from .legal import LEGAL_TEXT
@@ -247,46 +253,45 @@ class MainWindow(QMainWindow):
         self._build_shortcuts()
         self._apply_accessibility_settings()
         self._load_translations_and_restore()
+        self.book_list.setFocus()
         self.statusBar().showMessage(
             "Pronto. Tab muda de seção; setas navegam dentro da seção. F1 abre a ajuda."
         )
 
     # Interface ---------------------------------------------------------
     def _build_ui(self):
-        """Cria uma única página rolável; não há abas nem páginas ocultas."""
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setAccessibleName("Seções do aplicativo")
-        self.sections_widget = QWidget()
-        self.sections_layout = QVBoxLayout(self.sections_widget)
-        self.sections_layout.addWidget(self._build_reader_section())
-        self.sections_layout.addWidget(self._build_search_section())
-        self.sections_layout.addWidget(self._build_settings_section())
-        self.sections_layout.addWidget(self._build_legal_section())
-        self.sections_layout.addWidget(self._build_help_section())
-        self.sections_layout.addStretch(1)
-        self.scroll_area.setWidget(self.sections_widget)
-        self.setCentralWidget(self.scroll_area)
+        """Cria uma tela bíblica limpa e páginas internas sem usar guias."""
+        self.page_stack = QStackedWidget()
+        self.page_stack.setAccessibleName("Telas do aplicativo")
+        self.secondary_pages = {}
+
+        self.sections_widget = self._build_reader_section()
+        self.main_page_index = self.page_stack.addWidget(self.sections_widget)
+
+        self.translation_section = self._build_translation_section()
+        self.reference_section = self._build_reference_section()
+        self.search_section = self._build_search_section()
+        self.devotional_section = self._build_devotional_section()
+        self.notes_section = self._build_notes_section()
+        self.settings_section = self._build_settings_section()
+        self.legal_section = self._build_legal_section()
+        self.help_section = self._build_help_section()
+
+        self._add_secondary_page("translations", "Traduções", self.translation_section, self.translation_list)
+        self._add_secondary_page("reference", "Ir para uma referência", self.reference_section, self.reference_edit)
+        self._add_secondary_page("search", "Pesquisa", self.search_section, self.search_edit)
+        self._add_secondary_page("devotional", "Escrever devocional", self.devotional_section, self.devotional_reference)
+        self._add_secondary_page("notes", "Anotações por dia", self.notes_section, self.notes_list)
+        self._add_secondary_page("settings", "Configurações", self.settings_section, self.settings_options)
+        self._add_secondary_page("legal", "Licenças, leis e justificativa", self.legal_section, self.legal_text)
+        self._add_secondary_page("help", "Ajuda e atalhos", self.help_section, self.help_text)
+        self.setCentralWidget(self.page_stack)
 
     def _build_reader_section(self):
-        """Monta as seções de seleção e leitura na ordem natural de Tab."""
+        """Monta somente Livros, Capítulos, Versículos, Leitura e Mais opções."""
         section = QWidget()
         layout = QVBoxLayout(section)
         selection_row = QHBoxLayout()
-
-        translation_group = QGroupBox("Seção &Traduções")
-        translation_layout = QVBoxLayout(translation_group)
-        translation_layout.addWidget(QLabel("Cima/baixo navegam; Espaço ou Enter marca a tradução."))
-        self.translation_list = TranslationList()
-        self.translation_list.setAccessibleName("Seção Traduções, caixas de seleção")
-        self.translation_list.setAccessibleDescription(
-            "Use cima e baixo para navegar. Pressione Espaço ou Enter para marcar uma tradução."
-        )
-        self.translation_list.chooseRequested.connect(self.select_current_translation)
-        self.translation_list.itemClicked.connect(lambda _item: self.select_current_translation())
-        translation_layout.addWidget(self.translation_list)
-        translation_group.setFocusProxy(self.translation_list)
-        selection_row.addWidget(translation_group, 1)
 
         books_group = QGroupBox("Seção &Livros")
         books_layout = QVBoxLayout(books_group)
@@ -330,22 +335,21 @@ class MainWindow(QMainWindow):
         chapters_layout.addWidget(self.chapter_list)
         chapters_group.setFocusProxy(self.chapter_list)
         selection_row.addWidget(chapters_group, 1)
-        layout.addLayout(selection_row, 1)
 
-        reading_group = QGroupBox("Seção &Leitura")
-        reading_layout = QVBoxLayout(reading_group)
+        verses_group = QGroupBox("Seção &Versículos")
+        verses_layout = QVBoxLayout(verses_group)
         self.chapter_heading = QLabel("Escolha um livro e um capítulo")
         self.chapter_heading.setAccessibleName("Título da leitura atual")
         heading_font = self.chapter_heading.font()
         heading_font.setBold(True)
         heading_font.setPointSize(heading_font.pointSize() + 2)
         self.chapter_heading.setFont(heading_font)
-        reading_layout.addWidget(self.chapter_heading)
+        verses_layout.addWidget(self.chapter_heading)
         self.verse_list = VerseList()
-        self.verse_list.setAccessibleName("Seção Leitura, versículos")
+        self.verse_list.setAccessibleName("Seção Versículos")
         self.verse_list.setAccessibleDescription(
             "Cima e baixo navegam. Esquerda e direita mudam o capítulo. "
-            "Enter lê em voz alta. Aplicações ou Shift F10 abre as ações do texto."
+            "Enter lê em voz alta. Aplicações ou Shift F10 abre as ações do versículo."
         )
         self.verse_list.activateRequested.connect(self.speak_current_verse)
         self.verse_list.itemDoubleClicked.connect(lambda _item: self.speak_current_verse())
@@ -354,32 +358,127 @@ class MainWindow(QMainWindow):
         self.verse_list.applicationsRequested.connect(self.show_verse_menu)
         self.verse_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.verse_list.customContextMenuRequested.connect(self.show_verse_menu_at)
-        reading_layout.addWidget(self.verse_list, 1)
-        reading_group.setFocusProxy(self.verse_list)
-        layout.addWidget(reading_group, 2)
+        verses_layout.addWidget(self.verse_list, 1)
+        verses_group.setFocusProxy(self.verse_list)
+        selection_row.addWidget(verses_group, 2)
+        layout.addLayout(selection_row, 2)
 
-        reference_group = QGroupBox("Referência direta — atalho Ctrl+L")
-        reference_layout = QHBoxLayout(reference_group)
+        reading_group = QGroupBox("Seção Área de &leitura")
+        reading_layout = QVBoxLayout(reading_group)
+        self.reading_area = ReadingTextList("Área de leitura do versículo selecionado")
+        self.reading_area.setAccessibleDescription(
+            "Mostra somente a referência e o texto selecionado na seção Versículos."
+        )
+        reading_layout.addWidget(self.reading_area)
+        reading_group.setFocusProxy(self.reading_area)
+        layout.addWidget(reading_group, 1)
+
+        more_group = QGroupBox("Seção &Mais opções")
+        more_layout = QVBoxLayout(more_group)
+        more_layout.addWidget(QLabel("Use cima e baixo e pressione Espaço ou Enter para abrir."))
+        self.more_options = ActivatableList()
+        self.more_options.setAccessibleName("Seção Mais opções")
+        self.more_options.setAccessibleDescription(
+            "Cima e baixo navegam. Espaço ou Enter abre a opção em uma nova tela. Escape volta."
+        )
+        options = (
+            ("Traduções", "translations"),
+            ("Ir para uma referência", "reference"),
+            ("Pesquisar na Bíblia", "search"),
+            ("Fazer devocional", "devotional"),
+            ("Anotações por dia", "notes"),
+            ("Configurações", "settings"),
+            ("Licenças, leis e justificativa de uso", "legal"),
+            ("Ajuda e atalhos", "help"),
+        )
+        for label, page_id in options:
+            item = QListWidgetItem(label)
+            item.setData(Qt.UserRole, page_id)
+            self.more_options.addItem(item)
+        self.more_options.setCurrentRow(0)
+        self.more_options.selectionRequested.connect(self.open_more_option)
+        more_layout.addWidget(self.more_options)
+        more_group.setFocusProxy(self.more_options)
+        layout.addWidget(more_group, 1)
+
+        QWidget.setTabOrder(self.book_list, self.chapter_list)
+        QWidget.setTabOrder(self.chapter_list, self.verse_list)
+        QWidget.setTabOrder(self.verse_list, self.reading_area)
+        QWidget.setTabOrder(self.reading_area, self.more_options)
+        return section
+
+    def _build_translation_section(self):
+        """Cria a tela de escolha exclusiva da tradução bíblica."""
+        section = QGroupBox("Traduções")
+        layout = QVBoxLayout(section)
+        layout.addWidget(QLabel("Cima/baixo navegam; Espaço ou Enter marca a tradução."))
+        self.translation_list = TranslationList()
+        self.translation_list.setAccessibleName("Traduções, caixas de seleção")
+        self.translation_list.setAccessibleDescription(
+            "Use cima e baixo para navegar. Pressione Espaço ou Enter para marcar uma tradução."
+        )
+        self.translation_list.chooseRequested.connect(self.select_current_translation)
+        self.translation_list.itemClicked.connect(lambda _item: self.select_current_translation())
+        layout.addWidget(self.translation_list)
+        section.setFocusProxy(self.translation_list)
+        return section
+
+    def _build_reference_section(self):
+        """Cria o campo de navegação direta isolado da tela principal."""
+        section = QGroupBox("Ir para uma referência")
+        layout = QVBoxLayout(section)
+        layout.addWidget(QLabel("Digite, por exemplo, João 3:16 e pressione Enter."))
         self.reference_edit = QLineEdit()
         self.reference_edit.setAccessibleName("Ir para referência")
         self.reference_edit.setPlaceholderText("Exemplo: João 3:16")
         self.reference_edit.returnPressed.connect(self.go_to_reference)
-        go_button = AccessibleButton("&Ir")
-        go_button.setFocusPolicy(Qt.NoFocus)
-        go_button.clicked.connect(self.go_to_reference)
-        reference_layout.addWidget(self.reference_edit)
-        reference_layout.addWidget(go_button)
-        layout.addWidget(reference_group)
-
-        QWidget.setTabOrder(self.translation_list, self.book_list)
-        QWidget.setTabOrder(self.book_list, self.chapter_list)
-        QWidget.setTabOrder(self.chapter_list, self.verse_list)
-        QWidget.setTabOrder(self.verse_list, self.reference_edit)
+        layout.addWidget(self.reference_edit)
+        self.go_button = AccessibleButton("&Ir para referência")
+        self.go_button.clicked.connect(self.go_to_reference)
+        layout.addWidget(self.go_button)
         return section
 
+    def _add_secondary_page(self, page_id: str, title: str, content: QWidget, focus_widget: QWidget):
+        """Registra uma tela interna com aviso uniforme para retornar por Escape."""
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        heading = QLabel(title)
+        heading.setAccessibleName(f"Tela {title}")
+        font = heading.font()
+        font.setBold(True)
+        font.setPointSize(font.pointSize() + 3)
+        heading.setFont(font)
+        layout.addWidget(heading)
+        layout.addWidget(QLabel("Pressione Escape para voltar ao menu principal da Bíblia."))
+        layout.addWidget(content, 1)
+        index = self.page_stack.addWidget(page)
+        self.secondary_pages[page_id] = (index, focus_widget)
+
+    def open_more_option(self, item_or_id):
+        """Abre a opção destacada como única tela visível do aplicativo."""
+        page_id = item_or_id.data(Qt.UserRole) if isinstance(item_or_id, QListWidgetItem) else item_or_id
+        if page_id == "notes":
+            self.refresh_notes()
+        elif page_id == "devotional":
+            self.prepare_devotional()
+        elif page_id == "settings":
+            self._refresh_settings_options()
+        index, focus_widget = self.secondary_pages[page_id]
+        self.page_stack.setCurrentIndex(index)
+        focus_widget.setFocus()
+        if isinstance(focus_widget, QListWidget) and focus_widget.count():
+            focus_widget.setCurrentRow(max(0, focus_widget.currentRow()))
+        self.statusBar().showMessage("Nova tela aberta. Pressione Escape para voltar à Bíblia.")
+
+    def show_main_page(self):
+        """Fecha a tela interna e devolve o foco à seção Mais opções."""
+        self.page_stack.setCurrentIndex(self.main_page_index)
+        self.more_options.setFocus()
+        self.statusBar().showMessage("Menu principal da Bíblia.")
+
     def _build_search_section(self):
-        """Cria a pesquisa como seção da página única."""
-        section = QGroupBox("Seção &Pesquisa")
+        """Cria a pesquisa local para sua própria tela interna."""
+        section = QGroupBox("Pesquisa")
         layout = QVBoxLayout(section)
         form = QFormLayout()
         self.search_translation = QComboBox()
@@ -400,6 +499,58 @@ class MainWindow(QMainWindow):
         self.search_results.setAccessibleName("Resultados da pesquisa")
         self.search_results.selectionRequested.connect(self.open_search_result)
         layout.addWidget(self.search_results, 1)
+        return section
+
+    def _build_devotional_section(self):
+        """Cria o editor de devocional com fonte bíblica substituível."""
+        section = QGroupBox("Fazer devocional")
+        layout = QVBoxLayout(section)
+        layout.addWidget(
+            QLabel(
+                "A referência atual já vem preenchida. Edite-a e pressione Enter para carregar outro texto."
+            )
+        )
+        form = QFormLayout()
+        self.devotional_reference = QLineEdit()
+        self.devotional_reference.setAccessibleName("Referência bíblica do devocional")
+        self.devotional_reference.setPlaceholderText("Exemplo: João 3:16")
+        self.devotional_reference.returnPressed.connect(self.load_devotional_reference)
+        form.addRow("&Referência:", self.devotional_reference)
+        self.devotional_title = QLineEdit()
+        self.devotional_title.setAccessibleName("Título do devocional")
+        form.addRow("&Título:", self.devotional_title)
+        layout.addLayout(form)
+        self.devotional_source = ReadingTextList("Texto bíblico usado no devocional")
+        self.devotional_source.setMaximumHeight(120)
+        layout.addWidget(self.devotional_source)
+        self.devotional_editor = QPlainTextEdit()
+        self.devotional_editor.setTabChangesFocus(True)
+        self.devotional_editor.setAccessibleName("Texto do devocional")
+        self.devotional_editor.setAccessibleDescription(
+            "Escreva a reflexão. Use Tab para chegar ao botão Salvar como arquivo de texto."
+        )
+        layout.addWidget(self.devotional_editor, 1)
+        self.save_devotional_button = AccessibleButton("&Salvar devocional como arquivo de texto")
+        self.save_devotional_button.clicked.connect(self.save_devotional)
+        layout.addWidget(self.save_devotional_button)
+        return section
+
+    def _build_notes_section(self):
+        """Cria a lista de dias e títulos das anotações pessoais."""
+        section = QGroupBox("Anotações por dia")
+        layout = QVBoxLayout(section)
+        layout.addWidget(
+            QLabel(
+                "Cima e baixo navegam. Abra um dia para ler todas as anotações ou um título para ler apenas uma."
+            )
+        )
+        self.notes_list = ActivatableList()
+        self.notes_list.setAccessibleName("Anotações organizadas por dia")
+        self.notes_list.setAccessibleDescription(
+            "Os dias aparecem antes de seus títulos. Espaço ou Enter abre o item selecionado."
+        )
+        self.notes_list.selectionRequested.connect(self.open_note_item)
+        layout.addWidget(self.notes_list, 1)
         return section
 
     def _build_settings_section(self):
@@ -439,27 +590,32 @@ class MainWindow(QMainWindow):
         return section
 
     def _build_help_section(self):
-        """Mantém a ajuda acessível como a última seção da mesma página."""
-        section = QGroupBox("Seção A&juda")
+        """Mantém a ajuda acessível como parágrafos numa tela exclusiva."""
+        section = QGroupBox("A&juda")
         layout = QVBoxLayout(section)
         self.help_text = ReadingTextList("Ajuda e atalhos")
         self.help_text.set_text(
             "BÍBLIA ACESSÍVEL\n\n"
             "NAVEGAÇÃO POR SEÇÕES\n"
-            "Tab e Shift+Tab percorrem as seções. Cima e baixo navegam dentro da seção atual.\n"
-            "Em Traduções, Espaço ou Enter marca uma edição. Em Livros, esquerda mostra o Antigo "
-            "Testamento e direita mostra o Novo. Enter em Livros leva aos capítulos; Enter em "
-            "Capítulos abre a leitura.\n\n"
+            "Na tela principal, Tab e Shift+Tab percorrem Livros, Capítulos, Versículos, Área de leitura "
+            "e Mais opções. Cima e baixo navegam dentro da seção atual. Em Livros, esquerda mostra o "
+            "Antigo Testamento e direita mostra o Novo. Enter em Livros leva aos capítulos; Enter em "
+            "Capítulos abre os versículos. Mais opções abre cada recurso numa tela limpa. Escape volta "
+            "ao menu principal da Bíblia.\n\n"
             "INTELIGÊNCIA ARTIFICIAL\n"
             "Aplicações ou Shift+F10 abre uma lista acessível. Cima e baixo navegam; Espaço ou "
             "Enter executa. Em Livros há resumo do livro; em Capítulos, resumo do capítulo; e "
-            "na Leitura, explicação do número selecionado.\n\n"
+            "em Versículos, explicação do número selecionado. O mesmo menu permite criar uma anotação.\n\n"
+            "DEVOCIONAIS E ANOTAÇÕES\n"
+            "Fazer devocional começa com a referência atual, permite carregar outra referência e salvar "
+            "o resultado como arquivo de texto na pasta escolhida. As anotações ficam guardadas localmente "
+            "e aparecem em Mais opções, organizadas por dia e título.\n\n"
             "ATALHOS\n"
             "Ctrl+L: referência. Ctrl+F: pesquisa. Ctrl+Seta esquerda/direita: capítulo anterior ou "
             "seguinte. F5: ouvir. Ctrl+Alt+C: copiar texto. Ctrl+Alt+R: "
-            "copiar referência e texto. Ctrl+Alt+M: marcador. Escape: parar voz. F1: ajuda.\n\n"
+            "copiar referência e texto. Ctrl+Alt+M: marcador. Escape: voltar ou parar voz. F1: ajuda.\n\n"
             "CONTINUIDADE E PRIVACIDADE\n"
-            "A posição e os marcadores permanecem locais. Em Configurações, cima e baixo navegam "
+            "A posição, os marcadores e as anotações permanecem locais. Em Configurações, cima e baixo navegam "
             "por chave, modelo, detalhamento, fonte, voz e contraste. Espaço ou Enter abre a opção; "
             "Tab leva aos botões e Espaço ou Enter os aciona. "
             "A chave do Google é gravada criptografada para a conta atual do Windows."
@@ -500,6 +656,9 @@ class MainWindow(QMainWindow):
         self.action_bookmark.setShortcut("Ctrl+Alt+M")
         self.action_bookmark.triggered.connect(self.toggle_bookmark)
         item_menu.addAction(self.action_bookmark)
+        self.action_create_note = QAction("Criar &anotação", self)
+        self.action_create_note.triggered.connect(self.create_note)
+        item_menu.addAction(self.action_create_note)
         self.action_speak = QAction("&Ouvir", self)
         self.action_speak.triggered.connect(self.speak_current_verse)
         item_menu.addAction(self.action_speak)
@@ -515,7 +674,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+L"), self, activated=self._focus_reference)
         QShortcut(QKeySequence("Ctrl+F"), self, activated=self._focus_search)
         QShortcut(QKeySequence("F5"), self, activated=self.speak_current_verse)
-        QShortcut(QKeySequence("Escape"), self, activated=self.stop_speech)
+        QShortcut(QKeySequence("Escape"), self, activated=self._handle_escape)
         QShortcut(QKeySequence("Ctrl++"), self, activated=lambda: self.change_font_size(1))
         QShortcut(QKeySequence("Ctrl+-"), self, activated=lambda: self.change_font_size(-1))
 
@@ -553,29 +712,20 @@ class MainWindow(QMainWindow):
         self._update_tab_order()
 
     def _update_tab_order(self):
-        """Garante uma rota linear entre todas as seções da página."""
+        """Garante a rota principal de cinco seções e rotas locais nas telas internas."""
         chain: list[QWidget] = [
-            self.translation_list,
             self.book_list,
             self.chapter_list,
             self.verse_list,
-            self.reference_edit,
+            self.reading_area,
+            self.more_options,
         ]
-        chain.extend(
-            (
-                self.search_translation,
-                self.search_edit,
-                self.search_button,
-                self.search_results,
-                self.settings_options,
-                self.get_api_key_button,
-                self.save_settings_button,
-                self.legal_text,
-                self.help_text,
-            )
-        )
         for current, following in zip(chain, chain[1:]):
             QWidget.setTabOrder(current, following)
+        QWidget.setTabOrder(self.devotional_reference, self.devotional_title)
+        QWidget.setTabOrder(self.devotional_title, self.devotional_source)
+        QWidget.setTabOrder(self.devotional_source, self.devotional_editor)
+        QWidget.setTabOrder(self.devotional_editor, self.save_devotional_button)
 
     def _checked_translation_item(self):
         """Localiza a única caixa de tradução atualmente marcada."""
@@ -744,20 +894,27 @@ class MainWindow(QMainWindow):
         if rows:
             self._verse_changed(self.verse_list.currentItem())
         else:
+            self.reading_area.set_text(
+                "Capítulo indisponível nesta fonte. Escolha outra tradução em Mais opções."
+            )
             self.statusBar().showMessage(
                 f"Capítulo indisponível na fonte: {self.active_book_name}, capítulo {self.active_chapter}."
             )
 
     def _verse_changed(self, current, _previous=None):
-        """Salva o número atual e anuncia a presença de marcador."""
+        """Salva o número atual, atualiza a leitura e anuncia marcador."""
         if self._loading or not current:
             return
         if current.data(Qt.UserRole + 2) == "ending":
+            self.reading_area.set_text(current.data(Qt.UserRole))
             self.statusBar().showMessage(current.data(Qt.UserRole))
             return
         if current.data(Qt.UserRole + 1) is None:
             return
         verse = str(current.data(Qt.UserRole + 1))
+        self.reading_area.set_text(
+            f"{self.active_book_name} {self.active_chapter}:{verse}\n\n{current.data(Qt.UserRole)}"
+        )
         self.settings.setValue("position/verse", verse)
         marked = self.user_data.is_bookmarked(
             self.current_translation_id(), self.active_book_code, self.active_chapter, verse
@@ -786,6 +943,8 @@ class MainWindow(QMainWindow):
             return
         self._show_location(book["book_code"], chapter, verse)
         self.reference_edit.clear()
+        self.page_stack.setCurrentIndex(self.main_page_index)
+        self.verse_list.setFocus()
 
     def _show_location(self, book_code: str, chapter: int, verse=None, focus_reading=True):
         """Sincroniza tradução, testamento, livro, capítulo e leitura."""
@@ -884,7 +1043,7 @@ class MainWindow(QMainWindow):
         if not key:
             self._warn(
                 "Nenhum texto selecionado",
-                "Abra um capítulo e selecione um item na seção Leitura.",
+                "Abra um capítulo e selecione um item na seção Versículos.",
             )
             return
         marked = self.user_data.is_bookmarked(*key)
@@ -897,6 +1056,7 @@ class MainWindow(QMainWindow):
                 ("Copiar texto", "copy_text"),
                 ("Copiar referência e texto", "copy_reference"),
                 (marker_label, "bookmark"),
+                ("Criar anotação", "note"),
                 ("Ouvir com a voz interna", "speak"),
             ),
         )
@@ -906,6 +1066,8 @@ class MainWindow(QMainWindow):
             self.copy_verse_with_reference()
         elif selected == "bookmark":
             self.toggle_bookmark()
+        elif selected == "note":
+            self.create_note()
         elif selected == "speak":
             self.speak_current_verse()
         elif selected == "ai_verse":
@@ -936,6 +1098,167 @@ class MainWindow(QMainWindow):
             marked = self.user_data.toggle_bookmark(*key)
             self.statusBar().showMessage("Marcador adicionado." if marked else "Marcador removido.")
             self._verse_changed(self.verse_list.currentItem())
+
+    def create_note(self):
+        """Abre a edição e grava uma anotação vinculada ao versículo atual."""
+        key = self._current_verse_key()
+        item = self.verse_list.currentItem()
+        if not key or not item:
+            self._warn("Nenhum versículo selecionado", "Selecione um versículo antes de criar a anotação.")
+            return
+        reference = f"{self.active_book_name} {self.active_chapter}:{key[3]}"
+        title, body, accepted = NoteEditorDialog.get_note(self, reference)
+        if not accepted:
+            return
+        self.user_data.add_note(
+            key[0], key[1], self.active_book_name, key[2], key[3],
+            str(item.data(Qt.UserRole)), title, body,
+        )
+        self.statusBar().showMessage(
+            "Anotação salva. Consulte Mais opções, Anotações por dia."
+        )
+
+    @staticmethod
+    def _format_note_day(iso_day: str) -> str:
+        """Transforma uma data ISO em descrição completa em português."""
+        months = (
+            "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+            "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+        )
+        parsed = date.fromisoformat(iso_day)
+        return f"{parsed.day} de {months[parsed.month - 1]} de {parsed.year}"
+
+    def refresh_notes(self):
+        """Recria a lista acessível agrupando títulos abaixo de cada dia."""
+        self.notes_list.clear()
+        grouped = defaultdict(list)
+        for note in self.user_data.notes():
+            grouped[note["created_at"][:10]].append(note)
+        if not grouped:
+            empty = QListWidgetItem("Nenhuma anotação salva.")
+            empty.setFlags(empty.flags() & ~Qt.ItemIsSelectable)
+            self.notes_list.addItem(empty)
+            return
+        for iso_day, notes in grouped.items():
+            count = len(notes)
+            noun = "anotação" if count == 1 else "anotações"
+            label = f"{self._format_note_day(iso_day)} — {count} {noun}"
+            day_item = QListWidgetItem(label)
+            day_item.setData(Qt.UserRole, {"type": "day", "date": iso_day, "notes": notes})
+            self.notes_list.addItem(day_item)
+            for note in notes:
+                title_item = QListWidgetItem(
+                    f"Título: {note['title']}. Referência: {note['book_name']} {note['chapter']}:{note['verse']}"
+                )
+                title_item.setData(Qt.UserRole, {"type": "note", "note": note})
+                self.notes_list.addItem(title_item)
+        self.notes_list.setCurrentRow(0)
+
+    @staticmethod
+    def _note_text(note: dict) -> str:
+        """Monta a visualização completa de uma anotação sem marcas visuais."""
+        moment = datetime.fromisoformat(note["created_at"])
+        return (
+            f"{note['title']}\n\n"
+            f"Referência: {note['book_name']} {note['chapter']}:{note['verse']}\n\n"
+            f"Texto bíblico: {note['verse_text']}\n\n"
+            f"Anotação: {note['body']}\n\n"
+            f"Criada em {moment.strftime('%d/%m/%Y às %H:%M')}."
+        )
+
+    def open_note_item(self, item: QListWidgetItem):
+        """Abre um título isolado ou todas as anotações do dia selecionado."""
+        payload = item.data(Qt.UserRole)
+        if not payload:
+            return
+        if payload["type"] == "day":
+            title = f"Anotações de {self._format_note_day(payload['date'])}"
+            text = "\n\n--------------------\n\n".join(
+                self._note_text(note) for note in payload["notes"]
+            )
+        else:
+            note = payload["note"]
+            title = note["title"]
+            text = self._note_text(note)
+        AccessibleTextDialog(self, title, title, text).exec()
+
+    def prepare_devotional(self):
+        """Inicia um devocional com a referência bíblica selecionada no momento."""
+        key = self._current_verse_key()
+        item = self.verse_list.currentItem()
+        if key and item:
+            reference = f"{self.active_book_name} {self.active_chapter}:{key[3]}"
+            self.devotional_reference.setText(reference)
+            self._set_devotional_source(reference, str(item.data(Qt.UserRole)))
+        if not self.devotional_editor.toPlainText().strip():
+            self.devotional_editor.setPlainText(
+                "Reflexão:\n\n\nAplicação para hoje:\n\n\nOração:\n"
+            )
+
+    def _set_devotional_source(self, reference: str, verse_text: str):
+        """Atualiza fonte, título sugerido e texto bíblico do devocional."""
+        self.devotional_reference.setText(reference)
+        self.devotional_source.set_text(f"{reference}\n\n{verse_text}")
+        self.devotional_source_text = verse_text
+        suggested_title = f"Devocional sobre {reference}"
+        current_title = self.devotional_title.text().strip()
+        if not current_title or current_title == getattr(self, "_devotional_auto_title", ""):
+            self.devotional_title.setText(suggested_title)
+        self._devotional_auto_title = suggested_title
+
+    def load_devotional_reference(self):
+        """Resolve a referência digitada sem alterar a posição principal da Bíblia."""
+        text = self.devotional_reference.text().strip()
+        match = re.match(r"^(.+?)\s+(\d+):(\d+)$", text)
+        if not match:
+            self._warn("Referência inválida", "No devocional, use o formato João 3:16.")
+            return
+        book_query, chapter_text, verse = match.groups()
+        book = self.db.resolve_book(self.current_translation_id(), book_query)
+        if not book:
+            self._warn("Livro não encontrado", f"Não foi possível localizar o livro “{book_query}”.")
+            return
+        chapter = int(chapter_text)
+        rows = self.db.chapter(self.current_translation_id(), book["book_code"], chapter)
+        row = next(
+            (candidate for candidate in rows if str(candidate["verse"]).split("-")[0] == verse),
+            None,
+        )
+        if not row:
+            self._warn("Referência não encontrada", "Confira o capítulo e o número informados.")
+            return
+        reference = f"{book['book_name']} {chapter}:{row['verse']}"
+        self._set_devotional_source(reference, row["text"])
+        self.devotional_editor.setFocus()
+        self.statusBar().showMessage(f"Texto carregado: {reference}.")
+
+    def save_devotional(self):
+        """Solicita um destino e salva o devocional completo como texto UTF-8."""
+        title = self.devotional_title.text().strip() or "Meu devocional"
+        body = self.devotional_editor.toPlainText().strip()
+        reference = self.devotional_reference.text().strip()
+        if not body:
+            self._warn("Devocional vazio", "Escreva o devocional antes de salvar.")
+            self.devotional_editor.setFocus()
+            return
+        safe_name = re.sub(r"[^\w -]+", "", title, flags=re.UNICODE).strip() or "devocional"
+        suggested = Path.home() / f"{safe_name}.txt"
+        filename, _filter = QFileDialog.getSaveFileName(
+            self, "Salvar devocional", str(suggested), "Arquivo de texto (*.txt)"
+        )
+        if not filename:
+            return
+        content = (
+            f"{title}\n\nReferência: {reference}\n\n"
+            f"Texto bíblico: {getattr(self, 'devotional_source_text', '')}\n\n{body}\n"
+        )
+        try:
+            Path(filename).write_text(content, encoding="utf-8")
+        except OSError as error:
+            self._warn("Não foi possível salvar", str(error))
+            return
+        self.statusBar().showMessage(f"Devocional salvo em {filename}.")
+        QMessageBox.information(self, "Devocional salvo", f"Arquivo salvo em:\n{filename}")
 
     # Pesquisa e demais seções -----------------------------------------
     def perform_search(self):
@@ -968,6 +1291,8 @@ class MainWindow(QMainWindow):
         self.translation_list.setCurrentItem(target)
         self.select_current_translation()
         self._show_location(row["book_code"], int(row["chapter"]), row["verse"])
+        self.page_stack.setCurrentIndex(self.main_page_index)
+        self.verse_list.setFocus()
 
     # Configurações e IA -----------------------------------------------
     def _load_saved_api_key(self) -> str:
@@ -1108,7 +1433,7 @@ class MainWindow(QMainWindow):
         if not self.api_key:
             self._warn(
                 "Chave necessária",
-                "Configure e salve sua chave da API do Google Gemini na seção Configurações.",
+                "Configure e salve sua chave da API do Google Gemini em Mais opções, Configurações.",
             )
             return
         prepared = self._prepare_ai_task(task)
@@ -1167,7 +1492,7 @@ class MainWindow(QMainWindow):
             return instruction, text, f"Resumo de {book_name}, capítulo {chapter}"
         item = self.verse_list.currentItem()
         if not item or item.data(Qt.UserRole + 1) is None:
-            self._warn("Texto necessário", "Selecione um número da seção Leitura para pedir a explicação.")
+            self._warn("Texto necessário", "Selecione um número da seção Versículos para pedir a explicação.")
             return None
         number = item.data(Qt.UserRole + 1)
         instruction = (
@@ -1217,7 +1542,7 @@ class MainWindow(QMainWindow):
         if item.data(Qt.UserRole + 2) == "ending":
             self.tts.say(item.data(Qt.UserRole))
         else:
-            # Somente o número, como aparece na seção Leitura.
+            # Somente o número, como aparece na seção Versículos.
             self.tts.say(f"{item.data(Qt.UserRole + 1)}. {item.data(Qt.UserRole)}")
 
     def stop_speech(self):
@@ -1234,20 +1559,30 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Tamanho do texto: {self.font_size} pontos.")
 
     def _focus_reference(self):
-        """Leva Ctrl+L ao campo de referência e seleciona seu conteúdo."""
+        """Abre a tela de referência pelo Ctrl+L e seleciona seu conteúdo."""
+        self.open_more_option("reference")
         self.reference_edit.setFocus()
         self.reference_edit.selectAll()
 
     def _focus_search(self):
-        """Leva Ctrl+F ao campo de pesquisa na página única."""
+        """Abre a tela de pesquisa pelo Ctrl+F."""
+        self.open_more_option("search")
         self.search_edit.setFocus()
         self.search_edit.selectAll()
 
     def _focus_help(self):
-        """F1 leva diretamente ao texto da ajuda na página única."""
+        """F1 abre a ajuda como única tela visível."""
+        self.open_more_option("help")
         self.help_text.setFocus()
         if self.help_text.count():
             self.help_text.setCurrentRow(0)
+
+    def _handle_escape(self):
+        """Volta das telas internas ou, na Bíblia, interrompe a voz."""
+        if self.page_stack.currentIndex() != self.main_page_index:
+            self.show_main_page()
+        else:
+            self.stop_speech()
 
     def _warn(self, title: str, message: str):
         """Exibe mensagens operacionais em diálogo nativo acessível."""

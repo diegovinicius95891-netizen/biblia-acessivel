@@ -4,19 +4,15 @@ Este documento explica a responsabilidade de cada arquivo e os fluxos principais
 
 ## Organização da interface
 
-O aplicativo possui uma única página rolável. Não existem `QTabWidget`, guias ou páginas escondidas. O foco percorre as seções nesta ordem:
+O aplicativo não usa `QTabWidget` nem guias. Um `QStackedWidget` mantém uma tela principal enxuta e telas internas acessíveis. Na tela principal, o foco percorre:
 
-1. Traduções.
-2. Livros.
-3. Capítulos.
-4. Leitura.
-5. Referência direta.
-6. Pesquisa.
-7. Configurações e IA opcional.
-8. Licenças e leis.
-9. Ajuda.
+1. Livros.
+2. Capítulos.
+3. Versículos.
+4. Área de leitura do versículo atual.
+5. Mais opções.
 
-Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de listas. Na seção Livros, esquerda seleciona o Antigo Testamento e direita seleciona o Novo.
+Mais opções contém Traduções, referência direta, pesquisa, devocional, anotações, configurações, leis e ajuda. Espaço ou Enter abre somente o recurso escolhido; Escape restaura a tela principal e o foco em Mais opções. Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de listas. Na seção Livros, esquerda seleciona o Antigo Testamento e direita seleciona o Novo.
 
 ## Arquivos de execução
 
@@ -27,12 +23,12 @@ Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de lista
 
 ## Pacote `biblia`
 
-- `main_window.py`: controles acessíveis, seções, teclado, voz, pesquisa, configurações, IA e continuidade.
+- `main_window.py`: telas internas, teclado, leitura, pesquisa, devocional, anotações, configurações, IA e continuidade.
 - `gemini_client.py`: chamada mínima ao `generateContent` do Google Gemini, extração do texto e erros seguros.
 - `secure_store.py`: proteção e recuperação da chave por DPAPI, vinculada ao usuário do Windows.
 - `database.py`: consultas somente leitura ao banco bíblico.
-- `user_data.py`: banco separado de marcadores.
-- `dialogs.py`: leitor de texto com nomes e foco acessíveis.
+- `user_data.py`: banco separado de marcadores e anotações por data.
+- `dialogs.py`: escolhas, edição de anotações e leitura de texto com nomes e foco acessíveis.
 - `legal.py`: texto jurídico único e simples.
 
 ## Fluxo da IA opcional
@@ -49,6 +45,12 @@ O popup da tecla Aplicações usa `ApplicationsDialog`, não um menu visual depe
 
 O arquivo `data/user_data.db` é ignorado pelo Git para impedir a publicação de dados pessoais.
 
+## Anotações e devocional
+
+O menu do versículo oferece “Criar anotação”. `NoteEditorDialog` coleta título e corpo e `UserDataDatabase` grava referência, texto bíblico e horário local. A tela Anotações cria itens de dia seguidos pelos títulos correspondentes. Ativar um dia lê o conjunto daquele dia; ativar um título lê somente a nota.
+
+A tela de devocional recebe a referência selecionada, mas também resolve outra referência digitada sem mover a leitura principal. Título, texto bíblico e reflexão são exportados como `.txt` UTF-8 por `QFileDialog`, permitindo escolher qualquer pasta gravável.
+
 ## Textos bíblicos
 
 `data/biblia.db` contém somente textos e metadados distribuíveis. `scripts/build_database.py` documenta e reproduz a importação das quatro fontes. `THIRD_PARTY_NOTICES.md` registra atribuições e condições.
@@ -62,7 +64,7 @@ Ajuda e Leis usam `ReadingTextList`, que apresenta um parágrafo por item. Isso 
 ## Testes
 
 - `test_database.py`: integridade das edições e pesquisa.
-- `test_user_data.py`: marcadores em banco temporário.
+- `test_user_data.py`: marcadores e anotações em banco temporário.
 - `test_gemini_client.py`: contrato do cliente Gemini sem chamadas externas.
 - `test_secure_store.py`: proteção e recuperação da chave pela DPAPI.
-- `test_gui_smoke.py`: página sem guias, teclado, configurações, IA e navegação.
+- `test_gui_smoke.py`: cinco seções principais, telas internas, teclado, configurações, IA, notas e exportação de devocional.

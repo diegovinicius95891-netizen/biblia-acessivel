@@ -136,6 +136,68 @@ class ApiKeyDialog(QDialog):
         return dialog.editor.text().strip(), accepted
 
 
+class NoteEditorDialog(QDialog):
+    """Coleta título e texto de uma anotação vinculada ao versículo atual."""
+
+    def __init__(self, parent: QWidget, reference: str):
+        """Abre primeiro no título e mantém o corpo como edição multilinha."""
+        super().__init__(parent)
+        self.setWindowTitle(f"Criar anotação — {reference}")
+        self.setAccessibleName(f"Criar anotação para {reference}")
+        self.resize(620, 380)
+        layout = QFormLayout(self)
+        self.title_editor = QLineEdit(reference)
+        self.title_editor.setAccessibleName("Título da anotação")
+        self.title_editor.setAccessibleDescription(
+            "Edite o título e pressione Tab para escrever a anotação."
+        )
+        layout.addRow("&Título:", self.title_editor)
+        self.body_editor = QPlainTextEdit()
+        self.body_editor.setTabChangesFocus(True)
+        self.body_editor.setAccessibleName("Texto da anotação")
+        self.body_editor.setAccessibleDescription(
+            "Digite livremente. Pressione Tab até Salvar anotação para confirmar."
+        )
+        layout.addRow("&Anotação:", self.body_editor)
+        self.title_editor.returnPressed.connect(self.body_editor.setFocus)
+        self.validation_label = QLabel("")
+        self.validation_label.setAccessibleName("Aviso da anotação")
+        layout.addRow(self.validation_label)
+        buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        save_button = buttons.button(QDialogButtonBox.Save)
+        save_button.setText("&Salvar anotação")
+        save_button.setAutoDefault(False)
+        save_button.setDefault(False)
+        buttons.button(QDialogButtonBox.Cancel).setText("&Cancelar")
+        buttons.accepted.connect(self._accept_if_valid)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+        self.title_editor.selectAll()
+        self.title_editor.setFocus()
+
+    def _accept_if_valid(self):
+        """Impede que uma anotação sem conteúdo seja gravada por engano."""
+        if self.body_editor.toPlainText().strip():
+            self.accept()
+        else:
+            self.validation_label.setText("Digite o texto da anotação antes de salvar.")
+            self.body_editor.setAccessibleDescription(
+                "Digite o texto da anotação antes de salvar. Tab leva aos botões."
+            )
+            self.body_editor.setFocus()
+
+    @classmethod
+    def get_note(cls, parent: QWidget, reference: str):
+        """Devolve título, corpo e confirmação do diálogo."""
+        dialog = cls(parent, reference)
+        accepted = dialog.exec() == QDialog.Accepted
+        return (
+            dialog.title_editor.text().strip() or reference,
+            dialog.body_editor.toPlainText().strip(),
+            accepted,
+        )
+
+
 class ModelDialog(ChoiceDialog):
     """Permite escolher um modelo numa lista ativada por Espaço ou Enter."""
 

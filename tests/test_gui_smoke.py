@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
@@ -11,8 +12,9 @@ try:
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QDialog, QLineEdit
-    from biblia.dialogs import ApiKeyDialog, ApplicationsDialog, ModelDialog
+    from biblia.dialogs import ApiKeyDialog, ApplicationsDialog, ModelDialog, NoteEditorDialog
     from biblia.main_window import BookList, ChapterList, MainWindow, VerseList
+    from biblia.user_data import UserDataDatabase
 except ImportError:  # Permite validar o banco antes da instalação da interface.
     QApplication = None
     MainWindow = None
@@ -30,11 +32,13 @@ class GuiSmokeTests(unittest.TestCase):
         """Compartilha uma única aplicação Qt entre os testes."""
         cls.app = QApplication.instance() or QApplication([])
 
-    def test_single_page_navigation_search_and_legal_section(self):
-        """Valida página única, testamentos, leitura, busca e leis."""
+    def test_clean_main_screen_navigation_and_secondary_pages(self):
+        """Valida as cinco seções principais e telas internas acionadas por Mais opções."""
         window = MainWindow(DB_PATH)
         self.assertFalse(hasattr(window, "tabs"))
-        self.assertIs(window.scroll_area, window.centralWidget())
+        self.assertIs(window.page_stack, window.centralWidget())
+        self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
+        self.assertEqual(8, window.more_options.count())
         self.assertEqual(4, window.translation_list.count())
         self.assertEqual(39, window.book_list.count())
 
@@ -51,6 +55,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertEqual(3, window.active_chapter)
         self.assertTrue(window.verse_list.currentItem().text().startswith("16. "))
         self.assertNotIn("Versículo", window.verse_list.currentItem().text())
+        self.assertIn("João 3:16", window.reading_area.item(0).text())
         self.assertEqual("Fim do capítulo.", window.verse_list.item(window.verse_list.count() - 1).text())
 
         window.verse_list.setFocus()
@@ -70,6 +75,11 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertIn("LEGISLAÇÃO BRASILEIRA", legal_content)
         self.assertIn("CC BY-SA 4.0", legal_content)
         self.assertGreater(window.help_text.count(), 1)
+        window.more_options.setCurrentRow(7)
+        QTest.keyClick(window.more_options, Qt.Key_Space)
+        self.assertNotEqual(window.main_page_index, window.page_stack.currentIndex())
+        window._handle_escape()
+        self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
         window.close()
 
     def test_end_of_book_is_announced_and_does_not_cross_books(self):
@@ -105,11 +115,11 @@ class GuiSmokeTests(unittest.TestCase):
         QTest.keyClick(verse_list, Qt.Key_Return)
         self.assertEqual([True, True], activations)
 
-    def test_settings_and_ai_section_are_accessible_without_notes(self):
-        """Confere configurações, tarefas de IA e remoção completa da interface de notas."""
+    def test_settings_ai_and_notes_are_accessible(self):
+        """Confere configurações, tarefas de IA e a nova rota para anotações."""
         window = MainWindow(DB_PATH)
-        self.assertFalse(hasattr(window, "action_edit_note"))
-        self.assertFalse(hasattr(window, "note_book_widgets"))
+        self.assertTrue(hasattr(window, "action_create_note"))
+        self.assertEqual("Anotações organizadas por dia", window.notes_list.accessibleName())
         self.assertEqual("Opções de configurações", window.settings_options.accessibleName())
         self.assertEqual(6, window.settings_options.count())
         self.assertIn("chave da API", window.settings_options.item(0).text())
@@ -176,11 +186,50 @@ class GuiSmokeTests(unittest.TestCase):
             action_ids = [action_id for _label, action_id in options]
             self.assertEqual("ai_verse", action_ids[0])
             self.assertEqual(
-                {"copy_text", "copy_reference", "bookmark", "speak"},
+                {"copy_text", "copy_reference", "bookmark", "note", "speak"},
                 set(action_ids[1:]),
             )
 
         window.close()
+
+    def test_note_grouping_and_devotional_file_export(self):
+        """Salva anotação por dia e exporta um devocional com referência substituível."""
+        with TemporaryDirectory() as directory:
+            window = MainWindow(DB_PATH)
+            window.user_data.close()
+            window.user_data = UserDataDatabase(Path(directory) / "user_data.db")
+            window._show_location("JHN", 3, "16", focus_reading=False)
+
+            with patch(
+                "biblia.main_window.NoteEditorDialog.get_note",
+                return_value=("Amor de Deus", "Minha reflexão.", True),
+            ):
+                window.create_note()
+            self.assertEqual("Amor de Deus", window.user_data.notes()[0]["title"])
+            window.refresh_notes()
+            self.assertEqual(2, window.notes_list.count())
+            self.assertIn("1 anotação", window.notes_list.item(0).text())
+            self.assertIn("Amor de Deus", window.notes_list.item(1).text())
+
+            window.prepare_devotional()
+            self.assertEqual("João 3:16", window.devotional_reference.text())
+            window.devotional_reference.setText("Gênesis 1:1")
+            window.load_devotional_reference()
+            self.assertEqual("Gênesis 1:1", window.devotional_reference.text())
+            self.assertEqual("Devocional sobre Gênesis 1:1", window.devotional_title.text())
+            window.devotional_title.setText("Começos")
+            window.devotional_editor.setPlainText("Reflexão pessoal.")
+            target = Path(directory) / "devocional.txt"
+            with patch(
+                "biblia.main_window.QFileDialog.getSaveFileName",
+                return_value=(str(target), "Arquivo de texto (*.txt)"),
+            ), patch("biblia.main_window.QMessageBox.information"):
+                window.save_devotional()
+            saved = target.read_text(encoding="utf-8")
+            self.assertIn("Começos", saved)
+            self.assertIn("Referência: Gênesis 1:1", saved)
+            self.assertIn("Reflexão pessoal.", saved)
+            window.close()
 
     def test_api_key_dialog_is_masked_and_enter_confirms(self):
         """Confere a caixa protegida e a confirmação direta pelo Enter."""
@@ -189,6 +238,16 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertEqual(QLineEdit.Password, dialog.editor.echoMode())
         QTest.keyClick(dialog.editor, Qt.Key_Return)
         self.assertEqual(QDialog.Accepted, dialog.result())
+
+    def test_note_editor_lets_tab_reach_save_controls(self):
+        """Evita que a caixa multilinha aprisione o foco do teclado."""
+        dialog = NoteEditorDialog(None, "João 3:16")
+        dialog.show()
+        self.app.processEvents()
+        self.assertTrue(dialog.body_editor.tabChangesFocus())
+        dialog.title_editor.setFocus()
+        QTest.keyClick(dialog.title_editor, Qt.Key_Return)
+        self.assertTrue(dialog.body_editor.hasFocus())
 
 
 if __name__ == "__main__":
