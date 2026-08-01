@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.bibliaacessivel.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.bibliaacessivel.app'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main.assets.srcDir layout.buildDirectory.dir('generated/bibleAssets')
+    }
+}
+
+def syncBibleDatabase = tasks.register('syncBibleDatabase', Copy) {
+    from rootProject.file('../data/biblia.db')
+    into layout.buildDirectory.dir('generated/bibleAssets')
+}
+
+tasks.named('preBuild').configure {
+    dependsOn syncBibleDatabase
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+}

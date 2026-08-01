@@ -2,6 +2,8 @@
 
 Aplicativo desktop em Python para leitura acessível da Bíblia. A leitura, a pesquisa e a voz funcionam offline; somente o recurso opcional de IA exige internet.
 
+O repositório também contém uma versão Android nativa em `android/`. Ela reutiliza o mesmo banco bíblico, funciona a partir do Android 8 e foi construída com controles padrão reconhecidos pelo TalkBack. Consulte [android/README.md](android/README.md).
+
 ## Iniciar
 
 Dê duplo clique em `BibliaAcessivel.exe`, localizado na pasta principal. O executável não exige uma instalação separada do Python.

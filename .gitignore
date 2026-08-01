@@ -24,3 +24,10 @@ Thumbs.db
 *.tmp
 *.log
 BibliaAcessivel-Windows.zip
+
+# Saídas e configurações locais da versão Android.
+android/.gradle/
+android/local.properties
+android/**/build/
+android/*.apk
+BibliaAcessivel-Android.apk

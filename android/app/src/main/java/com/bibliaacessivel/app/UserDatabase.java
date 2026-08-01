@@ -1,0 +1,86 @@
+package com.bibliaacessivel.app;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+/** Guarda notas e marcadores somente no armazenamento privado do aplicativo. */
+final class UserDatabase extends SQLiteOpenHelper {
+    UserDatabase(Context context) {
+        super(context, "user_data.db", null, 1);
+    }
+
+    @Override public void onCreate(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE notes (id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "translation_id TEXT NOT NULL,book_code TEXT NOT NULL,book_name TEXT NOT NULL," +
+                "chapter INTEGER NOT NULL,verse TEXT NOT NULL,verse_text TEXT NOT NULL," +
+                "title TEXT NOT NULL,body TEXT NOT NULL,created_at TEXT NOT NULL)");
+        db.execSQL("CREATE TABLE bookmarks (translation_id TEXT NOT NULL,book_code TEXT NOT NULL," +
+                "chapter INTEGER NOT NULL,verse TEXT NOT NULL," +
+                "PRIMARY KEY(translation_id,book_code,chapter,verse))");
+    }
+
+    @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        // A primeira versão ainda não possui migrações Android anteriores.
+    }
+
+    long addNote(String translationId, Models.Book book, int chapter, Models.Verse verse,
+                 String title, String body) {
+        ContentValues values = new ContentValues();
+        values.put("translation_id", translationId);
+        values.put("book_code", book.code);
+        values.put("book_name", book.name);
+        values.put("chapter", chapter);
+        values.put("verse", verse.number);
+        values.put("verse_text", verse.text);
+        values.put("title", title);
+        values.put("body", body);
+        values.put("created_at", OffsetDateTime.now().toString());
+        return getWritableDatabase().insertOrThrow("notes", null, values);
+    }
+
+    List<Models.Note> notes() {
+        List<Models.Note> result = new ArrayList<>();
+        try (Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT id,book_code,book_name,chapter,verse,verse_text,title,body,created_at " +
+                        "FROM notes ORDER BY created_at DESC,id DESC", null)) {
+            while (cursor.moveToNext()) {
+                result.add(new Models.Note(cursor.getLong(0), cursor.getString(1),
+                        cursor.getString(2), cursor.getInt(3), cursor.getString(4),
+                        cursor.getString(5), cursor.getString(6), cursor.getString(7),
+                        cursor.getString(8)));
+            }
+        }
+        return result;
+    }
+
+    boolean isBookmarked(String translationId, String bookCode, int chapter, String verse) {
+        try (Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT 1 FROM bookmarks WHERE translation_id=? AND book_code=? AND chapter=? AND verse=?",
+                new String[]{translationId, bookCode, Integer.toString(chapter), verse})) {
+            return cursor.moveToFirst();
+        }
+    }
+
+    boolean toggleBookmark(String translationId, String bookCode, int chapter, String verse) {
+        SQLiteDatabase db = getWritableDatabase();
+        if (isBookmarked(translationId, bookCode, chapter, verse)) {
+            db.delete("bookmarks", "translation_id=? AND book_code=? AND chapter=? AND verse=?",
+                    new String[]{translationId, bookCode, Integer.toString(chapter), verse});
+            return false;
+        }
+        ContentValues values = new ContentValues();
+        values.put("translation_id", translationId);
+        values.put("book_code", bookCode);
+        values.put("chapter", chapter);
+        values.put("verse", verse);
+        db.insertOrThrow("bookmarks", null, values);
+        return true;
+    }
+}
