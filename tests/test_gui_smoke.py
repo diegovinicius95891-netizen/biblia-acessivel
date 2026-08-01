@@ -13,7 +13,7 @@ try:
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QDialog, QLineEdit
     from biblia.dialogs import ApiKeyDialog, ApplicationsDialog, ModelDialog, NoteEditorDialog
-    from biblia.main_window import BookList, ChapterList, MainWindow, VerseList
+    from biblia.main_window import BookList, ChapterList, MainWindow, VerseList, VOICE_OFF
     from biblia.user_data import UserDataDatabase
 except ImportError:  # Permite validar o banco antes da instalação da interface.
     QApplication = None
@@ -121,9 +121,10 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertTrue(hasattr(window, "action_create_note"))
         self.assertEqual("Anotações organizadas por dia", window.notes_list.accessibleName())
         self.assertEqual("Opções de configurações", window.settings_options.accessibleName())
-        self.assertEqual(6, window.settings_options.count())
+        self.assertEqual(7, window.settings_options.count())
         self.assertIn("chave da API", window.settings_options.item(0).text())
         self.assertIn("modelo", window.settings_options.item(1).text())
+        self.assertIn("Voz SAPI", window.settings_options.item(4).text())
         self.assertTrue(all(model_id.startswith("gemini-") for _label, model_id in ModelDialog.MODELS))
         window.pending_api_key = ""
         window._refresh_settings_options()
@@ -136,11 +137,22 @@ class GuiSmokeTests(unittest.TestCase):
             QTest.keyClick(window.settings_options, Qt.Key_Space)
         self.assertEqual("sk-teste", window.pending_api_key)
         self.assertTrue(window.get_api_key_button.isHidden())
+        window.settings_options.setCurrentRow(4)
+        with patch(
+            "biblia.main_window.ChoiceDialog.get_choice", return_value=(VOICE_OFF, True)
+        ):
+            QTest.keyClick(window.settings_options, Qt.Key_Space)
+        self.assertEqual(VOICE_OFF, window.pending_voice_name)
         window._show_location("JHN", 3, "16", focus_reading=False)
         instruction, text, title = window._prepare_ai_task("verse")
         self.assertIn("João 3:16", instruction)
         self.assertTrue(text.startswith("16."))
         self.assertIn("João 3:16", title)
+        window.voice_name = VOICE_OFF
+        with patch.object(window, "_announce_for") as announce:
+            window.speak_current_verse()
+        self.assertTrue(announce.called)
+        self.assertIn("16.", announce.call_args.args[1])
         window.close()
 
     def test_applications_dialog_and_buttons_accept_space_or_enter(self):

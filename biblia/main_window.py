@@ -76,6 +76,7 @@ SPEECH_RATE_OPTIONS = (
     ("Bem rápida", 0.6),
 )
 CONTRAST_OPTIONS = (("Desativado", False), ("Ativado", True))
+VOICE_OFF = "__off__"
 
 
 class TranslationList(QListWidget):
@@ -230,6 +231,8 @@ class MainWindow(QMainWindow):
         self.pending_font_size = self.font_size
         self.speech_rate = float(self.settings.value("accessibility/speech_rate", 0.0))
         self.pending_speech_rate = self.speech_rate
+        self.voice_name = str(self.settings.value("accessibility/voice_name", ""))
+        self.pending_voice_name = self.voice_name
         self.high_contrast = self.settings.value("accessibility/high_contrast", False, type=bool)
         self.pending_high_contrast = self.high_contrast
         self.tts = None
@@ -605,7 +608,8 @@ class MainWindow(QMainWindow):
             "INTELIGÊNCIA ARTIFICIAL\n"
             "Aplicações ou Shift+F10 abre uma lista acessível. Cima e baixo navegam; Espaço ou "
             "Enter executa. Em Livros há resumo do livro; em Capítulos, resumo do capítulo; e "
-            "em Versículos, explicação do número selecionado. O mesmo menu permite criar uma anotação.\n\n"
+            "em Versículos, explicação do número selecionado. Os resumos têm tamanho controlado para "
+            "concluir sem gerar um texto excessivo. O mesmo menu permite criar uma anotação.\n\n"
             "DEVOCIONAIS E ANOTAÇÕES\n"
             "Fazer devocional começa com a referência atual, permite carregar outra referência e salvar "
             "o resultado como arquivo de texto na pasta escolhida. As anotações ficam guardadas localmente "
@@ -616,7 +620,8 @@ class MainWindow(QMainWindow):
             "copiar referência e texto. Ctrl+Alt+M: marcador. Escape: voltar ou parar voz. F1: ajuda.\n\n"
             "CONTINUIDADE E PRIVACIDADE\n"
             "A posição, os marcadores e as anotações permanecem locais. Em Configurações, cima e baixo navegam "
-            "por chave, modelo, detalhamento, fonte, voz e contraste. Espaço ou Enter abre a opção; "
+            "por chave, modelo, detalhamento, fonte, voz SAPI, velocidade e contraste. A voz pode ser "
+            "desativada; nesse modo, Enter repete o texto pelo leitor de tela. Espaço ou Enter abre a opção; "
             "Tab leva aos botões e Espaço ou Enter os aciona. "
             "A chave do Google é gravada criptografada para a conta atual do Windows."
         )
@@ -1319,6 +1324,7 @@ class MainWindow(QMainWindow):
             (f"Escolher modelo — {model_name}", "model"),
             (f"Detalhamento das respostas de IA — {self._choice_label(DETAIL_OPTIONS, self.pending_ai_detail)}", "detail"),
             (f"Tamanho do texto — {self.pending_font_size} pontos", "font_size"),
+            (f"Voz SAPI — {self._voice_label(self.pending_voice_name)}", "voice"),
             (f"Velocidade da voz interna — {self._choice_label(SPEECH_RATE_OPTIONS, self.pending_speech_rate)}", "speech_rate"),
             (f"Alto contraste — {self._choice_label(CONTRAST_OPTIONS, self.pending_high_contrast)}", "high_contrast"),
         )
@@ -1349,6 +1355,10 @@ class MainWindow(QMainWindow):
             value, accepted = ChoiceDialog.get_choice(
                 self, "Tamanho do texto", FONT_SIZE_OPTIONS, self.pending_font_size
             )
+        elif option_id == "voice":
+            value, accepted = ChoiceDialog.get_choice(
+                self, "Escolher voz SAPI", self._voice_options(), self.pending_voice_name
+            )
         elif option_id == "speech_rate":
             value, accepted = ChoiceDialog.get_choice(
                 self, "Velocidade da voz interna", SPEECH_RATE_OPTIONS, self.pending_speech_rate
@@ -1364,6 +1374,8 @@ class MainWindow(QMainWindow):
                 self.pending_ai_detail = value
             elif option_id == "font_size":
                 self.pending_font_size = int(value)
+            elif option_id == "voice":
+                self.pending_voice_name = str(value)
             elif option_id == "speech_rate":
                 self.pending_speech_rate = float(value)
             else:
@@ -1374,6 +1386,53 @@ class MainWindow(QMainWindow):
     def _choice_label(options, current_value):
         """Encontra o rótulo legível associado a um valor de configuração."""
         return next((label for label, value in options if value == current_value), str(current_value))
+
+    def _ensure_tts(self):
+        """Inicializa uma única vez o mecanismo SAPI fornecido pelo Windows."""
+        if not self._tts_checked:
+            self._tts_checked = True
+            if QTextToSpeech:
+                self.tts = QTextToSpeech(self)
+        return self.tts
+
+    def _voice_options(self):
+        """Lista vozes SAPI instaladas e oferece desativação explícita."""
+        options = [
+            ("Desativada — Enter repete pelo leitor de tela", VOICE_OFF),
+            ("Voz padrão do Windows", ""),
+        ]
+        tts = self._ensure_tts()
+        if tts:
+            seen = set()
+            for voice in tts.availableVoices():
+                name = voice.name().strip()
+                if name and name not in seen:
+                    seen.add(name)
+                    options.append((name, name))
+        if self.pending_voice_name not in {value for _label, value in options}:
+            options.append((f"Voz salva, indisponível agora — {self.pending_voice_name}", self.pending_voice_name))
+        return tuple(options)
+
+    @staticmethod
+    def _voice_label(voice_name: str) -> str:
+        """Apresenta o estado da voz sem precisar inicializar o sintetizador."""
+        if voice_name == VOICE_OFF:
+            return "desativada; Enter repete pelo leitor de tela"
+        return voice_name or "padrão do Windows"
+
+    def _apply_selected_voice(self):
+        """Aplica a voz salva pelo nome estável exposto pelo SAPI."""
+        if self.voice_name == VOICE_OFF:
+            if self.tts:
+                self.tts.stop()
+            return
+        tts = self._ensure_tts()
+        if not tts or not self.voice_name:
+            return
+        for voice in tts.availableVoices():
+            if voice.name() == self.voice_name:
+                tts.setVoice(voice)
+                break
 
     def open_google_api_keys_page(self):
         """Abre a página oficial do Google AI Studio para criar ou copiar uma chave."""
@@ -1396,6 +1455,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("gemini/model", self.pending_ai_model)
         self.settings.setValue("gemini/detail", self.pending_ai_detail)
         self.settings.setValue("accessibility/font_size", self.pending_font_size)
+        self.settings.setValue("accessibility/voice_name", self.pending_voice_name)
         self.settings.setValue("accessibility/speech_rate", self.pending_speech_rate)
         self.settings.setValue("accessibility/high_contrast", self.pending_high_contrast)
         self.settings.sync()
@@ -1403,6 +1463,7 @@ class MainWindow(QMainWindow):
         self.ai_model = self.pending_ai_model
         self.ai_detail = self.pending_ai_detail
         self.font_size = self.pending_font_size
+        self.voice_name = self.pending_voice_name
         self.speech_rate = self.pending_speech_rate
         self.high_contrast = self.pending_high_contrast
         self._apply_accessibility_settings()
@@ -1424,6 +1485,7 @@ class MainWindow(QMainWindow):
         )
         if self.tts:
             self.tts.setRate(self.speech_rate)
+        self._apply_selected_voice()
 
     def generate_ai_for_scope(self, task: str):
         """Prepara o escopo do menu atual e inicia a requisição sem bloquear a interface."""
@@ -1467,13 +1529,18 @@ class MainWindow(QMainWindow):
         book_code = book_item.data(Qt.UserRole)
         book_name = book_item.text()
         if task == "book":
+            word_limit = {"curto": 300, "médio": 550, "detalhado": 850}.get(
+                self.ai_detail, 550
+            )
             rows = self.db.book(self.current_translation_id(), book_code)
             text = "\n".join(
                 f"Capítulo {row['chapter']}, {row['verse']}. {row['text']}" for row in rows
             )
             instruction = (
                 f"Resuma o livro de {book_name}, destacando sua progressão e temas "
-                "principais sem substituir a leitura do texto completo."
+                "principais sem substituir a leitura do texto completo. Não faça um comentário "
+                f"versículo por versículo. Use no máximo {word_limit} palavras, organize em poucos "
+                "parágrafos e termine obrigatoriamente com uma conclusão completa."
             )
             return instruction, text, f"Resumo de {book_name}"
         if task == "chapter":
@@ -1481,13 +1548,17 @@ class MainWindow(QMainWindow):
                 self._warn("Capítulo necessário", "Selecione um capítulo antes de usar a IA.")
                 return None
             chapter = int(chapter_item.data(Qt.UserRole))
+            word_limit = {"curto": 180, "médio": 320, "detalhado": 500}.get(
+                self.ai_detail, 320
+            )
             rows = self.db.chapter(
                 self.current_translation_id(), book_code, chapter
             )
             text = "\n".join(f"{row['verse']}. {row['text']}" for row in rows)
             instruction = (
                 f"Resuma {book_name}, capítulo {chapter}, apresentando "
-                "a sequência do texto e suas ideias centrais."
+                f"a sequência do texto e suas ideias centrais em no máximo {word_limit} palavras. "
+                "Termine obrigatoriamente com uma conclusão completa."
             )
             return instruction, text, f"Resumo de {book_name}, capítulo {chapter}"
         item = self.verse_list.currentItem()
@@ -1526,24 +1597,26 @@ class MainWindow(QMainWindow):
 
     # Voz e utilidades --------------------------------------------------
     def speak_current_verse(self):
-        """Usa a voz do sistema sem pronunciar a palavra 'versículo'."""
+        """Usa a voz SAPI ou repete o item para o leitor de tela quando desligada."""
         item = self.verse_list.currentItem()
         if not item or item.data(Qt.UserRole) is None:
             return
-        if not self._tts_checked:
-            self._tts_checked = True
-            if QTextToSpeech:
-                self.tts = QTextToSpeech(self)
-        if not self.tts:
-            self.statusBar().showMessage("A voz interna não está disponível; use o leitor de tela.")
+        spoken_text = (
+            str(item.data(Qt.UserRole))
+            if item.data(Qt.UserRole + 2) == "ending"
+            else f"{item.data(Qt.UserRole + 1)}. {item.data(Qt.UserRole)}"
+        )
+        if self.voice_name == VOICE_OFF:
+            self._announce_for(self.verse_list, spoken_text)
             return
-        self.tts.setRate(self.speech_rate)
-        self.tts.stop()
-        if item.data(Qt.UserRole + 2) == "ending":
-            self.tts.say(item.data(Qt.UserRole))
-        else:
-            # Somente o número, como aparece na seção Versículos.
-            self.tts.say(f"{item.data(Qt.UserRole + 1)}. {item.data(Qt.UserRole)}")
+        tts = self._ensure_tts()
+        if not tts:
+            self._announce_for(self.verse_list, spoken_text)
+            return
+        self._apply_selected_voice()
+        tts.setRate(self.speech_rate)
+        tts.stop()
+        tts.say(spoken_text)
 
     def stop_speech(self):
         """Interrompe imediatamente a síntese de voz, quando ativa."""

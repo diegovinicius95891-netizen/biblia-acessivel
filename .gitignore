@@ -1,6 +1,7 @@
 # Dados pessoais: notas e marcadores nunca devem ser enviados ao repositório.
 data/user_data.db
 data/user_data.db-*
+data/user_data.db.*
 
 # Arquivos temporários e caches do Python/Qt.
 __pycache__/
@@ -22,4 +23,4 @@ dist/
 Thumbs.db
 *.tmp
 *.log
-
+BibliaAcessivel-Windows.zip

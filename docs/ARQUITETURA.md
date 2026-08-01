@@ -33,13 +33,14 @@ Mais opções contém Traduções, referência direta, pesquisa, devocional, ano
 
 ## Fluxo da IA opcional
 
-1. A pessoa escolhe chave, modelo, detalhamento, fonte, voz ou contraste na lista de Configurações. Espaço/Enter abre um diálogo de escolhas; sem chave, um botão abre o Google AI Studio.
+1. A pessoa escolhe chave, modelo, detalhamento, fonte, voz SAPI, velocidade ou contraste na lista de Configurações. A voz pode ser uma das instaladas no Windows ou ficar desativada; nesse caso, Enter gera um novo anúncio acessível do versículo. Espaço/Enter abre um diálogo de escolhas; sem chave, um botão abre o Google AI Studio.
 2. Salvar configurações protege a chave com DPAPI e grava somente o bloco criptografado.
 3. Aplicações no livro, capítulo ou leitura determina automaticamente a tarefa de IA.
-4. `MainWindow` monta somente o livro, capítulo ou versículo necessário.
+4. `MainWindow` monta somente o livro, capítulo ou versículo necessário. Livros e capítulos recebem limite explícito de palavras e ordem para concluir a resposta.
 5. Uma thread de segundo plano chama `create_bible_analysis`, sem bloquear teclado ou leitor de tela.
 6. A requisição usa `generateContent` com a chave no cabeçalho `x-goog-api-key`.
-7. O resultado retorna por sinais do Qt, perde marcas de Markdown e abre em diálogo de parágrafos navegáveis.
+7. A margem de `maxOutputTokens` é maior que o tamanho textual solicitado. Se a API ainda responder com `MAX_TOKENS`, o cliente informa o corte em vez de exibir o trecho como resposta completa.
+8. O resultado retorna por sinais do Qt, perde marcas de Markdown e abre em diálogo de parágrafos navegáveis.
 
 O popup da tecla Aplicações usa `ApplicationsDialog`, não um menu visual dependente da plataforma. O título identifica “Menu do livro”, “Menu do capítulo” ou “Menu do versículo”; a ação de IA fica na primeira linha e recebe foco. Todas as ações aceitam Espaço ou Enter.
 
@@ -47,7 +48,7 @@ O arquivo `data/user_data.db` é ignorado pelo Git para impedir a publicação d
 
 ## Anotações e devocional
 
-O menu do versículo oferece “Criar anotação”. `NoteEditorDialog` coleta título e corpo e `UserDataDatabase` grava referência, texto bíblico e horário local. A tela Anotações cria itens de dia seguidos pelos títulos correspondentes. Ativar um dia lê o conjunto daquele dia; ativar um título lê somente a nota.
+O menu do versículo oferece “Criar anotação”. `NoteEditorDialog` coleta título e corpo e `UserDataDatabase` grava referência, texto bíblico e horário local. Na inicialização, `UserDataDatabase` compara as colunas existentes; o formato antigo (`note` e `updated_at`) é copiado para uma tabela nova, preservando o conteúdo. Antes disso, o banco recebe uma cópia `.pre_notes_migration.bak`. A tela Anotações cria itens de dia seguidos pelos títulos correspondentes. Ativar um dia lê o conjunto daquele dia; ativar um título lê somente a nota.
 
 A tela de devocional recebe a referência selecionada, mas também resolve outra referência digitada sem mover a leitura principal. Título, texto bíblico e reflexão são exportados como `.txt` UTF-8 por `QFileDialog`, permitindo escolher qualquer pasta gravável.
 

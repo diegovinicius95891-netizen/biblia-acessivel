@@ -1,6 +1,7 @@
 """Testes da persistência privada de marcadores e anotações."""
 
 from pathlib import Path
+import sqlite3
 from tempfile import TemporaryDirectory
 import unittest
 
@@ -33,6 +34,36 @@ class UserDataTests(unittest.TestCase):
             self.assertEqual("João", notes[0]["book_name"])
             self.assertEqual("Minha reflexão.", notes[0]["body"])
             self.assertRegex(notes[0]["created_at"], r"^\d{4}-\d{2}-\d{2}T")
+            database.close()
+
+    def test_legacy_notes_are_migrated_and_remain_readable(self):
+        """Preserva notas criadas pelo formato antigo que causava a tela vazia."""
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "user.db"
+            connection = sqlite3.connect(path)
+            connection.execute(
+                """
+                CREATE TABLE notes (
+                  translation_id TEXT NOT NULL, book_code TEXT NOT NULL,
+                  chapter INTEGER NOT NULL, verse TEXT NOT NULL, note TEXT NOT NULL,
+                  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (translation_id, book_code, chapter, verse)
+                )
+                """
+            )
+            connection.execute(
+                "INSERT INTO notes(translation_id,book_code,chapter,verse,note) VALUES (?,?,?,?,?)",
+                ("bpm", "JHN", 3, "16", "Nota antiga preservada."),
+            )
+            connection.commit()
+            connection.close()
+
+            database = UserDataDatabase(path)
+            notes = database.notes()
+            self.assertEqual(1, len(notes))
+            self.assertEqual("Nota antiga preservada.", notes[0]["body"])
+            self.assertEqual("Anotação em JHN 3:16", notes[0]["title"])
+            self.assertTrue(path.with_name("user.db.pre_notes_migration.bak").exists())
             database.close()
 
 

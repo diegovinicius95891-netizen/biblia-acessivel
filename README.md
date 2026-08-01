@@ -46,9 +46,11 @@ A tela **Licenças e leis** apresenta um único texto simples, somente leitura, 
 
 ## Configurações e IA opcional
 
-A tela Configurações, aberta por Mais opções, usa uma única lista navegável com cima/baixo. Ela contém chave da API, modelo, detalhamento das respostas, tamanho do texto, velocidade da voz e alto contraste. Espaço ou Enter abre qualquer opção em um diálogo também navegável. Quando nenhuma chave foi informada, o botão “Obter chave da API do Google” abre a página oficial do Google AI Studio. Tab leva aos botões disponíveis; Espaço ou Enter os aciona.
+A tela Configurações, aberta por Mais opções, usa uma única lista navegável com cima/baixo. Ela contém chave da API, modelo, detalhamento das respostas, tamanho do texto, escolha da voz SAPI, velocidade da voz e alto contraste. A voz pode ser trocada entre as opções instaladas no Windows ou desativada; nesse modo, Enter repete o versículo pelo leitor de tela. Espaço ou Enter abre qualquer opção em um diálogo também navegável. Quando nenhuma chave foi informada, o botão “Obter chave da API do Google” abre a página oficial do Google AI Studio. Tab leva aos botões disponíveis; Espaço ou Enter os aciona.
 
-A chave do Gemini é criptografada pela DPAPI para a conta atual do Windows e recuperada nas próximas aberturas; nunca é publicada no GitHub. A IA usa o endpoint `generateContent` da API Google Gemini, pode consumir a cota ou o saldo da conta e exige internet. Aplicações ou Shift+F10 oferece resumo no livro selecionado, resumo no capítulo selecionado e explicação no versículo selecionado. O resultado é convertido para texto simples, sem asteriscos ou outras marcas de Markdown, e abre em diálogo de parágrafos navegáveis.
+A chave do Gemini é criptografada pela DPAPI para a conta atual do Windows e recuperada nas próximas aberturas; nunca é publicada no GitHub. A IA usa o endpoint `generateContent` da API Google Gemini, pode consumir a cota ou o saldo da conta e exige internet. Aplicações ou Shift+F10 oferece resumo no livro selecionado, resumo no capítulo selecionado e explicação no versículo selecionado. Resumos têm limite explícito de palavras e uma margem maior de tokens para terminarem a conclusão; respostas que ainda terminarem em `MAX_TOKENS` não são apresentadas silenciosamente como completas. O resultado é convertido para texto simples, sem asteriscos ou outras marcas de Markdown, e abre em diálogo de parágrafos navegáveis.
+
+Ao abrir uma versão nova, bancos de notas do formato antigo são migrados automaticamente. Antes da migração, o aplicativo cria `data/user_data.db.pre_notes_migration.bak` como cópia de segurança local.
 
 Consulte [docs/ARQUITETURA.md](docs/ARQUITETURA.md) para a explicação de todos os arquivos e fluxos.
 

@@ -1,0 +1,43 @@
+BÍBLIA ACESSÍVEL PARA WINDOWS
+
+COMO ABRIR
+
+1. Extraia todo o conteúdo do arquivo ZIP para uma pasta.
+2. Mantenha a pasta data ao lado de BibliaAcessivel.exe.
+3. Abra BibliaAcessivel.exe. Não é necessário instalar Python.
+
+NAVEGAÇÃO PRINCIPAL
+
+Tab e Shift+Tab percorrem Livros, Capítulos, Versículos, Área de leitura e Mais opções.
+Setas cima e baixo navegam dentro da seção atual.
+Nos Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo Testamento.
+Espaço ou Enter ativa o item atual. A tecla Aplicações ou Shift+F10 abre as ações do item.
+
+NOTAS
+
+No menu Aplicações de um versículo, escolha Criar anotação. As notas ficam em Mais opções, Anotações por dia.
+O aplicativo guarda notas e marcadores somente no computador, em data\user_data.db.
+Se encontrar um banco antigo, ele migra as notas e cria uma cópia de segurança antes da alteração.
+
+VOZ
+
+Em Mais opções, Configurações, escolha Voz SAPI. É possível selecionar uma voz instalada no Windows ou desativar a voz interna.
+Quando a voz interna estiver desativada, Enter no versículo pede ao leitor de tela que anuncie o texto novamente.
+
+INTELIGÊNCIA ARTIFICIAL
+
+Os recursos de IA são opcionais, exigem internet e uma chave própria do Google Gemini.
+Em Configurações, informe a chave, escolha o modelo e salve. A chave fica criptografada para a conta atual do Windows.
+O programa limita o tamanho dos resumos para evitar respostas enormes ou cortadas.
+
+PRIVACIDADE E LICENÇAS
+
+Nenhuma anotação, marcador ou chave de API acompanha este pacote.
+As fontes dos textos, licenças e justificativas legais estão no aplicativo e em THIRD_PARTY_NOTICES.md.
+
+ARQUIVOS NECESSÁRIOS
+
+BibliaAcessivel.exe — aplicativo.
+data\biblia.db — textos bíblicos e metadados.
+LEIA-ME.txt — estas instruções.
+THIRD_PARTY_NOTICES.md — atribuições e licenças de terceiros.

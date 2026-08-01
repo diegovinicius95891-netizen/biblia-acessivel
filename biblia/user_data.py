@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +13,7 @@ class UserDataDatabase:
 
     def __init__(self, path: Path):
         """Cria o arquivo e as tabelas se esta for a primeira execução."""
+        self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(path)
         self.connection.row_factory = sqlite3.Row
@@ -25,6 +27,11 @@ class UserDataDatabase:
             )
             """
         )
+        self._ensure_notes_schema()
+        self.connection.commit()
+
+    def _create_notes_table(self):
+        """Cria o formato atual, capaz de armazenar várias notas por referência."""
         self.connection.execute(
             """
             CREATE TABLE IF NOT EXISTS notes (
@@ -37,7 +44,67 @@ class UserDataDatabase:
             )
             """
         )
-        self.connection.commit()
+
+    def _ensure_notes_schema(self):
+        """Cria ou migra notas antigas sem perder o texto já escrito."""
+        exists = self.connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='notes'"
+        ).fetchone()
+        if not exists:
+            self._create_notes_table()
+            return
+        columns = {
+            row["name"] for row in self.connection.execute("PRAGMA table_info(notes)")
+        }
+        required = {
+            "id", "translation_id", "book_code", "book_name", "chapter",
+            "verse", "verse_text", "title", "body", "created_at",
+        }
+        if required.issubset(columns):
+            return
+
+        backup = self.path.with_name(f"{self.path.name}.pre_notes_migration.bak")
+        if self.path.exists() and not backup.exists():
+            shutil.copy2(self.path, backup)
+
+        legacy_name = "notes_legacy"
+        suffix = 1
+        while self.connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (legacy_name,)
+        ).fetchone():
+            legacy_name = f"notes_legacy_{suffix}"
+            suffix += 1
+
+        self.connection.execute(f'ALTER TABLE notes RENAME TO "{legacy_name}"')
+        self._create_notes_table()
+        legacy_rows = self.connection.execute(f'SELECT * FROM "{legacy_name}"').fetchall()
+        for row in legacy_rows:
+            data = dict(row)
+            book_code = str(data.get("book_code", ""))
+            chapter = int(data.get("chapter", 1))
+            verse = str(data.get("verse", "1"))
+            book_name = str(data.get("book_name") or book_code)
+            title = str(data.get("title") or f"Anotação em {book_name} {chapter}:{verse}")
+            body = str(data.get("body") or data.get("note") or "")
+            created_at = str(
+                data.get("created_at")
+                or data.get("updated_at")
+                or datetime.now().astimezone().isoformat(timespec="seconds")
+            )
+            self.connection.execute(
+                """
+                INSERT INTO notes(
+                  translation_id, book_code, book_name, chapter, verse,
+                  verse_text, title, body, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    str(data.get("translation_id", "bpm")), book_code, book_name,
+                    chapter, verse, str(data.get("verse_text") or ""), title, body,
+                    created_at.replace(" ", "T", 1),
+                ),
+            )
+        self.connection.execute(f'DROP TABLE "{legacy_name}"')
 
     def is_bookmarked(self, translation_id: str, book_code: str, chapter: int, verse: str) -> bool:
         """Informa se a referência está marcada na tradução indicada."""
