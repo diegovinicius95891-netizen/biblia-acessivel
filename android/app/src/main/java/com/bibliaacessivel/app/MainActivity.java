@@ -122,7 +122,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         backAction = null;
         LinearLayout root = rootLayout();
         root.addView(heading("Bíblia Acessível"));
-        root.addView(paragraph(currentReference() + ". Tab ou deslize navega; ative para abrir."));
+        root.addView(paragraph(currentReference() +
+                ". Com o TalkBack, deslize para a direita ou para a esquerda para conhecer as opções e toque duas vezes para abrir."));
         root.addView(actionButton("Livros", "Abrir seção Livros", this::showBooks));
         root.addView(actionButton("Capítulos", "Abrir capítulos de " + selectedBook.name,
                 this::showChapters));
@@ -226,6 +227,16 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             return true;
         });
         root.addView(list, fill());
+        int maximum = bible.chapterCount(translationId, selectedBook.code);
+        if (selectedChapter < maximum) {
+            root.addView(actionButton("Próximo capítulo",
+                    "Abrir o capítulo " + (selectedChapter + 1) + " de " + selectedBook.name,
+                    this::nextChapterFromVerses));
+        } else {
+            root.addView(actionButton("Fim do livro",
+                    "Fim do livro. Não há capítulos seguintes",
+                    () -> toast("Fim do livro. Não há capítulos seguintes.")));
+        }
         root.addView(actionButton("Aplicações do versículo atual",
                 "Abrir ações de " + currentReference(), this::showVerseActions));
         root.addView(paragraph("Ative para ouvir ou repetir. Toque e segure para Aplicações."));
@@ -427,6 +438,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout root = screen("Configurações", this::showMoreOptions);
         String[] options = {
                 "Colar ou alterar chave do Google Gemini",
+                "Obter chave da API do Google",
                 "Escolher modelo de inteligência artificial",
                 "Escolher voz do Android ou desativar",
                 "Velocidade da voz",
@@ -437,9 +449,10 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         list.setOnItemClickListener((parent, view, position, id) -> {
             switch (position) {
                 case 0: editApiKey(); break;
-                case 1: chooseModel(); break;
-                case 2: chooseVoice(); break;
-                case 3: chooseSpeechRate(); break;
+                case 1: openGoogleApiKeyPage(); break;
+                case 2: chooseModel(); break;
+                case 3: chooseVoice(); break;
+                case 4: chooseSpeechRate(); break;
                 default: startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
             }
         });
@@ -456,9 +469,10 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Explica comandos essenciais, gestos e privacidade. */
     private void showHelp() {
-        showTextScreen("Ajuda", "NAVEGAÇÃO\n\nNa tela principal, ative Livros, Capítulos, " +
-                "Versículos, Área de leitura ou Mais opções. O botão Voltar do Android retorna à tela anterior. " +
-                "Em listas, deslize com um dedo usando TalkBack e toque duas vezes para ativar. Toque e segure " +
+        showTextScreen("Ajuda", "NAVEGAÇÃO\n\nNa tela principal, use Livros, Capítulos, " +
+                "Versículos, Área de leitura ou Mais opções. Com o TalkBack ligado, deslize para a direita " +
+                "para ouvir a próxima opção ou para a esquerda para ouvir a opção anterior. Toque duas vezes " +
+                "para abrir. O gesto Voltar do Android retorna à tela anterior. Toque e segure " +
                 "livro, capítulo ou versículo para abrir Aplicações.\n\nVOZ\n\nAtivar um versículo usa a " +
                 "voz escolhida. Se a voz estiver desligada, o TalkBack anuncia novamente o texto.\n\n" +
                 "PRIVACIDADE\n\nNotas e marcadores ficam somente no aparelho. A chave Gemini é protegida " +
@@ -558,7 +572,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         if (apiKey.isEmpty()) {
             new AlertDialog.Builder(this).setTitle("Chave necessária")
                     .setMessage("Abra Mais opções, Configurações e informe sua chave do Google Gemini.")
-                    .setPositiveButton("OK", null).show();
+                    .setPositiveButton("Colar chave", (dialog, which) -> editApiKey())
+                    .setNeutralButton("Obter chave", (dialog, which) -> openGoogleApiKeyPage())
+                    .setNegativeButton("Cancelar", null).show();
             return;
         }
         View source = getWindow().getDecorView();
@@ -591,6 +607,17 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                         toast("Não foi possível proteger a chave.");
                     }
                 }).setNegativeButton("Cancelar", null).show();
+    }
+
+    /** Abre a página oficial do Google AI Studio para criar ou copiar uma chave Gemini. */
+    private void openGoogleApiKeyPage() {
+        Intent browser = new Intent(Intent.ACTION_VIEW,
+                Uri.parse("https://aistudio.google.com/app/apikey"));
+        try {
+            startActivity(browser);
+        } catch (Exception error) {
+            toast("Não foi possível abrir o navegador neste aparelho.");
+        }
     }
 
     /** Escolhe um dos modelos já suportados pelo cliente. */
@@ -721,6 +748,19 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         selectVerse("1");
         savePosition();
         showReading();
+    }
+
+    /** Avança a partir do fim da lista e abre os versículos do novo capítulo. */
+    private void nextChapterFromVerses() {
+        int maximum = bible.chapterCount(translationId, selectedBook.code);
+        if (selectedChapter >= maximum) {
+            toast("Fim do livro. Não há capítulos seguintes.");
+            return;
+        }
+        selectedChapter++;
+        selectVerse("1");
+        savePosition();
+        showVerses();
     }
 
     /** Seleciona pelo início do número para também aceitar intervalos. */
@@ -859,7 +899,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         return view;
     }
 
-    /** Cria botão que responde igualmente a toque, Enter e TalkBack. */
+    /** Cria botão nativo que responde a toque e à ativação do TalkBack. */
     private Button actionButton(String text, String description, Runnable action) {
         Button button = new Button(this);
         button.setText(text);

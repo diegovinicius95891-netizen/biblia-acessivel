@@ -1,11 +1,13 @@
 # Bíblia Acessível para Android
 
-Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou superior. A interface usa controles padrão do sistema para oferecer navegação previsível com TalkBack, toque e teclado externo.
+Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou superior. A interface usa controles padrão do sistema para oferecer navegação previsível com TalkBack e toque.
 
 ## Recursos incluídos
 
 - Bíblia offline com as quatro traduções do aplicativo desktop.
 - Tela principal com Livros, Capítulos, Versículos, Área de leitura e Mais opções.
+- Com o TalkBack, deslizar para a direita ou esquerda percorre as opções e o toque duplo abre a opção anunciada.
+- Ao fim dos versículos, há uma opção para abrir o próximo capítulo; no último capítulo, o fim do livro é anunciado.
 - Antigo e Novo Testamento, continuidade da última posição e pesquisa offline.
 - Aplicações do livro, capítulo e versículo, mantendo a ação de IA em primeiro lugar.
 - Notas locais organizadas por dia e título e marcadores de versículos.
@@ -13,6 +15,7 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 - Vozes instaladas no Android, ajuste de velocidade e opção de voz desativada.
 - Quando a voz está desativada, ativar o versículo solicita um novo anúncio ao TalkBack.
 - Chave própria do Google Gemini protegida com Android Keystore.
+- A opção Obter chave da API do Google abre diretamente o Google AI Studio.
 - Leis, licenças, justificativa de uso e ajuda dentro do aplicativo.
 
 O backup automático do aplicativo está desativado. Notas, marcadores e chave de API permanecem no armazenamento privado do aplicativo e não fazem parte do APK.
