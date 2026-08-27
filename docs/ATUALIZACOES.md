@@ -1,5 +1,7 @@
 # Publicação e teste de atualizações
 
+Este documento descreve o canal Windows. Tags Android e assets APK são ignorados pelo Windows. Consulte também [ATUALIZACOES_ANDROID.md](ATUALIZACOES_ANDROID.md).
+
 ## Padrão obrigatório
 
 A versão está em um único lugar: `biblia/version.py`. Para publicar `2.1.0`, altere `APP_VERSION` para `2.1.0`, execute os testes, faça commit e crie a tag `v2.1.0`. Use sempre versionamento semântico `MAJOR.MINOR.PATCH`.

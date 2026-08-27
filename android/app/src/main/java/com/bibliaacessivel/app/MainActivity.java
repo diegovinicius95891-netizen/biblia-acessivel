@@ -56,6 +56,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private BibleRepository bible;
     private UserDatabase userData;
     private SecureStore secureStore;
+    private UpdateManager updateManager;
     private SharedPreferences preferences;
     private TextToSpeech tts;
     private boolean ttsReady;
@@ -65,19 +66,29 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private int selectedChapter;
     private Models.Verse selectedVerse;
     private String pendingDevotional;
+    private EditText worshipInput;
+    private TextView worshipStatus;
+    private ListView worshipList;
+    private ArrayAdapter<String> worshipAdapter;
+    private Models.Book worshipBook;
+    private int worshipChapter;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         preferences = getSharedPreferences("settings", MODE_PRIVATE);
         userData = new UserDatabase(this);
         secureStore = new SecureStore(this);
+        updateManager = new UpdateManager(this, userData, preferences);
         tts = new TextToSpeech(this, this);
         showLoading();
         new Thread(() -> {
             try {
                 bible = new BibleRepository(this);
                 restorePosition();
-                runOnUiThread(this::showMainMenu);
+                runOnUiThread(() -> {
+                    showMainMenu();
+                    updateManager.onAppReady();
+                });
             } catch (Exception error) {
                 runOnUiThread(() -> showFatalError(error));
             }
@@ -272,7 +283,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout root = screen("Mais opções", this::showMainMenu);
         String[] options = {
                 "Traduções", "Ir para uma referência", "Pesquisar na Bíblia", "Fazer devocional",
-                "Anotações por dia", "Configurações", "Licenças, leis e justificativa", "Ajuda"
+                "Anotações por dia", "Quiz bíblico", "Modo culto", "Atualizações",
+                "Configurações", "Licenças, leis e justificativa", "Ajuda"
         };
         ListView list = listView(Arrays.asList(options));
         list.setContentDescription("Mais opções");
@@ -283,8 +295,11 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 case 2: showSearch(); break;
                 case 3: showDevotional(); break;
                 case 4: showNotes(); break;
-                case 5: showSettings(); break;
-                case 6: showLegal(); break;
+                case 5: showQuiz(); break;
+                case 6: showWorshipMode(); break;
+                case 7: showUpdates(); break;
+                case 8: showSettings(); break;
+                case 9: showLegal(); break;
                 default: showHelp();
             }
         });
@@ -442,6 +457,10 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "Escolher modelo de inteligência artificial",
                 "Escolher voz do Android ou desativar",
                 "Velocidade da voz",
+                "Alternar atualizações automáticas. " +
+                        (preferences.getBoolean("updates_automatic", true) ? "Ativadas" : "Desativadas"),
+                "Alternar notificações de atualização. " +
+                        (preferences.getBoolean("updates_notify", true) ? "Ativadas" : "Desativadas"),
                 "Abrir configurações de acessibilidade do Android"
         };
         ListView list = listView(Arrays.asList(options));
@@ -453,6 +472,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 case 2: chooseModel(); break;
                 case 3: chooseVoice(); break;
                 case 4: chooseSpeechRate(); break;
+                case 5: updateManager.toggleAutomatic(); showSettings(); break;
+                case 6: updateManager.toggleNotifications(); showSettings(); break;
                 default: startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
             }
         });
@@ -475,8 +496,184 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "para abrir. O gesto Voltar do Android retorna à tela anterior. Toque e segure " +
                 "livro, capítulo ou versículo para abrir Aplicações.\n\nVOZ\n\nAtivar um versículo usa a " +
                 "voz escolhida. Se a voz estiver desligada, o TalkBack anuncia novamente o texto.\n\n" +
+                "QUIZ E MODO CULTO\n\nO quiz possui 36 perguntas por dificuldade e categoria. No Modo " +
+                "culto, digite uma passagem e confirme: o texto aparece imediatamente, sem precisar tocar " +
+                "em Ler versículo.\n\nATUALIZAÇÕES\n\nA versão Android consulta somente releases android-v " +
+                "e baixa somente BibliaAcessivel-Android.apk com seu SHA-256. O Windows usa outro pacote. " +
+                "A consulta automática pode ser desligada nas Configurações.\n\n" +
                 "PRIVACIDADE\n\nNotas e marcadores ficam somente no aparelho. A chave Gemini é protegida " +
                 "pelo Android Keystore. A IA é opcional e exige internet.", this::showMoreOptions);
+    }
+
+    /** Escolhe filtros do quiz em diálogos nativos e abre a lista resultante. */
+    private void showQuiz() {
+        new AlertDialog.Builder(this).setTitle("Dificuldade do quiz")
+                .setItems(QuizCatalog.DIFFICULTIES, (firstDialog, difficultyIndex) ->
+                        new AlertDialog.Builder(this).setTitle("Categoria do quiz")
+                                .setItems(QuizCatalog.CATEGORIES, (secondDialog, categoryIndex) ->
+                                        showQuizQuestions(
+                                                QuizCatalog.DIFFICULTIES[difficultyIndex],
+                                                QuizCatalog.CATEGORIES[categoryIndex]))
+                                .setNegativeButton("Cancelar", null).show())
+                .setNegativeButton("Cancelar", null).show();
+    }
+
+    /** Lista as perguntas filtradas e mantém o foco na primeira linha. */
+    private void showQuizQuestions(String difficulty, String category) {
+        LinearLayout root = screen("Quiz bíblico", this::showMoreOptions);
+        List<QuizCatalog.Question> questions = QuizCatalog.filtered(difficulty, category);
+        root.addView(paragraph(questions.size() + " perguntas. Dificuldade: " + difficulty +
+                ". Categoria: " + category + ". Ative uma pergunta para responder."));
+        ListView list = listView(questions);
+        list.setContentDescription("Perguntas do quiz bíblico");
+        list.setOnItemClickListener((parent, view, position, id) ->
+                answerQuiz(questions.get(position), difficulty, category));
+        root.addView(list, fill());
+        root.addView(actionButton("Trocar filtros", "Escolher outra dificuldade ou categoria", this::showQuiz));
+        setContentView(root);
+        list.requestFocus();
+    }
+
+    /** Informa imediatamente acerto ou erro, explicação e referência bíblica. */
+    private void answerQuiz(QuizCatalog.Question question, String difficulty, String category) {
+        new AlertDialog.Builder(this).setTitle(question.text)
+                .setItems(question.answers, (dialog, chosen) -> {
+                    boolean correct = chosen == question.correct;
+                    String result = (correct ? "Resposta correta. " :
+                            "Resposta incorreta. A resposta correta é " +
+                                    question.answers[question.correct] + ". ") +
+                            question.explanation + " Referência: " + question.reference + ".";
+                    new AlertDialog.Builder(this).setTitle("Resultado do quiz")
+                            .setMessage(result).setPositiveButton("Continuar",
+                                    (resultDialog, which) -> showQuizQuestions(difficulty, category))
+                            .setNegativeButton("Fechar", null).show();
+                }).setNegativeButton("Cancelar", null).show();
+    }
+
+    /** Cria a busca rápida do culto com o campo focado e o resultado na mesma tela. */
+    private void showWorshipMode() {
+        LinearLayout root = screen("Modo culto", this::showMoreOptions);
+        root.addView(paragraph("Digite uma passagem e confirme. O texto aparecerá imediatamente."));
+        worshipInput = editText("Digite uma passagem, exemplo Habacuque 2:4", false);
+        worshipInput.setSingleLine(true);
+        worshipInput.setImeOptions(EditorInfo.IME_ACTION_GO);
+        root.addView(worshipInput);
+        Button open = actionButton("Mostrar passagem", "Mostrar imediatamente a passagem digitada",
+                this::openWorshipPassage);
+        root.addView(open);
+        worshipStatus = paragraph("Nenhuma passagem carregada.");
+        worshipStatus.setContentDescription("Estado da passagem no Modo culto");
+        root.addView(worshipStatus);
+        worshipAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
+        worshipList = new ListView(this);
+        worshipList.setAdapter(worshipAdapter);
+        worshipList.setContentDescription("Texto da passagem exibida no Modo culto");
+        worshipList.setOnItemClickListener((parent, view, position, id) ->
+                speakOrAnnounce(view, worshipAdapter.getItem(position)));
+        root.addView(worshipList, fill());
+        LinearLayout navigation = horizontalRow();
+        navigation.addView(actionButton("Capítulo anterior", "Mostrar capítulo anterior no Modo culto",
+                () -> changeWorshipChapter(-1)), weighted());
+        navigation.addView(actionButton("Próximo capítulo", "Mostrar próximo capítulo no Modo culto",
+                () -> changeWorshipChapter(1)), weighted());
+        root.addView(navigation);
+        root.addView(actionButton("Copiar passagem", "Copiar toda a passagem exibida",
+                this::copyWorshipPassage));
+        root.addView(actionButton("Digitar outra passagem", "Voltar ao campo de referência", () -> {
+            worshipInput.requestFocus();
+            worshipInput.selectAll();
+            worshipInput.announceForAccessibility("Digite outra passagem e confirme.");
+        }));
+        worshipInput.setOnEditorActionListener((view, actionId, event) -> {
+            openWorshipPassage();
+            return true;
+        });
+        setContentView(root);
+        worshipInput.requestFocus();
+    }
+
+    /** Resolve a referência e move o foco direto para o texto, sem menu intermediário. */
+    private void openWorshipPassage() {
+        try {
+            BibleReference reference = BibleReference.parse(worshipInput.getText().toString());
+            Models.Book book = bible.findBook(translationId, reference.book);
+            if (book == null || reference.chapter > bible.chapterCount(translationId, book.code)) {
+                throw new IllegalArgumentException("Passagem não encontrada.");
+            }
+            List<Models.Verse> verses = bible.passage(
+                    translationId, book.code, reference.chapter, reference.startVerse, reference.endVerse);
+            if (verses.isEmpty()) throw new IllegalArgumentException("Passagem não encontrada.");
+            worshipBook = book;
+            worshipChapter = reference.chapter;
+            selectedBook = book;
+            selectedChapter = reference.chapter;
+            selectedVerse = verses.get(0);
+            savePosition();
+            worshipAdapter.clear();
+            for (Models.Verse verse : verses) worshipAdapter.add(verse.toString());
+            worshipAdapter.notifyDataSetChanged();
+            String normalized = book.name + " " + reference.chapter +
+                    (reference.startVerse == null ? "" : ":" + reference.startVerse +
+                            (reference.endVerse == null ? "" : "-" + reference.endVerse));
+            worshipStatus.setText(getResources().getQuantityString(
+                    R.plurals.worship_loaded, verses.size(), normalized, verses.size()));
+            worshipList.setContentDescription(normalized + ", texto da passagem já exibido");
+            worshipList.setSelection(0);
+            worshipList.requestFocus();
+            worshipList.announceForAccessibility(
+                    "Passagem carregada: " + normalized + ". " + verses.get(0));
+        } catch (IllegalArgumentException error) {
+            worshipInput.setError(error.getMessage());
+            worshipInput.requestFocus();
+        }
+    }
+
+    /** Mostra o capítulo vizinho sem sair do Modo culto. */
+    private void changeWorshipChapter(int direction) {
+        if (worshipBook == null) {
+            toast("Digite uma passagem primeiro.");
+            return;
+        }
+        int target = worshipChapter + direction;
+        int maximum = bible.chapterCount(translationId, worshipBook.code);
+        if (target < 1 || target > maximum) {
+            toast("Não há outro capítulo nessa direção.");
+            return;
+        }
+        worshipInput.setText(getString(R.string.worship_chapter, worshipBook.name, target));
+        openWorshipPassage();
+    }
+
+    /** Copia referência e todos os versículos mostrados no Modo culto. */
+    private void copyWorshipPassage() {
+        if (worshipAdapter == null || worshipAdapter.getCount() == 0) {
+            toast("Digite uma passagem primeiro.");
+            return;
+        }
+        StringBuilder text = new StringBuilder(worshipStatus.getText()).append('\n');
+        for (int index = 0; index < worshipAdapter.getCount(); index++) {
+            text.append(worshipAdapter.getItem(index)).append('\n');
+        }
+        copy(text.toString());
+    }
+
+    /** Reúne verificação, novidades, APK pendente e preferências Android. */
+    private void showUpdates() {
+        LinearLayout root = screen("Atualizações Android", this::showMoreOptions);
+        root.addView(paragraph("Versão instalada: " + BuildConfig.VERSION_NAME + ". " +
+                updateManager.settingsSummary()));
+        root.addView(actionButton("Verificar atualizações", "Consultar agora releases Android",
+                () -> updateManager.checkNow(true)));
+        root.addView(actionButton("Instalar atualização baixada",
+                "Abrir no instalador do Android o APK já validado", updateManager::installPending));
+        root.addView(actionButton("Novidades da versão", "Ler novidades disponíveis offline",
+                updateManager::showChangelog));
+        root.addView(actionButton("Alternar atualizações automáticas",
+                "Ativar ou desativar a verificação diária", updateManager::toggleAutomatic));
+        root.addView(actionButton("Alternar notificações",
+                "Ativar ou desativar avisos de nova versão", updateManager::toggleNotifications));
+        setContentView(root);
+        root.getChildAt(2).requestFocus();
     }
 
     /** Mantém a IA como primeira ação do livro. */

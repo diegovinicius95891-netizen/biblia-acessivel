@@ -32,3 +32,4 @@ android/local.properties
 android/**/build/
 android/*.apk
 BibliaAcessivel-Android.apk
+BibliaAcessivel-Android.apk.sha256

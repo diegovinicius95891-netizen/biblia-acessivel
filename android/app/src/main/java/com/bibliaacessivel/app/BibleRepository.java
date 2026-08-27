@@ -92,6 +92,21 @@ final class BibleRepository implements AutoCloseable {
         return result;
     }
 
+    /** Recorta um capítulo por número inicial e final, ou devolve o capítulo inteiro. */
+    List<Models.Verse> passage(String translationId, String bookCode, int chapter,
+                               String startVerse, String endVerse) {
+        List<Models.Verse> all = chapter(translationId, bookCode, chapter);
+        if (startVerse == null) return all;
+        int start = BibleReference.number(startVerse);
+        int end = endVerse == null ? start : BibleReference.number(endVerse);
+        List<Models.Verse> result = new ArrayList<>();
+        for (Models.Verse verse : all) {
+            int number = BibleReference.number(verse.number);
+            if (number >= start && number <= end) result.add(verse);
+        }
+        return result;
+    }
+
     String chapterText(String translationId, String bookCode, int chapter) {
         StringBuilder builder = new StringBuilder();
         for (Models.Verse verse : chapter(translationId, bookCode, chapter)) {

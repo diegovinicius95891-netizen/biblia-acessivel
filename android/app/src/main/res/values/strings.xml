@@ -2,4 +2,13 @@
 <resources>
     <string name="app_name">Bíblia Acessível</string>
     <string name="devotional_title">Devocional sobre %1$s</string>
+    <string name="worship_chapter">%1$s %2$d</string>
+    <string name="update_downloading_status">Baixando o APK Android. O aplicativo continua respondendo.</string>
+    <string name="update_progress_description">Progresso do download da atualização Android</string>
+    <string name="update_cancel_download">Cancelar download</string>
+    <string name="update_cancel_description">Cancelar o download da atualização Android</string>
+    <plurals name="worship_loaded">
+        <item quantity="one">Passagem exibida: %1$s. %2$d versículo.</item>
+        <item quantity="other">Passagem exibida: %1$s. %2$d versículos.</item>
+    </plurals>
 </resources>

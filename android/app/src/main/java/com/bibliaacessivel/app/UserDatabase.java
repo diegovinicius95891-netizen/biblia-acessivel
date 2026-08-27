@@ -7,6 +7,12 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import java.time.OffsetDateTime;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.channels.FileChannel;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,5 +88,36 @@ final class UserDatabase extends SQLiteOpenHelper {
         values.put("verse", verse);
         db.insertOrThrow("bookmarks", null, values);
         return true;
+    }
+
+    /** Cria uma cópia consistente antes da instalação e mantém as cinco mais recentes. */
+    void backupBeforeUpdate(String version) throws Exception {
+        SQLiteDatabase database = getReadableDatabase();
+        database.rawQuery("PRAGMA wal_checkpoint(FULL)", null).close();
+        File source = getDatabaseFile();
+        File directory = new File(source.getParentFile(), "backups");
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw new IllegalStateException("Não foi possível criar a pasta de backup.");
+        }
+        File target = new File(directory, "backup_pre_update_" + version + "_" +
+                System.currentTimeMillis() + ".db");
+        try (FileChannel input = new FileInputStream(source).getChannel();
+             FileChannel output = new FileOutputStream(target).getChannel()) {
+            input.transferTo(0, input.size(), output);
+            output.force(true);
+        }
+        File[] backups = directory.listFiles((folder, name) -> name.startsWith("backup_pre_update_"));
+        if (backups == null || backups.length <= 5) return;
+        Arrays.sort(backups, Comparator.comparingLong(File::lastModified));
+        for (int index = 0; index < backups.length - 5; index++) backups[index].delete();
+    }
+
+    /** Resolve o caminho privado do SQLite criado pelo Android. */
+    private File getDatabaseFile() {
+        String path = getReadableDatabase().getPath();
+        if (path == null || path.isEmpty()) {
+            throw new IllegalStateException("O banco pessoal não possui um caminho válido.");
+        }
+        return new File(path);
     }
 }

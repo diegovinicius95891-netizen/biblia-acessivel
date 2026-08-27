@@ -17,8 +17,17 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 - Chave própria do Google Gemini protegida com Android Keystore.
 - A opção Obter chave da API do Google abre diretamente o Google AI Studio.
 - Leis, licenças, justificativa de uso e ajuda dentro do aplicativo.
+- Quiz bíblico com 36 perguntas: duas em cada combinação de dificuldade e categoria.
+- Modo culto: confirme João 3:16, Romanos 8 ou Salmos 23:1-6 e a passagem aparece e recebe foco imediatamente.
+- Atualizador Android próprio, com consulta diária opcional, download cancelável, SHA-256 e backup antes da instalação.
 
 O backup automático do aplicativo está desativado. Notas, marcadores e chave de API permanecem no armazenamento privado do aplicativo e não fazem parte do APK.
+
+## Atualizações separadas
+
+O Android consulta somente releases com tag `android-vMAJOR.MINOR.PATCH`. Ele aceita exclusivamente os assets `BibliaAcessivel-Android.apk` e `BibliaAcessivel-Android.apk.sha256`. Releases `vMAJOR.MINOR.PATCH` e o pacote ZIP pertencem ao Windows e são ignorados.
+
+Depois de validar o APK, o aplicativo abre o instalador oficial do Android. Na primeira utilização, o sistema pode pedir autorização para instalar aplicativos desta fonte. A atualização usa o mesmo identificador e certificado das versões Android anteriores, preservando os dados privados.
 
 ## Compilar
 
@@ -26,9 +35,10 @@ Requisitos: JDK 17, Android SDK Platform 35 e Build Tools. Defina `JAVA_HOME` e 
 
 ```powershell
 cd android
-.\gradlew.bat clean testDebugUnitTest lintDebug assembleDebug
+.\gradlew.bat testDebugUnitTest lintRelease assembleRelease
+powershell -ExecutionPolicy Bypass -File ..\scripts\package_android_release.ps1
 ```
 
-O banco `data/biblia.db` é copiado para os assets durante a compilação; não existe uma segunda cópia versionada no código Android. O APK de teste é criado em `android/app/build/outputs/apk/debug/app-debug.apk`.
+O banco `data/biblia.db` é copiado para os assets durante a compilação; não existe uma segunda cópia versionada no código Android. O APK assinado é criado em `android/app/build/outputs/apk/release/app-release.apk` e o script o copia para a raiz com o nome reconhecido pelo atualizador e seu SHA-256.
 
-O APK debug é adequado para instalação e testes diretos. Uma publicação na Play Store exige gerar uma chave de assinatura de produção e um Android App Bundle assinado.
+O workflow de release reutiliza de forma protegida o certificado das versões anteriores. A impressão SHA-256 pública é conferida antes da publicação, evitando um APK incompatível com a atualização instalada. Consulte [Atualizações Android](../docs/ATUALIZACOES_ANDROID.md).

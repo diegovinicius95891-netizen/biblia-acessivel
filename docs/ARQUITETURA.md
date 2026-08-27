@@ -86,6 +86,8 @@ Após validação, o banco pessoal recebe backup SQLite consistente. Um processo
 
 O workflow `.github/workflows/release-windows.yml` é acionado por tags `v*`, exige correspondência com `APP_VERSION`, executa os testes, compila, cria o ZIP e SHA-256 e publica os assets apenas se todas as etapas passarem.
 
+O Android possui um canal isolado em `AndroidUpdateService` e `UpdateManager`: somente tags `android-v*`, APK e SHA-256 Android são aceitos. O `FileProvider` entrega o APK validado ao instalador oficial do sistema. O workflow `release-android.yml` recompila com a identidade de assinatura já usada nas versões anteriores e rejeita qualquer certificado com impressão diferente.
+
 ## Limites e navegação da leitura
 
 A lista acrescenta um item terminal depois do conteúdo. Nos capítulos intermediários ele contém “Fim do capítulo”. No último capítulo do livro contém “Fim do livro. Não há capítulos seguintes”. Esquerda e direita mudam capítulos somente dentro do livro atual; a seleção de outro livro continua sendo feita na seção Livros.
