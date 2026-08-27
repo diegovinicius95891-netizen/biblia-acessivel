@@ -66,6 +66,55 @@ class UserDataTests(unittest.TestCase):
             self.assertTrue(path.with_name("user.db.pre_notes_migration.bak").exists())
             database.close()
 
+    def test_favorites_categories_and_search_history(self):
+        """Cobre categorias próprias e o histórico local de pesquisas."""
+        with TemporaryDirectory() as directory:
+            database = UserDataDatabase(Path(directory) / "user.db")
+            category = database.add_favorite_category("Promessas")
+            database.add_favorite("bpm", "JHN", "João", 3, "16", category_id=category)
+            favorites = database.favorites("Promessas")
+            self.assertEqual("João", favorites[0]["book_name"])
+            self.assertEqual("Promessas", favorites[0]["category_name"])
+            database.add_search("ansiedade", "topic")
+            self.assertEqual("ansiedade", database.searches()[0]["query"])
+            database.close()
+
+    def test_plan_progress_can_be_marked_and_unmarked(self):
+        """Valida início, conclusão diária e correção de marcação acidental."""
+        with TemporaryDirectory() as directory:
+            database = UserDataDatabase(Path(directory) / "user.db")
+            database.start_plan("john")
+            self.assertTrue(database.toggle_plan_day("john", 1, 21))
+            self.assertEqual([1], database.plan_states()["john"]["completed_days"])
+            self.assertFalse(database.toggle_plan_day("john", 1, 21))
+            self.assertEqual([], database.plan_states()["john"]["completed_days"])
+            database.close()
+
+    def test_prayer_can_be_answered_and_filtered(self):
+        """Cobre criação, resposta, filtros e estatísticas de oração."""
+        with TemporaryDirectory() as directory:
+            database = UserDataDatabase(Path(directory) / "user.db")
+            prayer_id = database.add_prayer("Faculdade", "Dê-me sabedoria.", category="Estudos")
+            self.assertEqual(1, len(database.prayers("Orando")))
+            database.answer_prayer(prayer_id, "2026-10-15", "Consegui resolver.")
+            answered = database.prayers("Respondida")[0]
+            self.assertEqual("Consegui resolver.", answered["answer_text"])
+            self.assertEqual(1, database.prayer_statistics()["Respondida"])
+            database.close()
+
+    def test_backup_round_trip_is_validated(self):
+        """Exporta e restaura dados e recusa formatos desconhecidos."""
+        with TemporaryDirectory() as directory:
+            database = UserDataDatabase(Path(directory) / "user.db")
+            database.add_prayer("Pedido", "Texto")
+            payload = database.export_payload()
+            database.add_prayer("Será substituído", "Texto")
+            database.import_payload(payload)
+            self.assertEqual(1, len(database.prayers()))
+            with self.assertRaises(ValueError):
+                database.import_payload({"format": "outro", "version": 1})
+            database.close()
+
 
 if __name__ == "__main__":
     unittest.main()

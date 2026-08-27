@@ -12,12 +12,12 @@ O aplicativo não usa `QTabWidget` nem guias. Um `QStackedWidget` mantém uma te
 4. Área de leitura do versículo atual.
 5. Mais opções.
 
-Mais opções contém Traduções, referência direta, pesquisa, devocional, anotações, configurações, leis e ajuda. Espaço ou Enter abre somente o recurso escolhido; Escape restaura a tela principal e o foco em Mais opções. Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de listas. Na seção Livros, esquerda seleciona o Antigo Testamento e direita seleciona o Novo.
+Mais opções contém as páginas pessoais e de estudo. Espaço ou Enter abre somente o recurso escolhido; Escape restaura a tela principal e o foco em Mais opções. Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de listas. Na seção Livros, esquerda seleciona o Antigo Testamento e direita seleciona o Novo.
 
 ## Arquivos de execução
 
 - `BibliaAcessivel.exe`: aplicativo pronto para duplo clique, mantido na raiz.
-- `app.py`: configura o Qt, localiza o banco ao lado do EXE e abre a janela.
+- `app.py`: configura o Qt, localiza o banco bíblico ao lado do EXE, migra dados pessoais para `%APPDATA%` e abre a janela.
 - `requirements.txt`: dependência da interface PySide6.
 - `scripts/build_exe.ps1`: recompila o EXE na raiz e mantém intermediários fora do projeto.
 
@@ -28,8 +28,18 @@ Mais opções contém Traduções, referência direta, pesquisa, devocional, ano
 - `secure_store.py`: proteção e recuperação da chave por DPAPI, vinculada ao usuário do Windows.
 - `database.py`: consultas somente leitura ao banco bíblico.
 - `user_data.py`: banco separado de marcadores e anotações por data.
+- `extended_features.py`: páginas de planos, oração, devocional diário, favoritos, histórico, estudo, memorização, quiz, estatísticas, culto e backup.
+- `references.py`: parser testável para livros abreviados, capítulos e intervalos.
+- `topics.py`: índice temático local compartilhado pela busca e pela página Temas.
+- `plans.py`: modelos, geração das leituras e cálculo de progresso dos 17 planos iniciais.
+- `study_content.py`: informações cuidadosas sobre livros, personagens e perguntas locais.
 - `dialogs.py`: escolhas, edição de anotações e leitura de texto com nomes e foco acessíveis.
 - `legal.py`: texto jurídico único e simples.
+- `version.py`: única fonte da versão instalada, repositório e nomes dos assets.
+- `paths.py`: pasta pessoal e migração única da base antiga.
+- `update_service.py`: versões semânticas, GitHub Releases, download e SHA-256, sem dependência da interface.
+- `update_ui.py`: consulta em thread, diálogos acessíveis, progresso moderado, backup e helper de reinício.
+- `changelog.py`: novidades da versão instalada para consulta offline.
 
 ## Fluxo da IA opcional
 
@@ -44,7 +54,19 @@ Mais opções contém Traduções, referência direta, pesquisa, devocional, ano
 
 O popup da tecla Aplicações usa `ApplicationsDialog`, não um menu visual dependente da plataforma. O título identifica “Menu do livro”, “Menu do capítulo” ou “Menu do versículo”; a ação de IA fica na primeira linha e recebe foco. Todas as ações aceitam Espaço ou Enter.
 
-O arquivo `data/user_data.db` é ignorado pelo Git para impedir a publicação de dados pessoais.
+O arquivo pessoal fica em `%APPDATA%\BibliaAcessivel\user_data.db`; uma cópia antiga ao lado do EXE é migrada somente se o destino ainda não existir. O Git também ignora o caminho legado para impedir publicação acidental.
+
+## Persistência ampliada e migração
+
+`UserDataDatabase` mantém as tabelas antigas e cria incrementalmente categorias de favoritos, histórico de pesquisa e leitura, estados e dias de planos, pedidos de oração, devocionais diários, memorização e metadados de versão. Colunas novas de `bookmarks` são acrescentadas com `ALTER TABLE`; os registros existentes recebem a categoria Favoritos gerais. Nenhuma atualização apaga notas ou marcadores antigos.
+
+O backup exporta um objeto JSON identificado por `format` e `version`. A importação valida tabelas, registros e colunas antes de escrever e usa uma transação SQLite, que reverte a operação inteira se qualquer registro for inválido. Preferências não secretas do `QSettings` acompanham o backup; a chave Gemini protegida por DPAPI não acompanha, pois não seria portátil para outra conta do Windows.
+
+## Busca e conteúdo local
+
+A pesquisa exata continua no banco bíblico. Palavra, frase e filtro por livro são parâmetros da mesma consulta. A pesquisa temática combina referências curadas com termos relacionados de `topics.py`, elimina duplicações e permanece offline. O mesmo catálogo alimenta a página Temas.
+
+Planos são gerados a partir dos capítulos realmente presentes na tradução, enquanto planos temáticos usam referências legíveis. O estado de cada plano usa identificador estável, permitindo vários planos ativos simultaneamente sem duplicar as definições no banco pessoal.
 
 ## Anotações e devocional
 
@@ -55,6 +77,14 @@ A tela de devocional recebe a referência selecionada, mas também resolve outra
 ## Textos bíblicos
 
 `data/biblia.db` contém somente textos e metadados distribuíveis. `scripts/build_database.py` documenta e reproduz a importação das quatro fontes. `THIRD_PARTY_NOTICES.md` registra atribuições e condições.
+
+## Atualização
+
+`UpdateController` agenda uma consulta diária depois que a janela já abriu. `UpdateService` usa a API pública do GitHub com timeout, descarta drafts e prereleases no canal estável e faz comparação semântica real. Apenas o ZIP Windows de nome conhecido e sua soma SHA-256 são aceitos, sempre a partir de origens GitHub permitidas. O download ocorre em thread, pode ser cancelado e anuncia somente marcos de progresso.
+
+Após validação, o banco pessoal recebe backup SQLite consistente. Um processo PowerShell oculto espera o PID principal terminar, expande o ZIP numa pasta temporária, valida a presença do EXE, copia os arquivos distribuíveis e reabre o aplicativo. Dados pessoais e configurações permanecem no perfil do usuário. Os cinco backups automáticos mais recentes são mantidos.
+
+O workflow `.github/workflows/release-windows.yml` é acionado por tags `v*`, exige correspondência com `APP_VERSION`, executa os testes, compila, cria o ZIP e SHA-256 e publica os assets apenas se todas as etapas passarem.
 
 ## Limites e navegação da leitura
 
@@ -69,3 +99,9 @@ Ajuda e Leis usam `ReadingTextList`, que apresenta um parágrafo por item. Isso 
 - `test_gemini_client.py`: contrato do cliente Gemini sem chamadas externas.
 - `test_secure_store.py`: proteção e recuperação da chave pela DPAPI.
 - `test_gui_smoke.py`: cinco seções principais, telas internas, teclado, configurações, IA, notas e exportação de devocional.
+- `test_references.py`: capítulos, números, abreviações e intervalos.
+- `test_plans.py`: catálogo mínimo, durações e progresso.
+- `test_user_data.py`: também cobre categorias, planos, oração e backup transacional.
+- `test_update_service.py`: SemVer, filtros de release, seleção de asset, cancelamento e SHA-256.
+- `test_paths.py`: migração única sem sobrescrever a base pessoal existente.
+- `test_study_content.py`: cobertura de dificuldades, categorias, respostas e referências do quiz.

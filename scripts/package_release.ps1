@@ -9,6 +9,7 @@ $temporaryBase = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
 $packageRoot = Join-Path $temporaryBase ("biblia_acessivel_release_" + [guid]::NewGuid().ToString('N'))
 $bundleRoot = Join-Path $packageRoot 'BibliaAcessivel'
 $destination = Join-Path $projectRoot 'BibliaAcessivel-Windows.zip'
+$checksumDestination = "$destination.sha256"
 
 # Impede qualquer limpeza fora da pasta temporária criada por este script.
 $resolvedPackageRoot = [System.IO.Path]::GetFullPath($packageRoot)
@@ -37,4 +38,8 @@ if (-not (Test-Path -LiteralPath $destination)) {
     throw 'O arquivo ZIP não foi criado.'
 }
 
+$checksum = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
+Set-Content -LiteralPath $checksumDestination -Value "$checksum  BibliaAcessivel-Windows.zip" -Encoding ascii
+
 Write-Output "Pacote criado em: $destination"
+Write-Output "SHA-256 criado em: $checksumDestination"

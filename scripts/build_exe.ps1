@@ -10,9 +10,14 @@ $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) 'biblia_acessivel_p
 $workPath = Join-Path $temporaryRoot 'build'
 $specPath = Join-Path $temporaryRoot 'spec'
 $entryPoint = Join-Path $projectRoot 'app.py'
+$buildPython = if ($env:BIBLIA_BUILD_PYTHON) {
+    $env:BIBLIA_BUILD_PYTHON
+} else {
+    (Get-Command python -ErrorAction Stop).Source
+}
 
 # PyInstaller deve estar instalado somente no ambiente usado para compilar.
-python -m PyInstaller `
+& $buildPython -m PyInstaller `
     --noconfirm `
     --clean `
     --onefile `

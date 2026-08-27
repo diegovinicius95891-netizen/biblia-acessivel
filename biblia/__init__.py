@@ -1,4 +1,5 @@
 """Componentes da Bíblia Acessível."""
 
-__version__ = "1.0.0"
+from .version import APP_VERSION
 
+__version__ = APP_VERSION

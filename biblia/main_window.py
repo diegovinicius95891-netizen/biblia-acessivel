@@ -56,8 +56,11 @@ from .dialogs import (
 )
 from .gemini_client import GeminiServiceError, create_bible_analysis
 from .legal import LEGAL_TEXT
+from .references import parse_reference
 from .secure_store import SecureStoreError, protect_text, unprotect_text
+from .topics import resolve_topic
 from .user_data import UserDataDatabase
+from .version import APP_VERSION
 
 try:
     from PySide6.QtTextToSpeech import QTextToSpeech
@@ -76,7 +79,15 @@ SPEECH_RATE_OPTIONS = (
     ("Bem rápida", 0.6),
 )
 CONTRAST_OPTIONS = (("Desativado", False), ("Ativado", True))
+UPDATE_AUTOMATIC_OPTIONS = (("Ativada", True), ("Desativada", False))
+UPDATE_NOTIFICATION_OPTIONS = (("Ativada", True), ("Desativada", False))
 VOICE_OFF = "__off__"
+SHORTCUTS = {
+    "search": "Ctrl+F", "reference": "Ctrl+G", "favorite": "Ctrl+D",
+    "note": "Ctrl+M", "plans": "Ctrl+L", "prayers": "Ctrl+O",
+    "history": "Ctrl+H", "daily_devotional": "Ctrl+Shift+D",
+    "copy_verse": "Ctrl+Shift+C",
+}
 
 
 class TranslationList(QListWidget):
@@ -215,11 +226,19 @@ class MainWindow(QMainWindow):
     OLD_TESTAMENT = 0
     NEW_TESTAMENT = 1
 
-    def __init__(self, database_path: Path):
+    def __init__(
+        self,
+        database_path: Path,
+        user_data_path: Path | None = None,
+        app_data_dir: Path | None = None,
+        install_dir: Path | None = None,
+    ):
         """Abre bancos, constrói controles e restaura a última posição."""
         super().__init__()
         self.db = BibleDatabase(database_path)
-        self.user_data = UserDataDatabase(database_path.with_name("user_data.db"))
+        self.user_data = UserDataDatabase(user_data_path or database_path.with_name("user_data.db"))
+        self.app_data_dir = app_data_dir or self.user_data.path.parent
+        self.install_dir = install_dir or database_path.parent.parent
         self.settings = QSettings()
         self.api_key = self._load_saved_api_key()
         self.pending_api_key = self.api_key
@@ -235,6 +254,10 @@ class MainWindow(QMainWindow):
         self.pending_voice_name = self.voice_name
         self.high_contrast = self.settings.value("accessibility/high_contrast", False, type=bool)
         self.pending_high_contrast = self.high_contrast
+        self.update_automatic = self.settings.value("updates/automatic", True, type=bool)
+        self.pending_update_automatic = self.update_automatic
+        self.update_notify = self.settings.value("updates/notify", True, type=bool)
+        self.pending_update_notify = self.update_notify
         self.tts = None
         self._tts_checked = False
         self._loading = False
@@ -248,7 +271,7 @@ class MainWindow(QMainWindow):
         self.active_chapter = 1
         self._ai_result_title = "Resultado da inteligência artificial"
 
-        self.setWindowTitle("Bíblia Acessível")
+        self.setWindowTitle(f"Bíblia Acessível {APP_VERSION}")
         self.resize(1100, 760)
         self.setAccessibleName("Bíblia Acessível")
         self._build_ui()
@@ -256,6 +279,8 @@ class MainWindow(QMainWindow):
         self._build_shortcuts()
         self._apply_accessibility_settings()
         self._load_translations_and_restore()
+        from .update_ui import UpdateController
+        self.update_controller = UpdateController(self, self.app_data_dir, self.install_dir)
         self.book_list.setFocus()
         self.statusBar().showMessage(
             "Pronto. Tab muda de seção; setas navegam dentro da seção. F1 abre a ajuda."
@@ -288,12 +313,20 @@ class MainWindow(QMainWindow):
         self._add_secondary_page("settings", "Configurações", self.settings_section, self.settings_options)
         self._add_secondary_page("legal", "Licenças, leis e justificativa", self.legal_section, self.legal_text)
         self._add_secondary_page("help", "Ajuda e atalhos", self.help_section, self.help_text)
+        # Recursos extensos permanecem num controlador separado para evitar
+        # transformar esta janela em um arquivo ainda mais monolítico.
+        from .extended_features import ExtendedFeatures
+        self.extended = ExtendedFeatures(self)
         self.setCentralWidget(self.page_stack)
 
     def _build_reader_section(self):
         """Monta somente Livros, Capítulos, Versículos, Leitura e Mais opções."""
         section = QWidget()
         layout = QVBoxLayout(section)
+        self.start_summary = QLabel("Continuar leitura será carregado em instantes.")
+        self.start_summary.setAccessibleName("Resumo inicial e continuar leitura")
+        self.start_summary.setWordWrap(True)
+        layout.addWidget(self.start_summary)
         selection_row = QHBoxLayout()
 
         books_group = QGroupBox("Seção &Livros")
@@ -466,6 +499,8 @@ class MainWindow(QMainWindow):
             self.prepare_devotional()
         elif page_id == "settings":
             self._refresh_settings_options()
+        elif hasattr(self, "extended"):
+            self.extended.prepare_page(page_id)
         index, focus_widget = self.secondary_pages[page_id]
         self.page_stack.setCurrentIndex(index)
         focus_widget.setFocus()
@@ -480,13 +515,26 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Menu principal da Bíblia.")
 
     def _build_search_section(self):
-        """Cria a pesquisa local para sua própria tela interna."""
+        """Cria pesquisa por palavra, frase, tema e livro, com histórico local."""
         section = QGroupBox("Pesquisa")
         layout = QVBoxLayout(section)
         form = QFormLayout()
         self.search_translation = QComboBox()
         self.search_translation.setAccessibleName("Tradução para pesquisa")
+        self.search_translation.currentIndexChanged.connect(self._populate_search_books)
         form.addRow("&Tradução:", self.search_translation)
+        self.search_mode = QComboBox()
+        self.search_mode.setAccessibleName("Tipo de pesquisa")
+        self.search_mode.addItem("Automática, palavra ou tema", "auto")
+        self.search_mode.addItem("Todas as palavras", "words")
+        self.search_mode.addItem("Frase exata", "phrase")
+        self.search_mode.addItem("Tema bíblico", "topic")
+        self.search_mode.addItem("Livro pelo nome", "book")
+        form.addRow("&Tipo:", self.search_mode)
+        self.search_book = QComboBox()
+        self.search_book.setAccessibleName("Pesquisar dentro de um livro específico")
+        self.search_book.addItem("Todos os livros", None)
+        form.addRow("&Dentro do livro:", self.search_book)
         self.search_edit = QLineEdit()
         self.search_edit.setAccessibleName("Texto a pesquisar")
         self.search_edit.returnPressed.connect(self.perform_search)
@@ -502,6 +550,20 @@ class MainWindow(QMainWindow):
         self.search_results.setAccessibleName("Resultados da pesquisa")
         self.search_results.selectionRequested.connect(self.open_search_result)
         layout.addWidget(self.search_results, 1)
+        actions = QHBoxLayout()
+        self.copy_search_button = AccessibleButton("&Copiar resultado selecionado")
+        self.copy_search_button.clicked.connect(self.copy_search_result)
+        actions.addWidget(self.copy_search_button)
+        self.favorite_search_button = AccessibleButton("Adicionar resultado aos &favoritos")
+        self.favorite_search_button.clicked.connect(self.favorite_search_result)
+        actions.addWidget(self.favorite_search_button)
+        layout.addLayout(actions)
+        layout.addWidget(QLabel("Histórico de pesquisas. Ative um item para pesquisar novamente:"))
+        self.search_history_list = ActivatableList()
+        self.search_history_list.setAccessibleName("Histórico de pesquisas")
+        self.search_history_list.setMaximumHeight(120)
+        self.search_history_list.selectionRequested.connect(self.repeat_search)
+        layout.addWidget(self.search_history_list)
         return section
 
     def _build_devotional_section(self):
@@ -547,6 +609,11 @@ class MainWindow(QMainWindow):
                 "Cima e baixo navegam. Abra um dia para ler todas as anotações ou um título para ler apenas uma."
             )
         )
+        self.notes_search = QLineEdit()
+        self.notes_search.setAccessibleName("Pesquisar nas anotações")
+        self.notes_search.setPlaceholderText("Pesquisar por título, texto ou livro")
+        self.notes_search.returnPressed.connect(self.refresh_notes)
+        layout.addWidget(self.notes_search)
         self.notes_list = ActivatableList()
         self.notes_list.setAccessibleName("Anotações organizadas por dia")
         self.notes_list.setAccessibleDescription(
@@ -554,6 +621,9 @@ class MainWindow(QMainWindow):
         )
         self.notes_list.selectionRequested.connect(self.open_note_item)
         layout.addWidget(self.notes_list, 1)
+        self.note_passage_button = AccessibleButton("Criar anotação sobre uma &passagem")
+        self.note_passage_button.clicked.connect(self.create_passage_note)
+        layout.addWidget(self.note_passage_button)
         return section
 
     def _build_settings_section(self):
@@ -613,11 +683,19 @@ class MainWindow(QMainWindow):
             "DEVOCIONAIS E ANOTAÇÕES\n"
             "Fazer devocional começa com a referência atual, permite carregar outra referência e salvar "
             "o resultado como arquivo de texto na pasta escolhida. As anotações ficam guardadas localmente "
-            "e aparecem em Mais opções, organizadas por dia e título.\n\n"
+            "e aparecem em Mais opções, organizadas por dia e título. Meu momento com Deus reúne versículo "
+            "do dia, leitura do plano, reflexão, prática, oração e histórico. O Diário de oração possui filtros "
+            "para pedidos em oração, respondidos e arquivados.\n\n"
+            "RECURSOS LOCAIS\n"
+            "Mais opções também contém planos de leitura, favoritos com categorias, histórico, temas, "
+            "informações sobre livros, personagens, memorização, quiz, estatísticas, Modo culto e backup. "
+            "A busca Automática encontra palavras ou temas relacionados sem serviço pago.\n\n"
             "ATALHOS\n"
-            "Ctrl+L: referência. Ctrl+F: pesquisa. Ctrl+Seta esquerda/direita: capítulo anterior ou "
-            "seguinte. F5: ouvir. Ctrl+Alt+C: copiar texto. Ctrl+Alt+R: "
-            "copiar referência e texto. Ctrl+Alt+M: marcador. Escape: voltar ou parar voz. F1: ajuda.\n\n"
+            "Ctrl+F: pesquisa. Ctrl+G: ir para passagem. Ctrl+D: favorito. Ctrl+M: anotação. "
+            "Ctrl+L: planos de leitura. Ctrl+O: Diário de oração. Ctrl+H: histórico. "
+            "Ctrl+Shift+D: Meu momento com Deus. Ctrl+Shift+C: copiar versículo. "
+            "Ctrl+Seta esquerda/direita: capítulo anterior ou seguinte. F5: ouvir. "
+            "Ctrl+Alt+R: copiar referência e texto. Escape: voltar ou parar voz. F1: ajuda.\n\n"
             "CONTINUIDADE E PRIVACIDADE\n"
             "A posição, os marcadores e as anotações permanecem locais. Em Configurações, cima e baixo navegam "
             "por chave, modelo, detalhamento, fonte, voz SAPI, velocidade e contraste. A voz pode ser "
@@ -627,6 +705,13 @@ class MainWindow(QMainWindow):
         )
         self.help_text.setMinimumHeight(180)
         layout.addWidget(self.help_text)
+        self.check_updates_button = AccessibleButton("&Verificar atualizações")
+        self.check_updates_button.setAccessibleName("Verificar atualizações agora")
+        self.check_updates_button.clicked.connect(self.check_updates_now)
+        layout.addWidget(self.check_updates_button)
+        self.changelog_button = AccessibleButton("&Novidades da versão")
+        self.changelog_button.clicked.connect(self.show_current_changelog)
+        layout.addWidget(self.changelog_button)
         return section
 
     def _build_menu(self):
@@ -649,7 +734,7 @@ class MainWindow(QMainWindow):
 
         item_menu = self.menuBar().addMenu("&Item atual")
         self.action_copy_text = QAction("&Copiar texto", self)
-        self.action_copy_text.setShortcut("Ctrl+Alt+C")
+        self.action_copy_text.setShortcut(SHORTCUTS["copy_verse"])
         self.action_copy_text.triggered.connect(self.copy_verse_text)
         item_menu.addAction(self.action_copy_text)
         self.action_copy_reference = QAction("Copiar &referência e texto", self)
@@ -658,10 +743,11 @@ class MainWindow(QMainWindow):
         item_menu.addAction(self.action_copy_reference)
         item_menu.addSeparator()
         self.action_bookmark = QAction("Adicionar ou remover &marcador", self)
-        self.action_bookmark.setShortcut("Ctrl+Alt+M")
+        self.action_bookmark.setShortcut(SHORTCUTS["favorite"])
         self.action_bookmark.triggered.connect(self.toggle_bookmark)
         item_menu.addAction(self.action_bookmark)
         self.action_create_note = QAction("Criar &anotação", self)
+        self.action_create_note.setShortcut(SHORTCUTS["note"])
         self.action_create_note.triggered.connect(self.create_note)
         item_menu.addAction(self.action_create_note)
         self.action_speak = QAction("&Ouvir", self)
@@ -673,11 +759,21 @@ class MainWindow(QMainWindow):
         help_action.setShortcut(QKeySequence.HelpContents)
         help_action.triggered.connect(self._focus_help)
         help_menu.addAction(help_action)
+        check_updates = QAction("&Verificar atualizações", self)
+        check_updates.triggered.connect(self.check_updates_now)
+        help_menu.addAction(check_updates)
+        changelog = QAction("&Novidades da versão", self)
+        changelog.triggered.connect(self.show_current_changelog)
+        help_menu.addAction(changelog)
 
     def _build_shortcuts(self):
         """Registra atalhos globais sem substituir comandos de edição comuns."""
-        QShortcut(QKeySequence("Ctrl+L"), self, activated=self._focus_reference)
-        QShortcut(QKeySequence("Ctrl+F"), self, activated=self._focus_search)
+        QShortcut(QKeySequence(SHORTCUTS["reference"]), self, activated=self._focus_reference)
+        QShortcut(QKeySequence(SHORTCUTS["search"]), self, activated=self._focus_search)
+        QShortcut(QKeySequence(SHORTCUTS["plans"]), self, activated=lambda: self.open_more_option("plans"))
+        QShortcut(QKeySequence(SHORTCUTS["prayers"]), self, activated=lambda: self.open_more_option("prayers"))
+        QShortcut(QKeySequence(SHORTCUTS["history"]), self, activated=lambda: self.open_more_option("history"))
+        QShortcut(QKeySequence(SHORTCUTS["daily_devotional"]), self, activated=lambda: self.open_more_option("daily_devotional"))
         QShortcut(QKeySequence("F5"), self, activated=self.speak_current_verse)
         QShortcut(QKeySequence("Escape"), self, activated=self._handle_escape)
         QShortcut(QKeySequence("Ctrl++"), self, activated=lambda: self.change_font_size(1))
@@ -714,7 +810,42 @@ class MainWindow(QMainWindow):
         self.testament = self.OLD_TESTAMENT if int(book_row["book_number"]) <= 39 else self.NEW_TESTAMENT
         self._populate_books(preferred_code=book_row["book_code"], preferred_chapter=saved_chapter)
         self.open_selected_chapter(focus_verse=saved_verse, focus_reading=False)
+        self._populate_search_books()
+        self.refresh_search_history()
+        self._refresh_start_summary()
         self._update_tab_order()
+
+    def _refresh_start_summary(self):
+        """Anuncia posição, versículo diário e primeiro plano ativo na tela inicial."""
+        key = self._current_verse_key()
+        verse = key[3] if key else "1"
+        reference, _text = self.extended.daily_verse()
+        active = [state for state in self.user_data.plan_states().values() if state["status"] == "Ativo"]
+        plan_text = "Nenhum plano ativo."
+        if active:
+            state = active[0]
+            plan = self.extended.plan_catalog.get(state["plan_id"])
+            if plan:
+                day = max(1, min(plan.days, int(state["current_day"])))
+                readings = ", ".join(plan.readings[day - 1])
+                plan_text = (
+                    f"Continuar plano: {plan.name}, dia {day} de {plan.days}. "
+                    f"Leitura de hoje: {readings}."
+                )
+        self.start_summary.setText(
+            f"Versículo do dia: {reference}. Continuar leitura: {self.active_book_name} "
+            f"{self.active_chapter}:{verse}. {plan_text}"
+        )
+
+    def _populate_search_books(self):
+        """Atualiza o filtro de livro segundo a tradução escolhida para pesquisa."""
+        current = self.search_book.currentData() if hasattr(self, "search_book") else None
+        self.search_book.clear()
+        self.search_book.addItem("Todos os livros", None)
+        for book in self.db.books(self.search_translation.currentData() or self.current_translation_id()):
+            self.search_book.addItem(book["book_name"], book["book_code"])
+        index = self.search_book.findData(current)
+        self.search_book.setCurrentIndex(max(0, index))
 
     def _update_tab_order(self):
         """Garante a rota principal de cinco seções e rotas locais nas telas internas."""
@@ -898,6 +1029,12 @@ class MainWindow(QMainWindow):
         self.settings.setValue("position/chapter", self.active_chapter)
         if rows:
             self._verse_changed(self.verse_list.currentItem())
+            current = self.verse_list.currentItem()
+            self.user_data.record_reading(
+                self.current_translation_id(), self.active_book_code,
+                self.active_book_name, self.active_chapter,
+                str(current.data(Qt.UserRole + 1)) if current else None,
+            )
         else:
             self.reading_area.set_text(
                 "Capítulo indisponível nesta fonte. Escolha outra tradução em Mais opções."
@@ -930,23 +1067,29 @@ class MainWindow(QMainWindow):
         )
 
     def go_to_reference(self):
-        """Interpreta referências como João 3:16 e navega até elas."""
+        """Interpreta livro, capítulo, número ou intervalo e navega até o início."""
         text = self.reference_edit.text().strip()
-        match = re.match(r"^(.+?)\s+(\d+)(?::(\d+))?$", text)
-        if not match:
-            self._warn("Referência inválida", "Use o formato João 3:16 ou Gênesis 1.")
+        try:
+            parsed = parse_reference(text)
+        except ValueError as error:
+            self._warn("Referência inválida", str(error))
             return
-        book_query, chapter_text, verse = match.groups()
-        book = self.db.resolve_book(self.current_translation_id(), book_query)
+        book = self.db.resolve_book(self.current_translation_id(), parsed.book_query)
         if not book:
-            self._warn("Livro não encontrado", f"Não foi possível localizar o livro “{book_query}”.")
+            self._warn("Livro não encontrado", f"Não foi possível localizar o livro “{parsed.book_query}”.")
             return
         maximum = self.db.chapter_count(self.current_translation_id(), book["book_code"])
-        chapter = int(chapter_text)
+        chapter = parsed.chapter
         if chapter > maximum:
             self._warn("Capítulo não encontrado", f"{book['book_name']} possui {maximum} capítulos.")
             return
-        self._show_location(book["book_code"], chapter, verse)
+        if parsed.verse_start and not self.db.passage(
+            self.current_translation_id(), book["book_code"], chapter,
+            parsed.verse_start, parsed.verse_end,
+        ):
+            self._warn("Passagem não encontrada", "Confira os números informados.")
+            return
+        self._show_location(book["book_code"], chapter, parsed.verse_start)
         self.reference_edit.clear()
         self.page_stack.setCurrentIndex(self.main_page_index)
         self.verse_list.setFocus()
@@ -1001,10 +1144,21 @@ class MainWindow(QMainWindow):
         selected = ApplicationsDialog.choose(
             self,
             f"Menu do livro {self.book_list.currentItem().text()}",
-            (("Gerar resumo do livro com inteligência artificial", "ai_book"),),
+            (
+                ("Gerar resumo do livro com inteligência artificial", "ai_book"),
+                ("Sobre este livro", "about_book"),
+            ),
         )
         if selected == "ai_book":
             self.generate_ai_for_scope("book")
+        elif selected == "about_book":
+            book = next(
+                dict(row) for row in self.db.books(self.current_translation_id())
+                if row["book_code"] == self.book_list.currentItem().data(Qt.UserRole)
+            )
+            fake = QListWidgetItem(book["book_name"])
+            fake.setData(Qt.UserRole, book)
+            self.extended.open_book_info(fake)
 
     def show_chapter_menu_at(self, position):
         """Seleciona o capítulo apontado pelo mouse antes de abrir suas ações."""
@@ -1020,10 +1174,22 @@ class MainWindow(QMainWindow):
         selected = ApplicationsDialog.choose(
             self,
             f"Menu do capítulo {self.chapter_list.currentItem().text()}",
-            (("Gerar resumo do capítulo com inteligência artificial", "ai_chapter"),),
+            (
+                ("Gerar resumo do capítulo com inteligência artificial", "ai_chapter"),
+                ("Adicionar capítulo aos favoritos", "favorite_chapter"),
+                ("Criar anotação sobre o capítulo", "note_chapter"),
+            ),
         )
         if selected == "ai_chapter":
             self.generate_ai_for_scope("chapter")
+        elif selected == "favorite_chapter":
+            book_item = self.book_list.currentItem()
+            chapter = int(self.chapter_list.currentItem().data(Qt.UserRole))
+            self.user_data.add_favorite(self.current_translation_id(), book_item.data(Qt.UserRole),
+                                        book_item.text(), chapter, "*", "chapter")
+            self._announce_for(self.chapter_list, "Capítulo adicionado aos favoritos.")
+        elif selected == "note_chapter":
+            self.create_chapter_note()
 
     def _current_verse_key(self):
         """Produz a chave composta usada pelos marcadores e ações do texto."""
@@ -1062,6 +1228,7 @@ class MainWindow(QMainWindow):
                 ("Copiar referência e texto", "copy_reference"),
                 (marker_label, "bookmark"),
                 ("Criar anotação", "note"),
+                ("Adicionar ou remover da memorização", "memorize"),
                 ("Ouvir com a voz interna", "speak"),
             ),
         )
@@ -1073,6 +1240,8 @@ class MainWindow(QMainWindow):
             self.toggle_bookmark()
         elif selected == "note":
             self.create_note()
+        elif selected == "memorize":
+            self.extended.toggle_memory_current()
         elif selected == "speak":
             self.speak_current_verse()
         elif selected == "ai_verse":
@@ -1101,6 +1270,8 @@ class MainWindow(QMainWindow):
         key = self._current_verse_key()
         if key:
             marked = self.user_data.toggle_bookmark(*key)
+            if marked:
+                self.user_data.enrich_favorite(key, self.active_book_name)
             self.statusBar().showMessage("Marcador adicionado." if marked else "Marcador removido.")
             self._verse_changed(self.verse_list.currentItem())
 
@@ -1123,6 +1294,54 @@ class MainWindow(QMainWindow):
             "Anotação salva. Consulte Mais opções, Anotações por dia."
         )
 
+    def create_chapter_note(self):
+        """Grava uma anotação vinculada ao capítulo inteiro selecionado."""
+        book_item = self.book_list.currentItem()
+        chapter_item = self.chapter_list.currentItem()
+        if not book_item or not chapter_item:
+            return
+        chapter = int(chapter_item.data(Qt.UserRole))
+        reference = f"{book_item.text()} {chapter}"
+        title, body, accepted = NoteEditorDialog.get_note(self, reference)
+        if not accepted:
+            return
+        text = " ".join(
+            f"{row['verse']}. {row['text']}"
+            for row in self.db.chapter(self.current_translation_id(), book_item.data(Qt.UserRole), chapter)
+        )
+        self.user_data.add_note(self.current_translation_id(), book_item.data(Qt.UserRole),
+                                book_item.text(), chapter, "*", text, title, body)
+        self._announce_for(self.chapter_list, "Anotação do capítulo salva.")
+
+    def create_passage_note(self):
+        """Solicita uma referência e salva uma anotação sobre todo o intervalo."""
+        reference, accepted = self.extended._text_prompt(
+            "Anotar passagem", "Referência, por exemplo Salmos 23:1-6"
+        )
+        if not accepted:
+            return
+        resolved = self.extended.resolve_reference(reference)
+        if not resolved:
+            self._warn("Passagem não encontrada", "Confira a referência digitada.")
+            return
+        book, parsed, rows = resolved
+        normalized = f"{book['book_name']} {parsed.chapter}"
+        verse_key = "*"
+        if parsed.verse_start:
+            verse_key = parsed.verse_start
+            normalized += f":{parsed.verse_start}"
+            if parsed.verse_end:
+                verse_key += f"-{parsed.verse_end}"
+                normalized += f"-{parsed.verse_end}"
+        title, body, confirmed = NoteEditorDialog.get_note(self, normalized)
+        if not confirmed:
+            return
+        passage_text = " ".join(f"{row['verse']}. {row['text']}" for row in rows)
+        self.user_data.add_note(self.current_translation_id(), book["book_code"], book["book_name"],
+                                parsed.chapter, verse_key, passage_text, title, body)
+        self.refresh_notes()
+        self._announce_for(self.notes_list, "Anotação da passagem salva.")
+
     @staticmethod
     def _format_note_day(iso_day: str) -> str:
         """Transforma uma data ISO em descrição completa em português."""
@@ -1137,7 +1356,7 @@ class MainWindow(QMainWindow):
         """Recria a lista acessível agrupando títulos abaixo de cada dia."""
         self.notes_list.clear()
         grouped = defaultdict(list)
-        for note in self.user_data.notes():
+        for note in self.user_data.search_notes(self.notes_search.text()):
             grouped[note["created_at"][:10]].append(note)
         if not grouped:
             empty = QListWidgetItem("Nenhuma anotação salva.")
@@ -1267,15 +1486,41 @@ class MainWindow(QMainWindow):
 
     # Pesquisa e demais seções -----------------------------------------
     def perform_search(self):
-        """Executa pesquisa local e apresenta até quinhentos resultados."""
+        """Executa pesquisa local por palavras, frase, tema ou nome de livro."""
         query = self.search_edit.text().strip()
         if not query:
             self._warn("Pesquisa vazia", "Digite uma ou mais palavras para pesquisar.")
             return
-        rows = self.db.search(self.search_translation.currentData(), query)
+        translation_id = self.search_translation.currentData()
+        mode = self.search_mode.currentData()
+        book_code = self.search_book.currentData()
+        topic = resolve_topic(query) if mode in ("auto", "topic") else None
+        if mode == "topic" and not topic:
+            self._warn("Tema não encontrado", "Escolha um tema conhecido ou use a pesquisa automática.")
+            return
+        if topic:
+            rows = self._thematic_search(translation_id, topic, book_code)
+            effective_mode = "topic"
+        elif mode == "book":
+            book = self.db.resolve_book(translation_id, query)
+            if not book:
+                self._warn("Livro não encontrado", f"Não foi possível localizar o livro “{query}”.")
+                return
+            rows = [
+                {"book_code": book["book_code"], "book_name": book["book_name"],
+                 "chapter": row["chapter"], "verse": row["verse"], "text": row["text"]}
+                for row in self.db.book(translation_id, book["book_code"])[:500]
+            ]
+            effective_mode = "book"
+        else:
+            rows = [dict(row) for row in self.db.search(
+                translation_id, query, book_code=book_code, phrase=mode == "phrase"
+            )]
+            effective_mode = mode
+        self.user_data.add_search(query, effective_mode, book_code)
         self.search_results.clear()
         for row in rows:
-            item = QListWidgetItem(f"{row['book_name']} {row['chapter']}:{row['verse']}. {row['text']}")
+            item = QListWidgetItem(f"{row['book_name']} {row['chapter']}:{row['verse']} — {row['text']}")
             item.setData(Qt.UserRole, dict(row))
             self.search_results.addItem(item)
         suffix = " O limite de 500 resultados foi atingido." if len(rows) == 500 else ""
@@ -1284,6 +1529,74 @@ class MainWindow(QMainWindow):
         if rows:
             self.search_results.setCurrentRow(0)
             self.search_results.setFocus()
+        self.refresh_search_history()
+
+    def _thematic_search(self, translation_id: str, topic, book_code=None):
+        """Combina referências curadas e palavras relacionadas sem serviços pagos."""
+        _name, data = topic
+        found = {}
+        for reference in data["references"]:
+            try:
+                parsed = parse_reference(reference)
+            except ValueError:
+                continue
+            book = self.db.resolve_book(translation_id, parsed.book_query)
+            if not book or (book_code and book["book_code"] != book_code):
+                continue
+            for row in self.db.passage(translation_id, book["book_code"], parsed.chapter,
+                                       parsed.verse_start, parsed.verse_end):
+                data_row = {"book_code": book["book_code"], "book_name": book["book_name"],
+                            "chapter": parsed.chapter, "verse": row["verse"], "text": row["text"]}
+                found[(book["book_code"], parsed.chapter, row["verse"])] = data_row
+        for keyword in data["keywords"]:
+            for row in self.db.search(translation_id, keyword, limit=50, book_code=book_code, phrase=" " in keyword):
+                found.setdefault((row["book_code"], row["chapter"], row["verse"]), dict(row))
+                if len(found) >= 500:
+                    break
+        return list(found.values())[:500]
+
+    def refresh_search_history(self):
+        """Mostra pesquisas recentes e permite repeti-las por Enter ou Espaço."""
+        if not hasattr(self, "search_history_list"):
+            return
+        self.search_history_list.clear()
+        for row in self.user_data.searches()[:20]:
+            item = QListWidgetItem(f"{row['query']}. Tipo: {row['search_mode']}.")
+            item.setData(Qt.UserRole, row)
+            self.search_history_list.addItem(item)
+
+    def repeat_search(self, item):
+        """Restaura uma consulta do histórico e a executa novamente."""
+        row = item.data(Qt.UserRole)
+        self.search_edit.setText(row["query"])
+        mode_index = self.search_mode.findData(row["search_mode"])
+        self.search_mode.setCurrentIndex(max(0, mode_index))
+        book_index = self.search_book.findData(row["book_code"])
+        self.search_book.setCurrentIndex(max(0, book_index))
+        self.perform_search()
+
+    def copy_search_result(self):
+        """Copia referência e texto do resultado destacado."""
+        item = self.search_results.currentItem()
+        if not item:
+            return
+        row = item.data(Qt.UserRole)
+        QApplication.clipboard().setText(
+            f"{row['book_name']} {row['chapter']}:{row['verse']} — {row['text']}"
+        )
+        self._announce_for(self.search_results, "Resultado copiado.")
+
+    def favorite_search_result(self):
+        """Adiciona o resultado destacado aos Favoritos gerais."""
+        item = self.search_results.currentItem()
+        if not item:
+            return
+        row = item.data(Qt.UserRole)
+        self.user_data.add_favorite(
+            self.search_translation.currentData(), row["book_code"], row["book_name"],
+            row["chapter"], row["verse"], "verse",
+        )
+        self._announce_for(self.search_results, "Resultado adicionado aos favoritos.")
 
     def open_search_result(self, item):
         """Muda tradução e leitura para o resultado ativado."""
@@ -1327,6 +1640,8 @@ class MainWindow(QMainWindow):
             (f"Voz SAPI — {self._voice_label(self.pending_voice_name)}", "voice"),
             (f"Velocidade da voz interna — {self._choice_label(SPEECH_RATE_OPTIONS, self.pending_speech_rate)}", "speech_rate"),
             (f"Alto contraste — {self._choice_label(CONTRAST_OPTIONS, self.pending_high_contrast)}", "high_contrast"),
+            (f"Atualizações automáticas — {self._choice_label(UPDATE_AUTOMATIC_OPTIONS, self.pending_update_automatic)}", "update_automatic"),
+            (f"Notificar nova versão — {self._choice_label(UPDATE_NOTIFICATION_OPTIONS, self.pending_update_notify)}", "update_notify"),
         )
         for label, option_id in entries:
             item = QListWidgetItem(label)
@@ -1363,6 +1678,16 @@ class MainWindow(QMainWindow):
             value, accepted = ChoiceDialog.get_choice(
                 self, "Velocidade da voz interna", SPEECH_RATE_OPTIONS, self.pending_speech_rate
             )
+        elif option_id == "update_automatic":
+            value, accepted = ChoiceDialog.get_choice(
+                self, "Verificação automática de atualizações",
+                UPDATE_AUTOMATIC_OPTIONS, self.pending_update_automatic
+            )
+        elif option_id == "update_notify":
+            value, accepted = ChoiceDialog.get_choice(
+                self, "Notificação de nova versão",
+                UPDATE_NOTIFICATION_OPTIONS, self.pending_update_notify
+            )
         else:
             value, accepted = ChoiceDialog.get_choice(
                 self, "Alto contraste", CONTRAST_OPTIONS, self.pending_high_contrast
@@ -1378,6 +1703,10 @@ class MainWindow(QMainWindow):
                 self.pending_voice_name = str(value)
             elif option_id == "speech_rate":
                 self.pending_speech_rate = float(value)
+            elif option_id == "update_automatic":
+                self.pending_update_automatic = bool(value)
+            elif option_id == "update_notify":
+                self.pending_update_notify = bool(value)
             else:
                 self.pending_high_contrast = bool(value)
             self._refresh_settings_options()
@@ -1458,6 +1787,8 @@ class MainWindow(QMainWindow):
         self.settings.setValue("accessibility/voice_name", self.pending_voice_name)
         self.settings.setValue("accessibility/speech_rate", self.pending_speech_rate)
         self.settings.setValue("accessibility/high_contrast", self.pending_high_contrast)
+        self.settings.setValue("updates/automatic", self.pending_update_automatic)
+        self.settings.setValue("updates/notify", self.pending_update_notify)
         self.settings.sync()
         self.api_key = self.pending_api_key
         self.ai_model = self.pending_ai_model
@@ -1466,6 +1797,8 @@ class MainWindow(QMainWindow):
         self.voice_name = self.pending_voice_name
         self.speech_rate = self.pending_speech_rate
         self.high_contrast = self.pending_high_contrast
+        self.update_automatic = self.pending_update_automatic
+        self.update_notify = self.pending_update_notify
         self._apply_accessibility_settings()
         self._refresh_settings_options()
         self._announce_for(self.settings_options, "Configurações salvas.")
@@ -1649,6 +1982,16 @@ class MainWindow(QMainWindow):
         self.help_text.setFocus()
         if self.help_text.count():
             self.help_text.setCurrentRow(0)
+
+    def check_updates_now(self):
+        """Solicita verificação imediata pela opção da Ajuda."""
+        if hasattr(self, "update_controller"):
+            self.update_controller.check_now(manual=True)
+
+    def show_current_changelog(self):
+        """Abre as novidades locais da versão instalada."""
+        if hasattr(self, "update_controller"):
+            self.update_controller.show_current_changelog()
 
     def _handle_escape(self):
         """Volta das telas internas ou, na Bíblia, interrompe a voz."""

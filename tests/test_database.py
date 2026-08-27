@@ -42,6 +42,14 @@ class DatabaseTests(unittest.TestCase):
         """Confirma que a pesquisa por múltiplas palavras retorna itens."""
         self.assertGreater(len(self.db.search("bpm", "bom pastor")), 0)
 
+    def test_phrase_book_filter_and_passage(self):
+        """Cobre frase exata, pesquisa dentro de livro e intervalo de números."""
+        results = self.db.search("bpm", "bom pastor", book_code="JHN", phrase=True)
+        self.assertTrue(results)
+        self.assertTrue(all(row["book_code"] == "JHN" for row in results))
+        passage = self.db.passage("bpm", "JHN", 3, "16", "18")
+        self.assertGreaterEqual(len(passage), 3)
+
     def test_legal_explanation_is_embedded(self):
         """Mantém justificativas nos metadados de origem do banco."""
         for translation in self.db.translations():
