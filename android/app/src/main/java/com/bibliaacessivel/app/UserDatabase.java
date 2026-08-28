@@ -19,7 +19,7 @@ import java.util.List;
 /** Guarda notas e marcadores somente no armazenamento privado do aplicativo. */
 final class UserDatabase extends SQLiteOpenHelper {
     UserDatabase(Context context) {
-        super(context, "user_data.db", null, 2);
+        super(context, "user_data.db", null, 3);
     }
 
     @Override public void onCreate(SQLiteDatabase db) {
@@ -35,6 +35,7 @@ final class UserDatabase extends SQLiteOpenHelper {
 
     @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion < 2) createQuizTable(db);
+        if (oldVersion < 3) makeQuizAnswersUnique(db);
     }
 
     /** Cria a tabela separada de resultados sem guardar a alternativa escolhida. */
@@ -43,6 +44,15 @@ final class UserDatabase extends SQLiteOpenHelper {
                 "id INTEGER PRIMARY KEY AUTOINCREMENT,question_id TEXT NOT NULL," +
                 "difficulty TEXT NOT NULL,category TEXT NOT NULL,is_correct INTEGER NOT NULL," +
                 "answered_at TEXT NOT NULL)");
+        makeQuizAnswersUnique(db);
+    }
+
+    /** Mantém a primeira resposta antiga e impede que a pergunta conte novamente. */
+    private static void makeQuizAnswersUnique(SQLiteDatabase db) {
+        db.execSQL("DELETE FROM quiz_attempts WHERE id NOT IN (" +
+                "SELECT MIN(id) FROM quiz_attempts GROUP BY question_id)");
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS quiz_attempts_question_id_unique " +
+                "ON quiz_attempts(question_id)");
     }
 
     long addNote(String translationId, Models.Book book, int chapter, Models.Verse verse,
@@ -99,15 +109,24 @@ final class UserDatabase extends SQLiteOpenHelper {
         return true;
     }
 
-    /** Registra um acerto ou erro para o acompanhamento de estudo local. */
-    void recordQuizAttempt(QuizCatalog.Question question, boolean correct) {
+    /** Registra somente a primeira resposta e informa se a gravação aconteceu. */
+    boolean recordQuizAttempt(QuizCatalog.Question question, boolean correct) {
         ContentValues values = new ContentValues();
         values.put("question_id", question.id);
         values.put("difficulty", question.difficulty);
         values.put("category", question.category);
         values.put("is_correct", correct ? 1 : 0);
         values.put("answered_at", OffsetDateTime.now().toString());
-        getWritableDatabase().insertOrThrow("quiz_attempts", null, values);
+        return getWritableDatabase().insertWithOnConflict(
+                "quiz_attempts", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1;
+    }
+
+    /** Informa se a pergunta já possui um resultado definitivo no aparelho. */
+    boolean hasAnsweredQuizQuestion(String questionId) {
+        try (Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT 1 FROM quiz_attempts WHERE question_id=?", new String[]{questionId})) {
+            return cursor.moveToFirst();
+        }
     }
 
     /** Retorna total, acertos e erros, nesta ordem. */

@@ -82,6 +82,18 @@ class UserDataDatabase:
         )
         for statement in statements:
             self.connection.execute(statement)
+        # Versões anteriores aceitavam várias linhas para a mesma pergunta.
+        # Preservamos a primeira resposta e impedimos novas duplicações.
+        self.connection.execute(
+            """DELETE FROM quiz_attempts
+               WHERE id NOT IN (
+                 SELECT MIN(id) FROM quiz_attempts GROUP BY question_id
+               )"""
+        )
+        self.connection.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS quiz_attempts_question_id_unique "
+            "ON quiz_attempts(question_id)"
+        )
         now = self._now()
         self.connection.execute(
             "INSERT OR IGNORE INTO favorite_categories(name, created_at) VALUES (?, ?)",
@@ -597,14 +609,21 @@ class UserDataDatabase:
         return counts
 
     def record_quiz_attempt(self, question_id: str, difficulty: str,
-                            category: str, correct: bool) -> None:
-        """Registra somente o resultado de estudo, sem guardar a resposta escolhida."""
-        self.connection.execute(
-            """INSERT INTO quiz_attempts(question_id,difficulty,category,is_correct,answered_at)
+                            category: str, correct: bool) -> bool:
+        """Registra a primeira resposta e informa se ela era realmente inédita."""
+        cursor = self.connection.execute(
+            """INSERT OR IGNORE INTO quiz_attempts(question_id,difficulty,category,is_correct,answered_at)
                VALUES(?,?,?,?,?)""",
             (question_id, difficulty, category, int(correct), self._now()),
         )
         self.connection.commit()
+        return cursor.rowcount == 1
+
+    def quiz_question_answered(self, question_id: str) -> bool:
+        """Informa se a pergunta já possui um resultado definitivo."""
+        return self.connection.execute(
+            "SELECT 1 FROM quiz_attempts WHERE question_id=?", (question_id,)
+        ).fetchone() is not None
 
     def quiz_statistics(self) -> dict[str, int]:
         """Conta tentativas, acertos e erros acumulados no quiz."""
@@ -671,8 +690,9 @@ class UserDataDatabase:
                         raise ValueError(f"Um registro de {table} é inválido.")
                     columns = list(row)
                     placeholders = ",".join("?" for _ in columns)
+                    operation = "INSERT OR IGNORE" if table == "quiz_attempts" else "INSERT"
                     self.connection.execute(
-                        f"INSERT INTO {table}({','.join(columns)}) VALUES({placeholders})",
+                        f"{operation} INTO {table}({','.join(columns)}) VALUES({placeholders})",
                         [row[column] for column in columns],
                     )
             self.connection.execute(

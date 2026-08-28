@@ -801,10 +801,19 @@ class ExtendedFeatures:
     def answer_quiz(self, item):
         """Informa imediatamente acerto, explicação e referência."""
         question = self.quiz_questions[item.data(Qt.UserRole)]
+        if self.data.quiz_question_answered(question.question_id):
+            QMessageBox.information(
+                self.host, "Pergunta já respondida",
+                "Esta pergunta já foi respondida e seu primeiro resultado permanece no status do quiz.",
+            )
+            return
         chosen = ApplicationsDialog.choose(self.host, question.text, tuple((answer, index) for index, answer in enumerate(question.answers)))
         if chosen is None: return
         correct = chosen == question.correct
-        self.data.record_quiz_attempt(question.question_id, question.difficulty, question.category, correct)
+        if not self.data.record_quiz_attempt(
+                question.question_id, question.difficulty, question.category, correct):
+            QMessageBox.information(self.host, "Pergunta já respondida", "O resultado anterior foi mantido.")
+            return
         message = ("Resposta correta. " if correct else f"Resposta incorreta. A resposta correta é {question.answers[question.correct]}. ") + question.explanation + f" Referência: {question.reference}."
         QMessageBox.information(self.host, "Resultado do quiz", message)
 

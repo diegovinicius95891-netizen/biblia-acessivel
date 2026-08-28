@@ -24,7 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 2.1.2\n\n" +
+            "Novidades da versão Android 2.1.3\n\n" +
+            "Cada pergunta do quiz agora registra somente a primeira resposta. Duplicações antigas são corrigidas automaticamente.\n\n" +
             "Nova seção Harpa Cristã com 640 hinos e pesquisa offline.\n\n" +
             "Quiz ampliado para 298 perguntas de estudo.\n\n" +
             "Nova seção Status do quiz com acertos, erros e aproveitamento.\n\n" +

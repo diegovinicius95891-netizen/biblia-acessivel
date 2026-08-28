@@ -1,6 +1,8 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 2.1.2
+CURRENT_CHANGELOG = """Novidades da versão 2.1.3
+
+Cada pergunta do quiz agora pode registrar somente uma resposta. Resultados duplicados antigos são corrigidos automaticamente, preservando a primeira resposta.
 
 Leitura dos hinos da Harpa Cristã corrigida: cada trecho agora fica em uma caixa navegável com as setas cima e baixo.
 

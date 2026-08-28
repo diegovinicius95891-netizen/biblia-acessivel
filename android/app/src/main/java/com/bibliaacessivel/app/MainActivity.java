@@ -605,10 +605,23 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Informa imediatamente acerto ou erro, explicação e referência bíblica. */
     private void answerQuiz(QuizCatalog.Question question, String difficulty, String category) {
+        if (userData.hasAnsweredQuizQuestion(question.id)) {
+            new AlertDialog.Builder(this).setTitle("Pergunta já respondida")
+                    .setMessage("Esta pergunta já foi respondida e seu primeiro resultado permanece no status do quiz.")
+                    .setPositiveButton("Voltar", (dialog, which) ->
+                            showQuizQuestions(difficulty, category)).show();
+            return;
+        }
         new AlertDialog.Builder(this).setTitle(question.text)
                 .setItems(question.answers, (dialog, chosen) -> {
                     boolean correct = chosen == question.correct;
-                    userData.recordQuizAttempt(question, correct);
+                    if (!userData.recordQuizAttempt(question, correct)) {
+                        new AlertDialog.Builder(this).setTitle("Pergunta já respondida")
+                                .setMessage("O resultado anterior foi mantido.")
+                                .setPositiveButton("Voltar", (ignored, which) ->
+                                        showQuizQuestions(difficulty, category)).show();
+                        return;
+                    }
                     String result = (correct ? "Resposta correta. " :
                             "Resposta incorreta. A resposta correta é " +
                                     question.answers[question.correct] + ". ") +

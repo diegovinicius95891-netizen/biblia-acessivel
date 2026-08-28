@@ -132,6 +132,46 @@ class UserDataTests(unittest.TestCase):
             self.assertEqual(2, database.quiz_statistics()["quiz_total"])
             database.close()
 
+    def test_quiz_question_counts_only_the_first_answer(self):
+        """Uma pergunta repetida mantém o primeiro resultado e conta uma única vez."""
+        with TemporaryDirectory() as directory:
+            database = UserDataDatabase(Path(directory) / "user.db")
+            self.assertTrue(database.record_quiz_attempt("q1", "fácil", "Jesus", False))
+            self.assertTrue(database.quiz_question_answered("q1"))
+            self.assertFalse(database.record_quiz_attempt("q1", "fácil", "Jesus", True))
+            self.assertEqual(
+                {"quiz_total": 1, "quiz_acertos": 0, "quiz_erros": 1},
+                database.quiz_statistics(),
+            )
+            database.close()
+
+    def test_quiz_migration_removes_old_duplicate_answers(self):
+        """Bases antigas preservam somente a primeira resposta de cada pergunta."""
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "user.db"
+            connection = sqlite3.connect(path)
+            connection.execute(
+                """CREATE TABLE quiz_attempts (
+                   id INTEGER PRIMARY KEY AUTOINCREMENT, question_id TEXT NOT NULL,
+                   difficulty TEXT NOT NULL, category TEXT NOT NULL,
+                   is_correct INTEGER NOT NULL, answered_at TEXT NOT NULL)"""
+            )
+            connection.executemany(
+                """INSERT INTO quiz_attempts(question_id,difficulty,category,is_correct,answered_at)
+                   VALUES(?,?,?,?,?)""",
+                (("q1", "fácil", "Jesus", 0, "2026-01-01"),
+                 ("q1", "fácil", "Jesus", 1, "2026-01-02")),
+            )
+            connection.commit()
+            connection.close()
+
+            database = UserDataDatabase(path)
+            self.assertEqual(
+                {"quiz_total": 1, "quiz_acertos": 0, "quiz_erros": 1},
+                database.quiz_statistics(),
+            )
+            database.close()
+
 
 if __name__ == "__main__":
     unittest.main()
