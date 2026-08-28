@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import ctypes
 import logging
 import os
 import subprocess
@@ -29,6 +30,50 @@ from .version import APP_VERSION, WINDOWS_ASSET_NAME
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def independent_process_environment(source: dict[str, str] | None = None) -> dict[str, str]:
+    """Cria ambiente limpo para um processo que deve sobreviver ao EXE atual.
+
+    O bootloader do PyInstaller usa variáveis privadas para fazer processos-filhos
+    reutilizarem a pasta temporária ``_MEI``. Isso é correto para trabalhadores,
+    mas não para o reinício depois de uma atualização, pois a pasta da instância
+    antiga é removida assim que ela termina.
+    """
+    environment = dict(os.environ if source is None else source)
+    for name in tuple(environment):
+        if name.startswith("_PYI_") or name == "_MEIPASS2":
+            environment.pop(name, None)
+
+    bundle_root = getattr(sys, "_MEIPASS", "")
+    if bundle_root and environment.get("PATH"):
+        normalized_root = os.path.normcase(os.path.abspath(bundle_root))
+        environment["PATH"] = os.pathsep.join(
+            entry for entry in environment["PATH"].split(os.pathsep)
+            if (
+                os.path.normcase(os.path.abspath(entry or ".")) != normalized_root
+                and not os.path.normcase(os.path.abspath(entry or ".")).startswith(normalized_root + os.sep)
+            )
+        )
+
+    environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+    return environment
+
+
+def launch_independent_process(arguments: list[str], **options) -> subprocess.Popen:
+    """Inicia helper externo sem herdar a busca de DLLs do pacote congelado."""
+    options["env"] = independent_process_environment(options.get("env"))
+    bundle_root = getattr(sys, "_MEIPASS", "")
+    dll_search_was_reset = False
+    if sys.platform == "win32" and getattr(sys, "frozen", False):
+        # SetDllDirectoryW também afeta processos-filhos no Windows. O PowerShell
+        # precisa usar as DLLs do sistema, não as cópias internas do aplicativo.
+        dll_search_was_reset = ctypes.windll.kernel32.SetDllDirectoryW(None) != 0
+    try:
+        return subprocess.Popen(arguments, **options)
+    finally:
+        if dll_search_was_reset and bundle_root:
+            ctypes.windll.kernel32.SetDllDirectoryW(str(bundle_root))
 
 
 class UpdateSignals(QObject):
@@ -321,10 +366,11 @@ class UpdateController(QObject):
             "$failed=$false; try { Copy-Item -Path (Join-Path $source '*') -Destination $destination -Recurse -Force } "
             "catch { Copy-Item -Path (Join-Path $rollback '*') -Destination $destination -Recurse -Force; $failed=$true }; "
             "Remove-Item -LiteralPath $staging -Recurse -Force; "
-            "Remove-Item -LiteralPath $rollback -Recurse -Force; Start-Process -FilePath $exe; if($failed){exit 1}"
+            "Remove-Item -LiteralPath $rollback -Recurse -Force; "
+            "$env:PYINSTALLER_RESET_ENVIRONMENT='1'; Start-Process -FilePath $exe; if($failed){exit 1}"
         )
         encoded = base64.b64encode(command.encode("utf-16le")).decode("ascii")
-        subprocess.Popen(
+        launch_independent_process(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", encoded],
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             close_fds=True,

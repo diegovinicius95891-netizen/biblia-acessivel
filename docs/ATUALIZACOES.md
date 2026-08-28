@@ -42,3 +42,5 @@ Abra Mais opções > Configurações > Atualizações automáticas, escolha Desa
 ## Dados e falhas
 
 O banco pessoal, logs, downloads e backups ficam em `%APPDATA%\BibliaAcessivel`. A instalação substitui somente o conteúdo da pasta do programa. Os cinco backups pré-atualização mais recentes são mantidos. Falha de internet, cancelamento, pacote incompleto, hash divergente ou falha ao iniciar o helper preservam a versão atual e produzem mensagem simples; detalhes técnicos ficam apenas no log.
+
+O helper é iniciado com a busca de DLLs do Windows restaurada e sem o estado privado do PyInstaller. Antes de reabrir o aplicativo, ele define `PYINSTALLER_RESET_ENVIRONMENT=1`; assim, uma compilação `onefile` nova não reutiliza a pasta `_MEI` que pertence à versão encerrada.

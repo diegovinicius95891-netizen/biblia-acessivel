@@ -1,6 +1,8 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 2.1.0
+CURRENT_CHANGELOG = """Novidades da versão 2.1.1
+
+Reinício do aplicativo após uma atualização corrigido no Windows. Cada nova versão agora extrai suas próprias DLLs antes de abrir.
 
 Nova seção Harpa Cristã com os 640 hinos completos e pesquisa offline por número, título ou trecho.
 
