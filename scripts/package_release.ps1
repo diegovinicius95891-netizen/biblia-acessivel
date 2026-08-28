@@ -25,6 +25,8 @@ try {
     Copy-Item -LiteralPath (Join-Path $projectRoot 'LEIA-ME.txt') -Destination $bundleRoot
     Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD_PARTY_NOTICES.md') -Destination $bundleRoot
     Copy-Item -LiteralPath (Join-Path $projectRoot 'data\biblia.db') -Destination (Join-Path $bundleRoot 'data')
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'data\harpa_crista.json') -Destination (Join-Path $bundleRoot 'data')
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'data\quiz_questions.tsv') -Destination (Join-Path $bundleRoot 'data')
 
     Compress-Archive -LiteralPath $bundleRoot -DestinationPath $destination -CompressionLevel Optimal -Force
 }

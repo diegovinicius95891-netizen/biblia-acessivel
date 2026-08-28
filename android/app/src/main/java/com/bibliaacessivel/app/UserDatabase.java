@@ -19,7 +19,7 @@ import java.util.List;
 /** Guarda notas e marcadores somente no armazenamento privado do aplicativo. */
 final class UserDatabase extends SQLiteOpenHelper {
     UserDatabase(Context context) {
-        super(context, "user_data.db", null, 1);
+        super(context, "user_data.db", null, 2);
     }
 
     @Override public void onCreate(SQLiteDatabase db) {
@@ -30,10 +30,19 @@ final class UserDatabase extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE bookmarks (translation_id TEXT NOT NULL,book_code TEXT NOT NULL," +
                 "chapter INTEGER NOT NULL,verse TEXT NOT NULL," +
                 "PRIMARY KEY(translation_id,book_code,chapter,verse))");
+        createQuizTable(db);
     }
 
     @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // A primeira versão ainda não possui migrações Android anteriores.
+        if (oldVersion < 2) createQuizTable(db);
+    }
+
+    /** Cria a tabela separada de resultados sem guardar a alternativa escolhida. */
+    private static void createQuizTable(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS quiz_attempts (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,question_id TEXT NOT NULL," +
+                "difficulty TEXT NOT NULL,category TEXT NOT NULL,is_correct INTEGER NOT NULL," +
+                "answered_at TEXT NOT NULL)");
     }
 
     long addNote(String translationId, Models.Book book, int chapter, Models.Verse verse,
@@ -88,6 +97,28 @@ final class UserDatabase extends SQLiteOpenHelper {
         values.put("verse", verse);
         db.insertOrThrow("bookmarks", null, values);
         return true;
+    }
+
+    /** Registra um acerto ou erro para o acompanhamento de estudo local. */
+    void recordQuizAttempt(QuizCatalog.Question question, boolean correct) {
+        ContentValues values = new ContentValues();
+        values.put("question_id", question.id);
+        values.put("difficulty", question.difficulty);
+        values.put("category", question.category);
+        values.put("is_correct", correct ? 1 : 0);
+        values.put("answered_at", OffsetDateTime.now().toString());
+        getWritableDatabase().insertOrThrow("quiz_attempts", null, values);
+    }
+
+    /** Retorna total, acertos e erros, nesta ordem. */
+    int[] quizStatistics() {
+        try (Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT COUNT(*),COALESCE(SUM(is_correct),0) FROM quiz_attempts", null)) {
+            cursor.moveToFirst();
+            int total = cursor.getInt(0);
+            int correct = cursor.getInt(1);
+            return new int[]{total, correct, total - correct};
+        }
     }
 
     /** Cria uma cópia consistente antes da instalação e mantém as cinco mais recentes. */

@@ -17,7 +17,8 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 - Chave própria do Google Gemini protegida com Android Keystore.
 - A opção Obter chave da API do Google abre diretamente o Google AI Studio.
 - Leis, licenças, justificativa de uso e ajuda dentro do aplicativo.
-- Quiz bíblico com 36 perguntas: duas em cada combinação de dificuldade e categoria.
+- Harpa Cristã com 640 hinos e pesquisa offline por número, título ou trecho.
+- Quiz bíblico com 298 perguntas de estudo e Status do quiz com acertos, erros e aproveitamento.
 - Modo culto: confirme João 3:16, Romanos 8 ou Salmos 23:1-6 e a passagem aparece e recebe foco imediatamente.
 - Atualizador Android próprio, com consulta diária opcional, download cancelável, SHA-256 e backup antes da instalação.
 

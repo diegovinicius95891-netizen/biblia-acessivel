@@ -27,8 +27,10 @@ Mais opções contém as páginas pessoais e de estudo. Espaço ou Enter abre so
 - `gemini_client.py`: chamada mínima ao `generateContent` do Google Gemini, extração do texto e erros seguros.
 - `secure_store.py`: proteção e recuperação da chave por DPAPI, vinculada ao usuário do Windows.
 - `database.py`: consultas somente leitura ao banco bíblico.
-- `user_data.py`: banco separado de marcadores e anotações por data.
-- `extended_features.py`: páginas de planos, oração, devocional diário, favoritos, histórico, estudo, memorização, quiz, estatísticas, culto e backup.
+- `user_data.py`: banco separado de dados pessoais, incluindo tentativas do quiz.
+- `extended_features.py`: páginas de planos, oração, devocional diário, favoritos, histórico, estudo, memorização, Harpa, quiz, status, estatísticas, culto e backup.
+- `hymnal.py`: validação e pesquisa offline dos 640 hinos.
+- `quiz_catalog.py`: leitura validada do catálogo de 298 perguntas compartilhado com o Android.
 - `references.py`: parser testável para livros abreviados, capítulos e intervalos.
 - `topics.py`: índice temático local compartilhado pela busca e pela página Temas.
 - `plans.py`: modelos, geração das leituras e cálculo de progresso dos 17 planos iniciais.
@@ -58,7 +60,7 @@ O arquivo pessoal fica em `%APPDATA%\BibliaAcessivel\user_data.db`; uma cópia a
 
 ## Persistência ampliada e migração
 
-`UserDataDatabase` mantém as tabelas antigas e cria incrementalmente categorias de favoritos, histórico de pesquisa e leitura, estados e dias de planos, pedidos de oração, devocionais diários, memorização e metadados de versão. Colunas novas de `bookmarks` são acrescentadas com `ALTER TABLE`; os registros existentes recebem a categoria Favoritos gerais. Nenhuma atualização apaga notas ou marcadores antigos.
+`UserDataDatabase` mantém as tabelas antigas e cria incrementalmente categorias de favoritos, histórico de pesquisa e leitura, estados e dias de planos, pedidos de oração, devocionais diários, memorização, tentativas do quiz e metadados de versão. Colunas novas de `bookmarks` são acrescentadas com `ALTER TABLE`; os registros existentes recebem a categoria Favoritos gerais. Nenhuma atualização apaga notas ou marcadores antigos.
 
 O backup exporta um objeto JSON identificado por `format` e `version`. A importação valida tabelas, registros e colunas antes de escrever e usa uma transação SQLite, que reverte a operação inteira se qualquer registro for inválido. Preferências não secretas do `QSettings` acompanham o backup; a chave Gemini protegida por DPAPI não acompanha, pois não seria portátil para outra conta do Windows.
 
@@ -76,7 +78,7 @@ A tela de devocional recebe a referência selecionada, mas também resolve outra
 
 ## Textos bíblicos
 
-`data/biblia.db` contém somente textos e metadados distribuíveis. `scripts/build_database.py` documenta e reproduz a importação das quatro fontes. `THIRD_PARTY_NOTICES.md` registra atribuições e condições.
+`data/biblia.db` contém os textos bíblicos. `data/harpa_crista.json` contém o catálogo textual dos 640 hinos e `data/quiz_questions.tsv` é a fonte única das 298 perguntas usadas pelas duas plataformas. `scripts/build_database.py` documenta as Bíblias e `scripts/build_quiz_catalog.py` reproduz as perguntas estruturais. `THIRD_PARTY_NOTICES.md` registra atribuições e condições.
 
 ## Atualização
 
@@ -106,4 +108,4 @@ Ajuda e Leis usam `ReadingTextList`, que apresenta um parágrafo por item. Isso 
 - `test_user_data.py`: também cobre categorias, planos, oração e backup transacional.
 - `test_update_service.py`: SemVer, filtros de release, seleção de asset, cancelamento e SHA-256.
 - `test_paths.py`: migração única sem sobrescrever a base pessoal existente.
-- `test_study_content.py`: cobertura de dificuldades, categorias, respostas e referências do quiz.
+- `test_study_content.py`: integridade dos 640 hinos e das 298 perguntas compartilhadas.

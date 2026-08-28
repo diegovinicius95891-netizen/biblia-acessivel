@@ -16,6 +16,13 @@ $buildPython = if ($env:BIBLIA_BUILD_PYTHON) {
     (Get-Command python -ErrorAction Stop).Source
 }
 
+# Impede a criação silenciosa de um EXE com uma combinação Qt já conhecida
+# por falhar depois de congelada. O workflow instala estes mesmos pinos.
+$buildVersions = & $buildPython -c "import PySide6, PyInstaller; print(f'{PySide6.__version__}|{PyInstaller.__version__}')"
+if ($LASTEXITCODE -ne 0 -or $buildVersions.Trim() -ne '6.8.3|6.21.0') {
+    throw "Ambiente de compilação incompatível: $buildVersions. Instale requirements-build.txt ou defina BIBLIA_BUILD_PYTHON."
+}
+
 # PyInstaller deve estar instalado somente no ambiente usado para compilar.
 & $buildPython -m PyInstaller `
     --noconfirm `

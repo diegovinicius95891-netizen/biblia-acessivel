@@ -57,7 +57,10 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertFalse(hasattr(window, "tabs"))
         self.assertIs(window.page_stack, window.centralWidget())
         self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
-        self.assertEqual(22, window.more_options.count())
+        self.assertEqual(24, window.more_options.count())
+        labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
+        self.assertIn("Harpa Cristã", labels)
+        self.assertIn("Status do quiz", labels)
         self.assertEqual(4, window.translation_list.count())
         self.assertEqual(39, window.book_list.count())
 
@@ -118,7 +121,7 @@ class GuiSmokeTests(unittest.TestCase):
         page_ids = (
             "dashboard", "plans", "prayers", "daily_devotional", "favorites",
             "history", "topics", "books_info", "characters", "memorization",
-            "quiz", "statistics", "worship", "backup",
+            "hymnal", "quiz", "quiz_status", "statistics", "worship", "backup",
         )
         for page_id in page_ids:
             with self.subTest(page=page_id):
@@ -127,6 +130,14 @@ class GuiSmokeTests(unittest.TestCase):
                 self.app.processEvents()
                 self.assertNotEqual(window.main_page_index, window.page_stack.currentIndex())
                 self.assertTrue(window.focusWidget().accessibleName())
+        self.assertEqual(640, window.extended.hymnal_list.count())
+        self.assertEqual(298, window.extended.quiz_list.count())
+        window.user_data.record_quiz_attempt("smoke", "fácil", "Jesus", True)
+        window.extended.refresh_quiz_status()
+        self.assertIn("Acertos: 1", [
+            window.extended.quiz_status_list.item(index).text()
+            for index in range(window.extended.quiz_status_list.count())
+        ])
         window.open_more_option("search")
         window.search_edit.setText("ansiedade")
         window.search_mode.setCurrentIndex(window.search_mode.findData("topic"))

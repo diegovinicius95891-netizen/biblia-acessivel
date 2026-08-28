@@ -21,7 +21,7 @@ Se encontrar um banco antigo, ele migra as notas e cria uma cópia de segurança
 
 RECURSOS PESSOAIS E DE ESTUDO
 
-Mais opções contém busca inteligente, 17 planos de leitura, Diário de oração, Meu momento com Deus, favoritos com categorias, histórico, temas, informações dos livros, personagens, memorização, quiz com 36 perguntas, estatísticas, Modo culto e backup.
+Mais opções contém busca inteligente, 17 planos de leitura, Diário de oração, Meu momento com Deus, favoritos com categorias, histórico, temas, informações dos livros, personagens, memorização, Harpa Cristã com 640 hinos, quiz com 298 perguntas, Status do quiz, estatísticas, Modo culto e backup.
 Todas essas áreas funcionam pelo teclado. Espaço ou Enter abre o item destacado e Escape volta à Bíblia.
 No Modo culto, digite a referência e pressione Enter: a passagem aparece e recebe foco imediatamente, sem abrir uma ação Ler versículo.
 
@@ -56,6 +56,8 @@ ARQUIVOS NECESSÁRIOS
 
 BibliaAcessivel.exe — aplicativo.
 data\biblia.db — textos bíblicos e metadados.
+data\harpa_crista.json — letras dos 640 hinos da Harpa Cristã.
+data\quiz_questions.tsv — catálogo compartilhado com 298 perguntas de estudo.
 LEIA-ME.txt — estas instruções.
 THIRD_PARTY_NOTICES.md — atribuições e licenças de terceiros.
 

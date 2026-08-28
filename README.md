@@ -8,7 +8,7 @@ O repositório também contém uma versão Android nativa em `android/`. Ela reu
 
 Dê duplo clique em `BibliaAcessivel.exe`, localizado na pasta principal. O executável não exige uma instalação separada do Python.
 
-O diretório `data`, contendo somente o banco bíblico distribuível `biblia.db`, deve permanecer ao lado do executável. Dados pessoais ficam em `%APPDATA%\BibliaAcessivel\user_data.db`. Na primeira execução da versão 2, uma base antiga encontrada ao lado do programa é copiada com segurança para esse local e preservada.
+O diretório `data`, contendo `biblia.db`, `harpa_crista.json` e `quiz_questions.tsv`, deve permanecer ao lado do executável. Dados pessoais ficam em `%APPDATA%\BibliaAcessivel\user_data.db`. Na primeira execução da versão 2, uma base antiga encontrada ao lado do programa é copiada com segurança para esse local e preservada.
 
 O banco distribuído contém quatro textos identificados separadamente:
 
@@ -53,7 +53,9 @@ O aplicativo salva automaticamente tradução, testamento, livro, capítulo e it
 - Meu momento com Deus reúne versículo diário, leitura do plano, reflexão, prática, oração, anotação e histórico por data.
 - Favoritos de versículos, capítulos e passagens com categorias próprias; anotações pesquisáveis para versículos, capítulos ou intervalos.
 - Histórico de leitura, posição exata para continuar, versículo diário, informações dos 66 livros, personagens e temas.
-- Memorização em três níveis e 36 perguntas de quiz, com duas perguntas em cada combinação de dificuldade e categoria.
+- Harpa Cristã com os 640 hinos, pesquisa offline por número, título ou trecho e leitura acessível da letra completa.
+- Memorização em três níveis e 298 perguntas de quiz sobre conteúdo, ordem e estrutura da Bíblia.
+- Status do quiz com perguntas respondidas, acertos, erros, aproveitamento e detalhamento por dificuldade.
 - Modo culto com foco direto no campo: Enter exibe a passagem sem abrir “Ler versículo”; o texto recebe foco e há comandos para copiar, trocar de capítulo ou digitar outra referência.
 - Backup JSON versionado e validado para favoritos, notas, planos, orações, devocionais, histórico e configurações não secretas.
 

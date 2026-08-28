@@ -29,6 +29,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
@@ -54,6 +56,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     };
 
     private BibleRepository bible;
+    private HymnalCatalog hymnal;
+    private QuizCatalog quizCatalog;
     private UserDatabase userData;
     private SecureStore secureStore;
     private UpdateManager updateManager;
@@ -84,6 +88,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         new Thread(() -> {
             try {
                 bible = new BibleRepository(this);
+                hymnal = HymnalCatalog.load(this);
+                quizCatalog = QuizCatalog.load(this);
                 restorePosition();
                 runOnUiThread(() -> {
                     showMainMenu();
@@ -283,8 +289,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout root = screen("Mais opções", this::showMainMenu);
         String[] options = {
                 "Traduções", "Ir para uma referência", "Pesquisar na Bíblia", "Fazer devocional",
-                "Anotações por dia", "Quiz bíblico", "Modo culto", "Atualizações",
-                "Configurações", "Licenças, leis e justificativa", "Ajuda"
+                "Anotações por dia", "Harpa Cristã", "Quiz bíblico", "Status do quiz",
+                "Modo culto", "Atualizações", "Configurações", "Licenças, leis e justificativa", "Ajuda"
         };
         ListView list = listView(Arrays.asList(options));
         list.setContentDescription("Mais opções");
@@ -295,11 +301,13 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 case 2: showSearch(); break;
                 case 3: showDevotional(); break;
                 case 4: showNotes(); break;
-                case 5: showQuiz(); break;
-                case 6: showWorshipMode(); break;
-                case 7: showUpdates(); break;
-                case 8: showSettings(); break;
-                case 9: showLegal(); break;
+                case 5: showHymnal(); break;
+                case 6: showQuiz(); break;
+                case 7: showQuizStatus(); break;
+                case 8: showWorshipMode(); break;
+                case 9: showUpdates(); break;
+                case 10: showSettings(); break;
+                case 11: showLegal(); break;
                 default: showHelp();
             }
         });
@@ -485,7 +493,30 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Converte o HTML jurídico do banco em texto selecionável e acessível. */
     private void showLegal() {
         String plain = Html.fromHtml(bible.legalText(translationId), Html.FROM_HTML_MODE_LEGACY).toString();
-        showTextScreen("Licenças, leis e justificativa", plain, this::showMoreOptions);
+        String hymnalNotice = "\n\nHARPA CRISTÃ\n\nO aplicativo inclui somente letras em texto, " +
+                "sem gravações, cifras, partituras ou arranjos, para leitura acessível e estudo " +
+                "num aplicativo gratuito. Catálogo estruturado: github.com/eduardo7321/harpa-crista-app, " +
+                "licença MIT. A decisão considera o artigo 46, inciso I, alínea d, da Lei 9.610 de 1998 " +
+                "e a declaração pública consultada em aharpacristaonline.com.br de que as letras " +
+                "tradicionais são de domínio público. Autoria e integridade permanecem respeitadas. " +
+                "O nome identifica o hinário e não representa vínculo com CPAD ou CGADB.";
+        String thirdParty = readTextAsset("THIRD_PARTY_NOTICES.md");
+        showTextScreen("Licenças, leis e justificativa",
+                plain + hymnalNotice + "\n\nAVISOS E LICENÇAS COMPLETOS\n\n" + thirdParty,
+                this::showMoreOptions);
+    }
+
+    /** Lê um aviso textual empacotado sem depender de internet ou armazenamento externo. */
+    private String readTextAsset(String name) {
+        try (InputStream input = getAssets().open(name);
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8_192];
+            int read;
+            while ((read = input.read(buffer)) >= 0) output.write(buffer, 0, read);
+            return output.toString(StandardCharsets.UTF_8.name());
+        } catch (Exception error) {
+            return "O aviso completo não pôde ser carregado nesta instalação.";
+        }
     }
 
     /** Explica comandos essenciais, gestos e privacidade. */
@@ -496,7 +527,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "para abrir. O gesto Voltar do Android retorna à tela anterior. Toque e segure " +
                 "livro, capítulo ou versículo para abrir Aplicações.\n\nVOZ\n\nAtivar um versículo usa a " +
                 "voz escolhida. Se a voz estiver desligada, o TalkBack anuncia novamente o texto.\n\n" +
-                "QUIZ E MODO CULTO\n\nO quiz possui 36 perguntas por dificuldade e categoria. No Modo " +
+                "HARPA, QUIZ E MODO CULTO\n\nA Harpa Cristã possui 640 hinos pesquisáveis e funciona " +
+                "offline. O quiz possui 298 perguntas e registra acertos e erros em Status do quiz. No Modo " +
                 "culto, digite uma passagem e confirme: o texto aparece imediatamente, sem precisar tocar " +
                 "em Ler versículo.\n\nATUALIZAÇÕES\n\nA versão Android consulta somente releases android-v " +
                 "e baixa somente BibliaAcessivel-Android.apk com seu SHA-256. O Windows usa outro pacote. " +
@@ -505,15 +537,52 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "pelo Android Keystore. A IA é opcional e exige internet.", this::showMoreOptions);
     }
 
+    /** Abre pesquisa offline e lista acessível dos 640 hinos. */
+    private void showHymnal() {
+        showHymnal("");
+    }
+
+    /** Recria a tela com o filtro confirmado e mantém uma rota de foco previsível. */
+    private void showHymnal(String query) {
+        LinearLayout root = screen("Harpa Cristã", this::showMoreOptions);
+        root.addView(paragraph("Digite número, título ou trecho da letra e confirme. " +
+                "Sem pesquisa, todos os 640 hinos são mostrados."));
+        EditText input = editText("Pesquisar na Harpa Cristã", false);
+        input.setSingleLine(true);
+        input.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        input.setText(query);
+        root.addView(input);
+        Button search = actionButton("Pesquisar hinos", "Pesquisar número, título ou letra",
+                () -> showHymnal(input.getText().toString().trim()));
+        input.setOnEditorActionListener((view, actionId, event) -> {
+            search.performClick();
+            return true;
+        });
+        root.addView(search);
+        List<HymnalCatalog.Hymn> results = hymnal.search(query);
+        root.addView(paragraph(results.size() + " hinos encontrados."));
+        ListView list = listView(results);
+        list.setContentDescription("Hinos da Harpa Cristã");
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            HymnalCatalog.Hymn hymn = results.get(position);
+            showTextScreen(hymn.toString(), hymn.lyrics, () -> showHymnal(query));
+        });
+        root.addView(list, fill());
+        setContentView(root);
+        if (query.isEmpty()) input.requestFocus();
+        else if (!results.isEmpty()) list.requestFocus();
+        else input.requestFocus();
+    }
+
     /** Escolhe filtros do quiz em diálogos nativos e abre a lista resultante. */
     private void showQuiz() {
         new AlertDialog.Builder(this).setTitle("Dificuldade do quiz")
                 .setItems(QuizCatalog.DIFFICULTIES, (firstDialog, difficultyIndex) ->
                         new AlertDialog.Builder(this).setTitle("Categoria do quiz")
-                                .setItems(QuizCatalog.CATEGORIES, (secondDialog, categoryIndex) ->
+                                .setItems(quizCatalog.categories, (secondDialog, categoryIndex) ->
                                         showQuizQuestions(
                                                 QuizCatalog.DIFFICULTIES[difficultyIndex],
-                                                QuizCatalog.CATEGORIES[categoryIndex]))
+                                                quizCatalog.categories[categoryIndex]))
                                 .setNegativeButton("Cancelar", null).show())
                 .setNegativeButton("Cancelar", null).show();
     }
@@ -521,7 +590,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Lista as perguntas filtradas e mantém o foco na primeira linha. */
     private void showQuizQuestions(String difficulty, String category) {
         LinearLayout root = screen("Quiz bíblico", this::showMoreOptions);
-        List<QuizCatalog.Question> questions = QuizCatalog.filtered(difficulty, category);
+        List<QuizCatalog.Question> questions = quizCatalog.filtered(difficulty, category);
         root.addView(paragraph(questions.size() + " perguntas. Dificuldade: " + difficulty +
                 ". Categoria: " + category + ". Ative uma pergunta para responder."));
         ListView list = listView(questions);
@@ -539,6 +608,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         new AlertDialog.Builder(this).setTitle(question.text)
                 .setItems(question.answers, (dialog, chosen) -> {
                     boolean correct = chosen == question.correct;
+                    userData.recordQuizAttempt(question, correct);
                     String result = (correct ? "Resposta correta. " :
                             "Resposta incorreta. A resposta correta é " +
                                     question.answers[question.correct] + ". ") +
@@ -548,6 +618,25 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                                     (resultDialog, which) -> showQuizQuestions(difficulty, category))
                             .setNegativeButton("Fechar", null).show();
                 }).setNegativeButton("Cancelar", null).show();
+    }
+
+    /** Mostra quantas respostas foram certas e erradas neste aparelho. */
+    private void showQuizStatus() {
+        int[] stats = userData.quizStatistics();
+        int accuracy = stats[0] == 0 ? 0 : Math.round(stats[1] * 100f / stats[0]);
+        List<String> lines = Arrays.asList(
+                "Perguntas respondidas: " + stats[0],
+                "Acertos: " + stats[1],
+                "Erros: " + stats[2],
+                "Aproveitamento: " + accuracy + " por cento"
+        );
+        LinearLayout root = screen("Status do quiz", this::showMoreOptions);
+        root.addView(paragraph("Resultados acumulados somente neste aparelho."));
+        ListView list = listView(lines);
+        list.setContentDescription("Acertos e erros do quiz bíblico");
+        root.addView(list, fill());
+        setContentView(root);
+        list.requestFocus();
     }
 
     /** Cria a busca rápida do culto com o campo focado e o resultado na mesma tela. */

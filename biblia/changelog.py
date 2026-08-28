@@ -1,14 +1,14 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 2.0.0
+CURRENT_CHANGELOG = """Novidades da versão 2.1.0
 
-Atualização automática segura por GitHub Releases, com validação SHA-256.
+Nova seção Harpa Cristã com os 640 hinos completos e pesquisa offline por número, título ou trecho.
 
-Dados pessoais migrados para a pasta do usuário no Windows e backup antes de atualizar.
+Quiz bíblico ampliado para 298 perguntas de estudo sobre conteúdo, ordem e estrutura da Bíblia.
 
-Quiz bíblico ampliado em todas as dificuldades e categorias.
+Nova seção Status do quiz com perguntas respondidas, acertos, erros, aproveitamento e detalhamento por dificuldade.
 
-Modo culto aprimorado: Enter mostra a passagem imediatamente e permite nova busca rápida.
+Resultados do quiz entram no backup pessoal, sem guardar a alternativa escolhida.
 
-Novos recursos locais de estudo, planos, oração, devocionais, favoritos e memorização.
+Atualizador Windows continua aceitando somente o ZIP próprio do canal Windows.
 """

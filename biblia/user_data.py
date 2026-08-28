@@ -73,7 +73,12 @@ class UserDataDatabase:
                  created_at TEXT NOT NULL,
                  PRIMARY KEY(translation_id, book_code, chapter, verse))""",
             """CREATE TABLE IF NOT EXISTS app_metadata (
-                 key TEXT PRIMARY KEY, value TEXT NOT NULL)""",
+                  key TEXT PRIMARY KEY, value TEXT NOT NULL)""",
+            """CREATE TABLE IF NOT EXISTS quiz_attempts (
+                 id INTEGER PRIMARY KEY AUTOINCREMENT, question_id TEXT NOT NULL,
+                 difficulty TEXT NOT NULL, category TEXT NOT NULL,
+                 is_correct INTEGER NOT NULL CHECK(is_correct IN (0,1)),
+                 answered_at TEXT NOT NULL)""",
         )
         for statement in statements:
             self.connection.execute(statement)
@@ -588,18 +593,48 @@ class UserDataDatabase:
             "SELECT COUNT(DISTINCT substr(accessed_at,1,10)) AS n FROM reading_history"
         ).fetchone()["n"]
         counts["livros_concluidos"] = 0
+        counts.update(self.quiz_statistics())
         return counts
+
+    def record_quiz_attempt(self, question_id: str, difficulty: str,
+                            category: str, correct: bool) -> None:
+        """Registra somente o resultado de estudo, sem guardar a resposta escolhida."""
+        self.connection.execute(
+            """INSERT INTO quiz_attempts(question_id,difficulty,category,is_correct,answered_at)
+               VALUES(?,?,?,?,?)""",
+            (question_id, difficulty, category, int(correct), self._now()),
+        )
+        self.connection.commit()
+
+    def quiz_statistics(self) -> dict[str, int]:
+        """Conta tentativas, acertos e erros acumulados no quiz."""
+        row = self.connection.execute(
+            """SELECT COUNT(*) AS total, COALESCE(SUM(is_correct),0) AS correct
+               FROM quiz_attempts"""
+        ).fetchone()
+        correct = int(row["correct"] or 0)
+        total = int(row["total"] or 0)
+        return {"quiz_total": total, "quiz_acertos": correct, "quiz_erros": total - correct}
+
+    def quiz_breakdown(self) -> list[dict]:
+        """Agrupa o desempenho por dificuldade para a seção Status do quiz."""
+        rows = self.connection.execute(
+            """SELECT difficulty,COUNT(*) AS total,COALESCE(SUM(is_correct),0) AS correct
+               FROM quiz_attempts GROUP BY difficulty
+               ORDER BY CASE difficulty WHEN 'fácil' THEN 1 WHEN 'médio' THEN 2 ELSE 3 END"""
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     def export_payload(self) -> dict:
         """Produz dados pessoais serializáveis em um formato versionado."""
         tables = (
             "favorite_categories", "bookmarks", "notes", "search_history",
             "reading_history", "reading_plans", "reading_plan_days", "prayers",
-            "devotionals", "memorized_verses",
+            "devotionals", "memorized_verses", "quiz_attempts",
         )
         return {
             "format": "biblia-acessivel-backup",
-            "version": 1,
+            "version": 2,
             "created_at": self._now(),
             "tables": {
                 table: [dict(row) for row in self.connection.execute(f"SELECT * FROM {table}").fetchall()]
@@ -609,19 +644,21 @@ class UserDataDatabase:
 
     def import_payload(self, payload: dict):
         """Valida e importa o backup numa transação, revertendo tudo se houver falha."""
-        if payload.get("format") != "biblia-acessivel-backup" or payload.get("version") != 1:
+        if payload.get("format") != "biblia-acessivel-backup" or payload.get("version") not in (1, 2):
             raise ValueError("Este arquivo não é um backup compatível da Bíblia Acessível.")
-        allowed = {
+        legacy = {
             "favorite_categories", "bookmarks", "notes", "search_history",
             "reading_history", "reading_plans", "reading_plan_days", "prayers",
             "devotionals", "memorized_verses",
         }
+        current = legacy | {"quiz_attempts"}
+        allowed = legacy if payload.get("version") == 1 else current
         tables = payload.get("tables")
         if not isinstance(tables, dict) or set(tables) != allowed:
             raise ValueError("O backup possui uma estrutura inválida.")
         with self.connection:
             self.connection.execute("PRAGMA defer_foreign_keys=ON")
-            for table in allowed:
+            for table in current:
                 self.connection.execute(f"DELETE FROM {table}")
             for table, rows in tables.items():
                 if not isinstance(rows, list):

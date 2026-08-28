@@ -28,9 +28,11 @@ from PySide6.QtWidgets import (
 )
 
 from .dialogs import AccessibleButton, AccessibleTextDialog, ActivatableList, ApplicationsDialog
+from .hymnal import load_hymnal, search_hymns
 from .plans import build_plan_catalog, progress_summary
+from .quiz_catalog import categories as quiz_categories, load_quiz_catalog
 from .references import parse_reference
-from .study_content import CHARACTERS, QUIZ, book_information
+from .study_content import CHARACTERS, book_information
 from .topics import TOPICS
 
 
@@ -49,6 +51,8 @@ class ExtendedFeatures:
         self.db = host.db
         self.data = host.user_data
         self.plan_catalog = build_plan_catalog(self.db, host.current_translation_id())
+        self.hymns = load_hymnal(host.install_dir / "data" / "harpa_crista.json")
+        self.quiz_questions = load_quiz_catalog(host.install_dir / "data" / "quiz_questions.tsv")
         self._build_pages()
         self._append_menu_options()
 
@@ -79,7 +83,9 @@ class ExtendedFeatures:
         self._build_books_info()
         self._build_characters()
         self._build_memorization()
+        self._build_hymnal()
         self._build_quiz()
+        self._build_quiz_status()
         self._build_statistics()
         self._build_worship_mode()
         self._build_backup()
@@ -97,7 +103,9 @@ class ExtendedFeatures:
             ("Informações sobre livros", "books_info"),
             ("Personagens", "characters"),
             ("Memorização de versículos", "memorization"),
+            ("Harpa Cristã", "hymnal"),
             ("Quiz bíblico", "quiz"),
+            ("Status do quiz", "quiz_status"),
             ("Estatísticas pessoais", "statistics"),
             ("Modo culto", "worship"),
             ("Backup e restauração", "backup"),
@@ -688,7 +696,7 @@ class ExtendedFeatures:
         if action == "read": AccessibleTextDialog(self.host, item.text(), item.text(), f"{description}\n\nAcontecimentos principais: {events}").exec()
         elif action: self.open_reference(action)
 
-    # Memorização e quiz ----------------------------------------------
+    # Memorização, Harpa e quiz ---------------------------------------
     def _build_memorization(self):
         """Monta a lista de versículos escolhidos para memorização."""
         section, layout, self.memory_list = self._list_section("Memorização de versículos", "Adicione o versículo atual ou pratique um item salvo.")
@@ -721,11 +729,61 @@ class ExtendedFeatures:
         text = " ".join(hidden) if action == "hidden" else row["verse_text"]
         if action: AccessibleTextDialog(self.host, "Memorização", "Exercício de memorização", text).exec()
 
+    def _build_hymnal(self):
+        """Cria pesquisa local por número, título ou trecho dos 640 hinos."""
+        section = QGroupBox("Harpa Cristã")
+        layout = QVBoxLayout(section)
+        layout.addWidget(QLabel(
+            "Digite um número, título ou trecho da letra e pressione Enter. "
+            "Sem pesquisa, todos os 640 hinos são mostrados."
+        ))
+        self.hymnal_search = QLineEdit()
+        self.hymnal_search.setAccessibleName("Pesquisar na Harpa Cristã")
+        self.hymnal_search.setPlaceholderText("Exemplo: 15 ou Chuvas de graça")
+        self.hymnal_search.returnPressed.connect(self.refresh_hymnal)
+        layout.addWidget(self.hymnal_search)
+        self.hymnal_status = QLabel()
+        self.hymnal_status.setAccessibleName("Quantidade de hinos encontrados")
+        layout.addWidget(self.hymnal_status)
+        self.hymnal_list = ActivatableList()
+        self.hymnal_list.setAccessibleName("Hinos da Harpa Cristã")
+        self.hymnal_list.setAccessibleDescription(
+            "Use cima e baixo para navegar e Espaço ou Enter para abrir a letra completa."
+        )
+        self.hymnal_list.selectionRequested.connect(self.open_hymn)
+        layout.addWidget(self.hymnal_list, 1)
+        self._visible_hymns = self.hymns
+        self._register("hymnal", "Harpa Cristã", section, self.hymnal_search)
+
+    def refresh_hymnal(self):
+        """Atualiza resultados e leva o foco à lista quando a busca é confirmada."""
+        self._visible_hymns = search_hymns(self.hymns, self.hymnal_search.text())
+        self.hymnal_list.clear()
+        for hymn in self._visible_hymns:
+            self.hymnal_list.addItem(QListWidgetItem(hymn.label))
+        total = len(self._visible_hymns)
+        suffix = "s" if total != 1 else ""
+        self.hymnal_status.setText(f"{total} hino{suffix} encontrado{suffix}.")
+        if total:
+            self.hymnal_list.setCurrentRow(0)
+            if self.hymnal_search.hasFocus():
+                self.hymnal_list.setFocus()
+                self.host._announce_for(self.hymnal_list, self.hymnal_status.text())
+        elif self.hymnal_search.hasFocus():
+            self.host._announce_for(self.hymnal_search, "Nenhum hino encontrado. Altere a pesquisa.")
+
+    def open_hymn(self, item):
+        """Abre a letra completa do hino selecionado em leitura por parágrafos."""
+        hymn = self._visible_hymns[self.hymnal_list.row(item)]
+        AccessibleTextDialog(
+            self.host, hymn.label, f"Letra do hino {hymn.number}, {hymn.title}", hymn.lyrics
+        ).exec()
+
     def _build_quiz(self):
         """Cria filtros de dificuldade e categoria e a lista de perguntas."""
         section, layout, self.quiz_list = self._list_section("Quiz bíblico", "Escolha dificuldade e categoria; ative uma pergunta para responder.")
         self.quiz_difficulty = QComboBox(); self.quiz_difficulty.setAccessibleName("Dificuldade do quiz"); self.quiz_difficulty.addItems(("todas", "fácil", "médio", "difícil")); layout.insertWidget(1, self.quiz_difficulty)
-        self.quiz_category = QComboBox(); self.quiz_category.setAccessibleName("Categoria do quiz"); self.quiz_category.addItems(("todas", "Antigo Testamento", "Novo Testamento", "Jesus", "personagens", "livros da Bíblia", "perguntas gerais")); layout.insertWidget(2, self.quiz_category)
+        self.quiz_category = QComboBox(); self.quiz_category.setAccessibleName("Categoria do quiz"); self.quiz_category.addItems(("todas", *quiz_categories(self.quiz_questions))); layout.insertWidget(2, self.quiz_category)
         self.quiz_difficulty.currentTextChanged.connect(self.refresh_quiz); self.quiz_category.currentTextChanged.connect(self.refresh_quiz)
         self.quiz_list.selectionRequested.connect(self.answer_quiz)
         self._register("quiz", "Quiz bíblico", section, self.quiz_list)
@@ -733,21 +791,48 @@ class ExtendedFeatures:
     def refresh_quiz(self):
         """Aplica os filtros sem alterar o catálogo original."""
         self.quiz_list.clear()
-        for index, question in enumerate(QUIZ):
-            if self.quiz_difficulty.currentText() not in ("todas", question[0]): continue
-            if self.quiz_category.currentText() not in ("todas", question[1]): continue
-            item = QListWidgetItem(f"{question[2]} Dificuldade: {question[0]}. Categoria: {question[1]}.")
+        for index, question in enumerate(self.quiz_questions):
+            if self.quiz_difficulty.currentText() not in ("todas", question.difficulty): continue
+            if self.quiz_category.currentText() not in ("todas", question.category): continue
+            item = QListWidgetItem(f"{question.text} Dificuldade: {question.difficulty}. Categoria: {question.category}.")
             item.setData(Qt.UserRole, index); self.quiz_list.addItem(item)
         if self.quiz_list.count(): self.quiz_list.setCurrentRow(0)
 
     def answer_quiz(self, item):
         """Informa imediatamente acerto, explicação e referência."""
-        question = QUIZ[item.data(Qt.UserRole)]
-        chosen = ApplicationsDialog.choose(self.host, question[2], tuple((answer, index) for index, answer in enumerate(question[3])))
+        question = self.quiz_questions[item.data(Qt.UserRole)]
+        chosen = ApplicationsDialog.choose(self.host, question.text, tuple((answer, index) for index, answer in enumerate(question.answers)))
         if chosen is None: return
-        correct = chosen == question[4]
-        message = ("Resposta correta. " if correct else f"Resposta incorreta. A resposta correta é {question[3][question[4]]}. ") + question[5] + f" Referência: {question[6]}."
+        correct = chosen == question.correct
+        self.data.record_quiz_attempt(question.question_id, question.difficulty, question.category, correct)
+        message = ("Resposta correta. " if correct else f"Resposta incorreta. A resposta correta é {question.answers[question.correct]}. ") + question.explanation + f" Referência: {question.reference}."
         QMessageBox.information(self.host, "Resultado do quiz", message)
+
+    def _build_quiz_status(self):
+        """Cria a seção dedicada a acertos, erros e aproveitamento."""
+        section, _layout, self.quiz_status_list = self._list_section(
+            "Status do quiz", "Resultados acumulados somente neste computador."
+        )
+        self._register("quiz_status", "Status do quiz", section, self.quiz_status_list)
+
+    def refresh_quiz_status(self):
+        """Mostra totais gerais e o detalhamento por dificuldade."""
+        stats = self.data.quiz_statistics()
+        total = stats["quiz_total"]
+        accuracy = round(stats["quiz_acertos"] * 100 / total) if total else 0
+        self.quiz_status_list.clear()
+        for text in (
+            f"Perguntas respondidas: {total}", f"Acertos: {stats['quiz_acertos']}",
+            f"Erros: {stats['quiz_erros']}", f"Aproveitamento: {accuracy} por cento",
+        ):
+            self.quiz_status_list.addItem(QListWidgetItem(text))
+        for row in self.data.quiz_breakdown():
+            correct = int(row["correct"] or 0)
+            attempts = int(row["total"] or 0)
+            self.quiz_status_list.addItem(QListWidgetItem(
+                f"Dificuldade {row['difficulty']}: {correct} acertos e {attempts - correct} erros."
+            ))
+        self.quiz_status_list.setCurrentRow(0)
 
     # Estatísticas, culto e backup ------------------------------------
     def _build_statistics(self):
@@ -770,7 +855,9 @@ class ExtendedFeatures:
                   ("Dias de leitura", "dias_leitura"), ("Planos concluídos", "planos_concluidos"),
                   ("Planos ativos", "planos_ativos"), ("Versículos favoritos", "favoritos"),
                   ("Anotações", "anotacoes"), ("Pedidos de oração", "pedidos_oracao"),
-                  ("Orações respondidas", "oracoes_respondidas"))
+                  ("Orações respondidas", "oracoes_respondidas"),
+                  ("Respostas certas no quiz", "quiz_acertos"),
+                  ("Respostas erradas no quiz", "quiz_erros"))
         for label, key in labels: self.statistics_list.addItem(QListWidgetItem(f"{label}: {stats[key]}"))
         self.statistics_list.setCurrentRow(0)
 
@@ -918,7 +1005,8 @@ class ExtendedFeatures:
             "prayers": self.refresh_prayers, "daily_devotional": self.prepare_moment,
             "favorites": self.refresh_favorites, "history": self.refresh_history,
             "books_info": self.refresh_books_info, "memorization": self.refresh_memory,
-            "quiz": self.refresh_quiz, "statistics": self.refresh_statistics,
+            "hymnal": self.refresh_hymnal, "quiz": self.refresh_quiz,
+            "quiz_status": self.refresh_quiz_status, "statistics": self.refresh_statistics,
         }
         if page_id in refreshers: refreshers[page_id]()
         if page_id == "worship": self.worship_edit.selectAll()

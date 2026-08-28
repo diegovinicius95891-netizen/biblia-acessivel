@@ -24,11 +24,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 2.0.0\n\n" +
-            "Atualizador separado que aceita somente releases android-v e o APK Android.\n\n" +
-            "Quiz bíblico ampliado para 36 perguntas em todas as dificuldades e categorias.\n\n" +
-            "Modo culto com exibição imediata da passagem ao confirmar a referência.\n\n" +
-            "Download cancelável, validação SHA-256, backup e melhorias para TalkBack.";
+            "Novidades da versão Android 2.1.0\n\n" +
+            "Nova seção Harpa Cristã com 640 hinos e pesquisa offline.\n\n" +
+            "Quiz ampliado para 298 perguntas de estudo.\n\n" +
+            "Nova seção Status do quiz com acertos, erros e aproveitamento.\n\n" +
+            "O atualizador continua aceitando somente releases android-v e o APK Android.";
 
     private final Activity activity;
     private final UserDatabase userData;

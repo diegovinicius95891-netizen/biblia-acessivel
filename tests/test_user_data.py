@@ -115,6 +115,23 @@ class UserDataTests(unittest.TestCase):
                 database.import_payload({"format": "outro", "version": 1})
             database.close()
 
+    def test_quiz_attempts_are_counted_and_included_in_backup(self):
+        """Mantém acertos e erros locais e preserva-os na restauração."""
+        with TemporaryDirectory() as directory:
+            database = UserDataDatabase(Path(directory) / "user.db")
+            database.record_quiz_attempt("q1", "fácil", "Jesus", True)
+            database.record_quiz_attempt("q2", "difícil", "ordem bíblica", False)
+            self.assertEqual(
+                {"quiz_total": 2, "quiz_acertos": 1, "quiz_erros": 1},
+                database.quiz_statistics(),
+            )
+            payload = database.export_payload()
+            self.assertEqual(2, payload["version"])
+            database.record_quiz_attempt("q3", "médio", "personagens", True)
+            database.import_payload(payload)
+            self.assertEqual(2, database.quiz_statistics()["quiz_total"])
+            database.close()
+
 
 if __name__ == "__main__":
     unittest.main()
