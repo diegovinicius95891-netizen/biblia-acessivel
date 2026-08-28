@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from .dialogs import AccessibleButton, AccessibleTextDialog, ActivatableList, ApplicationsDialog
+from .dialogs import AccessibleButton, AccessibleResultDialog, AccessibleTextDialog, ActivatableList, ApplicationsDialog
 from .hymnal import load_hymnal, search_hymns
 from .plans import build_plan_catalog, progress_summary
 from .quiz_catalog import categories as quiz_categories, load_quiz_catalog
@@ -773,10 +773,10 @@ class ExtendedFeatures:
             self.host._announce_for(self.hymnal_search, "Nenhum hino encontrado. Altere a pesquisa.")
 
     def open_hymn(self, item):
-        """Abre a letra completa do hino selecionado em leitura por parágrafos."""
+        """Abre a letra em itens navegáveis, para que cima e baixo leiam cada parte."""
         hymn = self._visible_hymns[self.hymnal_list.row(item)]
-        AccessibleTextDialog(
-            self.host, hymn.label, f"Letra do hino {hymn.number}, {hymn.title}", hymn.lyrics
+        AccessibleResultDialog(
+            self.host, hymn.label, f"Letra do hino {hymn.number}, {hymn.title}\n\n{hymn.lyrics}"
         ).exec()
 
     def _build_quiz(self):

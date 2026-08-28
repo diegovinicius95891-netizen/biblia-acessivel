@@ -24,11 +24,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 2.1.0\n\n" +
+            "Novidades da versão Android 2.1.2\n\n" +
             "Nova seção Harpa Cristã com 640 hinos e pesquisa offline.\n\n" +
             "Quiz ampliado para 298 perguntas de estudo.\n\n" +
             "Nova seção Status do quiz com acertos, erros e aproveitamento.\n\n" +
-            "O atualizador continua aceitando somente releases android-v e o APK Android.";
+            "O atualizador continua aceitando somente releases android-v e o APK Android.\n\n" +
+            "O botão Atualizar agora fica sempre visível; depois do download, Instalar agora abre o instalador oficial do Android.";
 
     private final Activity activity;
     private final UserDatabase userData;
@@ -123,28 +124,31 @@ final class UpdateManager {
                 "Nova versão Android: " + release.version + "\n" +
                 (megabytes > 0 ? "Tamanho: aproximadamente " + megabytes + " MB\n" : "") +
                 "\nNovidades:\n" + plainNotes(release.notes);
-        String[] actions = release.mandatory
-                ? new String[]{"Atualizar agora", "Sair sem atualizar"}
-                : new String[]{"Atualizar agora", "Lembrar depois", "Ignorar esta versão", "Fechar"};
-        AlertDialog dialog = new AlertDialog.Builder(activity)
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity)
                 .setTitle(release.mandatory ? "Atualização Android obrigatória" : "Nova versão Android disponível")
                 .setMessage(details)
-                .setItems(actions, null)
-                .create();
-        dialog.setOnShowListener(ignored -> dialog.getListView().setOnItemClickListener(
-                (parent, view, position, id) -> {
+                .setPositiveButton("Atualizar agora", null)
+                .setNegativeButton(release.mandatory ? "Sair sem atualizar" : "Depois", null);
+        if (!release.mandatory) builder.setNeutralButton("Ignorar esta versão", null);
+        AlertDialog dialog = builder.create();
+        dialog.setOnShowListener(ignored -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+                dialog.dismiss();
+                startDownload(release);
+            });
+            if (release.mandatory) {
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(view -> {
                     dialog.dismiss();
-                    if (position == 0) {
-                        startDownload(release);
-                    } else if (release.mandatory) {
-                        activity.finish();
-                    } else if (position == 1) {
-                        preferences.edit().putString("updates_remind_after",
-                                OffsetDateTime.now().plusHours(24).toString()).apply();
-                    } else if (position == 2) {
-                        preferences.edit().putString("updates_ignored_version", release.version).apply();
-                    }
-                }));
+                    activity.finish();
+                });
+            }
+            if (!release.mandatory) {
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view -> {
+                    preferences.edit().putString("updates_ignored_version", release.version).apply();
+                    dialog.dismiss();
+                });
+            }
+        });
         dialog.show();
     }
 

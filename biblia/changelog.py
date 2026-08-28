@@ -1,6 +1,8 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 2.1.1
+CURRENT_CHANGELOG = """Novidades da versão 2.1.2
+
+Leitura dos hinos da Harpa Cristã corrigida: cada trecho agora fica em uma caixa navegável com as setas cima e baixo.
 
 Reinício do aplicativo após uma atualização corrigido no Windows. Cada nova versão agora extrai suas próprias DLLs antes de abrir.
 
