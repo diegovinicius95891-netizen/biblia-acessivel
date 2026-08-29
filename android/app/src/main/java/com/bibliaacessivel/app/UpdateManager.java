@@ -24,7 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 2.1.3\n\n" +
+            "Novidades da versão Android 2.1.4\n\n" +
+            "Banco bíblico reconstruído e auditado. Foram corrigidas referências duplicadas no fim de capítulos da Bíblia Portuguesa Mundial e da World English Bible.\n\n" +
+            "Permanecem três traduções completas. A Open Translation Bible foi retirada porque a fonte oficial continua sem 1 Reis 19.\n\n" +
             "Cada pergunta do quiz agora registra somente a primeira resposta. Duplicações antigas são corrigidas automaticamente.\n\n" +
             "Nova seção Harpa Cristã com 640 hinos e pesquisa offline.\n\n" +
             "Quiz ampliado para 298 perguntas de estudo.\n\n" +

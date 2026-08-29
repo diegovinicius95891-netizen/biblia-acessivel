@@ -61,7 +61,7 @@ class GuiSmokeTests(unittest.TestCase):
         labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
         self.assertIn("Harpa Cristã", labels)
         self.assertIn("Status do quiz", labels)
-        self.assertEqual(4, window.translation_list.count())
+        self.assertEqual(3, window.translation_list.count())
         self.assertEqual(39, window.book_list.count())
 
         window.book_list.setFocus()
@@ -95,7 +95,8 @@ class GuiSmokeTests(unittest.TestCase):
             for index in range(window.legal_text.count())
         )
         self.assertIn("LEGISLAÇÃO BRASILEIRA", legal_content)
-        self.assertIn("CC BY-SA 4.0", legal_content)
+        self.assertIn("três edições bíblicas completas", legal_content)
+        self.assertIn("Open Translation Bible em português foi retirada", legal_content)
         self.assertGreater(window.help_text.count(), 1)
         window.more_options.setCurrentRow(7)
         QTest.keyClick(window.more_options, Qt.Key_Space)

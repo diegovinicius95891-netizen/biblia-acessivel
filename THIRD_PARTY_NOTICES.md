@@ -13,17 +13,6 @@ Arquivo estruturado: https://github.com/seven1m/open-bibles/blob/master/por-alme
 O catálogo Open Bibles identifica o arquivo como Public Domain. João Ferreira de Almeida faleceu em 1691.  
 Referência histórica adicional: https://www.gutenberg.org/ebooks/62383
 
-## Open Translation Bible
-
-Fonte: https://github.com/OpenTranslationBible/open-bible  
-Site: https://openbible.uk/  
-Licença: Creative Commons Attribution-ShareAlike 4.0 International — CC BY-SA 4.0.  
-Licença completa: https://creativecommons.org/licenses/by-sa/4.0/legalcode.pt
-
-O texto foi normalizado somente para remover marcação Markdown destinada à apresentação. O conteúdo textual e adaptações dele permanecem sob CC BY-SA 4.0.
-
-Nota de integridade: no commit oficial `8390a1fb5967e85b1e42e5273127a84d098713a5`, o arquivo de 1 Reis 19 está vazio. O aplicativo não mistura traduções para completar a lacuna e orienta a escolha de outra edição nesse capítulo.
-
 ## World English Bible
 
 Fonte: https://worldenglish.bible/  

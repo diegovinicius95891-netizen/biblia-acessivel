@@ -1,6 +1,12 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 2.1.3
+CURRENT_CHANGELOG = """Novidades da versão 2.1.4
+
+Banco bíblico reconstruído e auditado. Foram corrigidas referências duplicadas que apareciam no fim de capítulos da Bíblia Portuguesa Mundial e da World English Bible.
+
+Agora cada tradução precisa passar por validação de 66 livros, 1.189 capítulos, referências únicas e textos não vazios antes de entrar no aplicativo.
+
+A Open Translation Bible foi retirada porque a fonte oficial continua sem o capítulo 19 de 1 Reis. Permanecem três traduções completas: Bíblia Portuguesa Mundial, João Ferreira de Almeida e World English Bible.
 
 Cada pergunta do quiz agora pode registrar somente uma resposta. Resultados duplicados antigos são corrigidos automaticamente, preservando a primeira resposta.
 

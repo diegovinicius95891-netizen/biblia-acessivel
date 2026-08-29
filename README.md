@@ -10,11 +10,10 @@ Dê duplo clique em `BibliaAcessivel.exe`, localizado na pasta principal. O exec
 
 O diretório `data`, contendo `biblia.db`, `harpa_crista.json` e `quiz_questions.tsv`, deve permanecer ao lado do executável. Dados pessoais ficam em `%APPDATA%\BibliaAcessivel\user_data.db`. Na primeira execução da versão 2, uma base antiga encontrada ao lado do programa é copiada com segurança para esse local e preservada.
 
-O banco distribuído contém quatro textos identificados separadamente:
+O banco distribuído contém três textos completos identificados separadamente:
 
 - Bíblia Portuguesa Mundial — domínio público conforme eBible.org.
 - João Ferreira de Almeida — domínio público; arquivo estruturado do Open Bibles.
-- Open Translation Bible em português — CC BY-SA 4.0.
 - World English Bible — domínio público.
 
 As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e a explicação jurídica ficam disponíveis na seção **Licenças e leis** do próprio aplicativo.
@@ -61,7 +60,7 @@ O aplicativo salva automaticamente tradução, testamento, livro, capítulo e it
 
 Dados de oração, notas e devocionais permanecem somente no SQLite local e nunca são enviados para a IA. A chave do Gemini não entra no backup JSON, porque a cópia protegida por DPAPI só pode ser aberta pela mesma conta do Windows.
 
-A tela **Licenças e leis** apresenta um único texto simples, somente leitura, com a legislação, a justificativa geral, as quatro fontes e suas condições de utilização. Não há seletores ou conteúdo HTML nessa área.
+A tela **Licenças e leis** apresenta um único texto simples, somente leitura, com a legislação, a justificativa geral, as três fontes e suas condições de utilização. Não há seletores ou conteúdo HTML nessa área.
 
 ## Configurações e IA opcional
 
@@ -81,10 +80,10 @@ Consulte [docs/ARQUITETURA.md](docs/ARQUITETURA.md) para a explicação de todos
 
 ## Recriar o banco
 
-O script `scripts/build_database.py` baixa as fontes oficiais/indicadas e normaliza os versículos. A Open Translation Bible deve ser obtida do repositório oficial e fornecida com `--otb-dir`.
+O script `scripts/build_database.py` baixa as três fontes oficiais, normaliza os versículos e só substitui o banco depois de validar livros, capítulos, referências e textos. A Open Translation Bible não é distribuída porque a própria fonte oficial permanece sem o texto de 1 Reis 19.
 
 ```powershell
-python scripts/build_database.py --otb-dir "C:\caminho\open-bible\lang\pt-BR"
+python scripts/build_database.py
 ```
 
 O processo de construção exige internet. Depois disso, somente o recurso opcional de IA precisa de conexão.
