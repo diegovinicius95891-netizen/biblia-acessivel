@@ -16,17 +16,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Preparar Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
           cache: gradle
 
-      - name: Preparar Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Instalar SDK utilizado
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Conferir versão da tag
         shell: pwsh
