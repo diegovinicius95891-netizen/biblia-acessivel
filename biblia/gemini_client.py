@@ -29,7 +29,10 @@ def create_bible_analysis(
     if not api_key.strip():
         raise GeminiServiceError("Informe e salve sua chave da API do Google antes de continuar.")
 
-    output_limits = {"curto": 500, "médio": 900, "detalhado": 1500}
+    # O limite anterior era menor que alguns resumos solicitados e podia cortar
+    # a frase final. Estes tetos deixam folga para o modelo concluir, enquanto a
+    # instrução da tarefa controla o tamanho legível em palavras.
+    output_limits = {"curto": 1536, "médio": 3072, "detalhado": 5120}
     system_instruction = (
         "Responda em português do Brasil, com linguagem respeitosa, clara e acessível. "
         "Baseie-se apenas no texto bíblico fornecido. Diferencie resumo textual de "
@@ -37,6 +40,8 @@ def create_bible_analysis(
         "erros. Não invente citações, contexto histórico ou doutrina."
         " Responda somente em texto simples: não use Markdown, asteriscos, cerquilhas, "
         "sublinhados, crases ou tabelas. Use frases e parágrafos comuns."
+        " Respeite rigorosamente o limite de palavras informado na tarefa e "
+        "reserve espaço para concluir a última frase."
     )
     payload = {
         "system_instruction": {"parts": [{"text": system_instruction}]},
@@ -48,7 +53,10 @@ def create_bible_analysis(
                 ],
             }
         ],
-        "generationConfig": {"maxOutputTokens": output_limits.get(detail, 900)},
+        "generationConfig": {
+            "maxOutputTokens": output_limits.get(detail, 3072),
+            "temperature": 0.3,
+        },
     }
     request = Request(
         GENERATE_CONTENT_URL.format(model=quote(model, safe="")),
@@ -73,16 +81,21 @@ def create_bible_analysis(
         for part in candidate.get("content", {}).get("parts", []):
             if part.get("text"):
                 text_parts.append(part["text"].strip())
-    if text_parts:
-        return _plain_text("\n\n".join(text_parts))
-
-    block_reason = result.get("promptFeedback", {}).get("blockReason")
-    if block_reason:
-        raise GeminiServiceError(f"O Google bloqueou esta solicitação: {block_reason}.")
     finish_reasons = [
         candidate.get("finishReason") for candidate in result.get("candidates", [])
         if candidate.get("finishReason")
     ]
+    if text_parts and "MAX_TOKENS" not in finish_reasons:
+        return _plain_text("\n\n".join(text_parts))
+    if text_parts and "MAX_TOKENS" in finish_reasons:
+        raise GeminiServiceError(
+            "O Gemini atingiu o limite antes de concluir. Escolha o detalhamento Curto nas "
+            "Configurações e tente novamente."
+        )
+
+    block_reason = result.get("promptFeedback", {}).get("blockReason")
+    if block_reason:
+        raise GeminiServiceError(f"O Google bloqueou esta solicitação: {block_reason}.")
     if finish_reasons:
         raise GeminiServiceError(
             "O Gemini terminou sem produzir texto. Motivo: " + ", ".join(finish_reasons) + "."

@@ -1,0 +1,299 @@
+id	difficulty	category	question	answer1	answer2	answer3	answer4	correct	explanation	reference
+curated-001	fácil	Antigo Testamento	Quem construiu a arca?	Moisés	Noé	Davi	Paulo	1	Noé obedeceu à ordem de construir a arca.	Gênesis 6
+curated-002	fácil	Antigo Testamento	Qual mar se abriu para Israel sair do Egito?	Mar Morto	Mar da Galileia	Mar Vermelho	Mediterrâneo	2	Israel atravessou o mar em terra seca.	Êxodo 14
+curated-003	médio	Antigo Testamento	Qual profeta confrontou os profetas de Baal no Carmelo?	Isaías	Elias	Eliseu	Jeremias	1	Elias convocou o confronto no monte Carmelo.	1 Reis 18
+curated-004	médio	Antigo Testamento	Quem sucedeu Moisés na liderança de Israel?	Calebe	Arão	Josué	Samuel	2	Josué conduziu o povo na entrada em Canaã.	Josué 1
+curated-005	difícil	Antigo Testamento	Qual rei encontrou o Livro da Lei durante reformas no templo?	Ezequias	Acaz	Josias	Jeroboão	2	O livro foi encontrado durante o reinado de Josias.	2 Reis 22
+curated-006	difícil	Antigo Testamento	Qual profeta teve a visão de um vale de ossos secos?	Daniel	Ezequiel	Amós	Oséias	1	Ezequiel viu os ossos receberem vida na visão.	Ezequiel 37
+curated-007	fácil	Novo Testamento	Quem batizou Jesus?	Pedro	João Batista	Tiago	André	1	João batizou Jesus no Jordão.	Mateus 3
+curated-008	fácil	Novo Testamento	Qual apóstolo negou Jesus três vezes?	João	Tomé	Pedro	Filipe	2	Pedro negou conhecer Jesus e depois se arrependeu.	Lucas 22:54-62
+curated-009	médio	Novo Testamento	Quem foi escolhido para ocupar o lugar de Judas?	Barnabé	Matias	Silas	Marcos	1	Matias foi contado com os onze apóstolos.	Atos 1:26
+curated-010	médio	Novo Testamento	Em qual ilha João recebeu a visão do Apocalipse?	Creta	Chipre	Malta	Patmos	3	João estava na ilha de Patmos.	Apocalipse 1:9
+curated-011	difícil	Novo Testamento	A quem foi dirigida a carta pessoal sobre Onésimo?	Tito	Timóteo	Filemom	Silas	2	Paulo escreveu a Filemom a respeito de Onésimo.	Filemom 1
+curated-012	difícil	Novo Testamento	Quem caiu da janela enquanto Paulo falava?	Êutico	Trófimo	Aristarco	Ágabo	0	Êutico caiu do terceiro andar e foi socorrido por Paulo.	Atos 20:7-12
+curated-013	fácil	Jesus	Em qual cidade Jesus nasceu?	Nazaré	Jerusalém	Belém	Roma	2	Os relatos do nascimento situam Jesus em Belém.	Mateus 2:1
+curated-014	fácil	Jesus	Quantos apóstolos Jesus escolheu?	Sete	Dez	Doze	Quarenta	2	Jesus chamou doze para estarem com ele.	Marcos 3:13-19
+curated-015	médio	Jesus	Qual foi o primeiro sinal de Jesus narrado por João?	Multiplicação dos pães	Água transformada em vinho	Cura de um cego	Ressurreição de Lázaro	1	O sinal ocorreu numa festa de casamento em Caná.	João 2:1-11
+curated-016	médio	Jesus	Quem Jesus chamou para sair do túmulo?	Jairo	Bartimeu	Lázaro	Zaqueu	2	Jesus chamou Lázaro depois de quatro dias.	João 11:43
+curated-017	difícil	Jesus	Em qual aldeia Jesus encontrou dois discípulos após ressuscitar?	Betânia	Emaús	Caná	Naim	1	Dois discípulos caminhavam para Emaús.	Lucas 24:13-35
+curated-018	difícil	Jesus	Qual discípulo perguntou: Senhor, mostra-nos o Pai?	Filipe	André	Mateus	Tiago	0	Filipe fez a pergunta durante o ensino de Jesus.	João 14:8
+curated-019	fácil	personagens	Quem enfrentou Golias?	Saul	Samuel	Davi	Salomão	2	Davi enfrentou o guerreiro filisteu.	1 Samuel 17
+curated-020	fácil	personagens	Quem foi lançado numa cova de leões?	Daniel	José	Elias	Neemias	0	Daniel foi preservado na cova dos leões.	Daniel 6
+curated-021	médio	personagens	Quem interpretou sonhos no Egito e se tornou governador?	Daniel	José	Neemias	Esdras	1	José interpretou os sonhos de Faraó.	Gênesis 41
+curated-022	médio	personagens	Qual mulher se tornou rainha e intercedeu por seu povo?	Rute	Débora	Ester	Miriã	2	Ester arriscou a vida ao procurar o rei.	Ester 4-7
+curated-023	difícil	personagens	Quem ajudou Paulo e Silas a sair da prisão em Filipos?	Um terremoto	Barnabé	Um anjo	O governador	0	Um terremoto abriu as portas e soltou as correntes.	Atos 16:25-26
+curated-024	difícil	personagens	Qual juiz fez um voto precipitado envolvendo sua filha?	Gideão	Sansão	Jefté	Otniel	2	Jefté fez um voto antes da batalha contra os amonitas.	Juízes 11
+curated-025	fácil	livros da Bíblia	Qual é o primeiro livro da Bíblia?	Êxodo	Gênesis	Salmos	Mateus	1	Gênesis abre a ordem bíblica comum.	Gênesis 1
+curated-026	fácil	livros da Bíblia	Qual é o último livro do Novo Testamento?	Judas	Hebreus	Apocalipse	Atos	2	Apocalipse encerra o cânon do Novo Testamento.	Apocalipse 1
+curated-027	médio	livros da Bíblia	Qual livro vem depois de Atos?	Hebreus	Romanos	João	Tiago	1	Romanos segue Atos na ordem canônica comum.	Romanos 1
+curated-028	médio	livros da Bíblia	Quantos Evangelhos há no Novo Testamento?	Três	Quatro	Cinco	Doze	1	Mateus, Marcos, Lucas e João são os quatro Evangelhos.	Mateus 1
+curated-029	difícil	livros da Bíblia	Qual livro do Antigo Testamento não menciona explicitamente o nome de Deus?	Ester	Rute	Neemias	Cantares	0	Ester narra a preservação dos judeus sem mencionar explicitamente o nome de Deus.	Ester 1
+curated-030	difícil	livros da Bíblia	Qual é a carta mais curta de Paulo em número de versículos?	Tito	Filemom	2 Timóteo	Gálatas	1	Filemom possui apenas um capítulo e vinte e cinco versículos.	Filemom 1
+curated-031	fácil	perguntas gerais	Qual oração Jesus ensinou como modelo aos discípulos?	O Pai Nosso	O cântico de Maria	O Salmo 23	A oração de Jabez	0	Jesus apresentou um modelo conhecido como Pai Nosso.	Mateus 6:9-13
+curated-032	fácil	perguntas gerais	Qual é o maior mandamento segundo Jesus?	Amar a Deus	Guardar o sábado	Jejuar	Dar ofertas	0	Jesus ensinou a amar a Deus de todo o coração.	Mateus 22:36-38
+curated-033	médio	perguntas gerais	Em qual cidade os discípulos foram chamados cristãos pela primeira vez?	Éfeso	Corinto	Antioquia	Jerusalém	2	O nome aparece ligado à comunidade de Antioquia.	Atos 11:26
+curated-034	médio	perguntas gerais	Qual capítulo é conhecido como o capítulo do amor?	Romanos 8	1 Coríntios 13	Hebreus 11	Salmos 119	1	Paulo descreve a primazia e as características do amor.	1 Coríntios 13
+curated-035	difícil	perguntas gerais	Qual casal morreu após mentir sobre o valor de uma propriedade?	Áquila e Priscila	Herodes e Herodias	Ananias e Safira	Félix e Drusila	2	Ananias e Safira mentiram sobre a oferta apresentada.	Atos 5:1-11
+curated-036	difícil	perguntas gerais	Qual igreja do Apocalipse foi chamada de morna?	Éfeso	Esmirna	Filadélfia	Laodiceia	3	A mensagem a Laodiceia repreende sua condição morna.	Apocalipse 3:14-22
+testament-01	fácil	estrutura da Bíblia	A qual Testamento pertence Gênesis?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Gênesis pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Gênesis
+chapters-01	difícil	estrutura da Bíblia	Quantos capítulos possui Gênesis?	50	49	51	55	0	Gênesis possui 50 capítulos.	Estrutura de Gênesis
+next-01	médio	ordem bíblica	Qual livro vem imediatamente depois de Gênesis?	1 Samuel	Eclesiastes	Malaquias	Êxodo	3	Êxodo vem depois de Gênesis na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-02	fácil	estrutura da Bíblia	A qual Testamento pertence Êxodo?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Êxodo pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Êxodo
+chapters-02	difícil	estrutura da Bíblia	Quantos capítulos possui Êxodo?	39	41	45	40	3	Êxodo possui 40 capítulos.	Estrutura de Êxodo
+next-02	médio	ordem bíblica	Qual livro vem imediatamente depois de Êxodo?	Cântico dos Cânticos	Mateus	Levítico	2 Samuel	2	Levítico vem depois de Êxodo na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-02	médio	ordem bíblica	Qual livro vem imediatamente antes de Êxodo?	Gênesis	Rute	Provérbios	Zacarias	0	Gênesis vem antes de Êxodo na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-03	fácil	estrutura da Bíblia	A qual Testamento pertence Levítico?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Levítico pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Levítico
+chapters-03	difícil	estrutura da Bíblia	Quantos capítulos possui Levítico?	28	32	27	26	2	Levítico possui 27 capítulos.	Estrutura de Levítico
+next-03	médio	ordem bíblica	Qual livro vem imediatamente depois de Levítico?	Marcos	Números	1 Reis	Isaías	1	Números vem depois de Levítico na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-03	médio	ordem bíblica	Qual livro vem imediatamente antes de Levítico?	1 Samuel	Eclesiastes	Malaquias	Êxodo	3	Êxodo vem antes de Levítico na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-04	fácil	estrutura da Bíblia	A qual Testamento pertence Números?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Números pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Números
+chapters-04	difícil	estrutura da Bíblia	Quantos capítulos possui Números?	41	36	35	37	1	Números possui 36 capítulos.	Estrutura de Números
+next-04	médio	ordem bíblica	Qual livro vem imediatamente depois de Números?	Deuteronômio	2 Reis	Jeremias	Lucas	0	Deuteronômio vem depois de Números na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-04	médio	ordem bíblica	Qual livro vem imediatamente antes de Números?	Cântico dos Cânticos	Mateus	Levítico	2 Samuel	2	Levítico vem antes de Números na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-05	fácil	estrutura da Bíblia	A qual Testamento pertence Deuteronômio?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Deuteronômio pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Deuteronômio
+chapters-05	difícil	estrutura da Bíblia	Quantos capítulos possui Deuteronômio?	34	33	35	39	0	Deuteronômio possui 34 capítulos.	Estrutura de Deuteronômio
+next-05	médio	ordem bíblica	Qual livro vem imediatamente depois de Deuteronômio?	1 Crônicas	Lamentações	João	Josué	3	Josué vem depois de Deuteronômio na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-05	médio	ordem bíblica	Qual livro vem imediatamente antes de Deuteronômio?	Marcos	Números	1 Reis	Isaías	1	Números vem antes de Deuteronômio na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-06	fácil	estrutura da Bíblia	A qual Testamento pertence Josué?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Josué pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Josué
+chapters-06	difícil	estrutura da Bíblia	Quantos capítulos possui Josué?	23	25	29	24	3	Josué possui 24 capítulos.	Estrutura de Josué
+next-06	médio	ordem bíblica	Qual livro vem imediatamente depois de Josué?	Ezequiel	Atos	Juízes	2 Crônicas	2	Juízes vem depois de Josué na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-06	médio	ordem bíblica	Qual livro vem imediatamente antes de Josué?	Deuteronômio	2 Reis	Jeremias	Lucas	0	Deuteronômio vem antes de Josué na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-07	fácil	estrutura da Bíblia	A qual Testamento pertence Juízes?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Juízes pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Juízes
+chapters-07	difícil	estrutura da Bíblia	Quantos capítulos possui Juízes?	22	26	21	20	2	Juízes possui 21 capítulos.	Estrutura de Juízes
+next-07	médio	ordem bíblica	Qual livro vem imediatamente depois de Juízes?	Romanos	Rute	Esdras	Daniel	1	Rute vem depois de Juízes na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-07	médio	ordem bíblica	Qual livro vem imediatamente antes de Juízes?	1 Crônicas	Lamentações	João	Josué	3	Josué vem antes de Juízes na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-08	fácil	estrutura da Bíblia	A qual Testamento pertence Rute?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Rute pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Rute
+chapters-08	difícil	estrutura da Bíblia	Quantos capítulos possui Rute?	6	4	3	5	1	Rute possui 4 capítulos.	Estrutura de Rute
+next-08	médio	ordem bíblica	Qual livro vem imediatamente depois de Rute?	1 Samuel	Neemias	Oseias	1 Coríntios	0	1 Samuel vem depois de Rute na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-08	médio	ordem bíblica	Qual livro vem imediatamente antes de Rute?	Ezequiel	Atos	Juízes	2 Crônicas	2	Juízes vem antes de Rute na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-09	fácil	estrutura da Bíblia	A qual Testamento pertence 1 Samuel?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	1 Samuel pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de 1 Samuel
+chapters-09	difícil	estrutura da Bíblia	Quantos capítulos possui 1 Samuel?	31	30	32	36	0	1 Samuel possui 31 capítulos.	Estrutura de 1 Samuel
+next-09	médio	ordem bíblica	Qual livro vem imediatamente depois de 1 Samuel?	Ester	Joel	2 Coríntios	2 Samuel	3	2 Samuel vem depois de 1 Samuel na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-09	médio	ordem bíblica	Qual livro vem imediatamente antes de 1 Samuel?	Romanos	Rute	Esdras	Daniel	1	Rute vem antes de 1 Samuel na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-10	fácil	estrutura da Bíblia	A qual Testamento pertence 2 Samuel?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	2 Samuel pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de 2 Samuel
+chapters-10	difícil	estrutura da Bíblia	Quantos capítulos possui 2 Samuel?	23	25	29	24	3	2 Samuel possui 24 capítulos.	Estrutura de 2 Samuel
+next-10	médio	ordem bíblica	Qual livro vem imediatamente depois de 2 Samuel?	Amós	Gálatas	1 Reis	Jó	2	1 Reis vem depois de 2 Samuel na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-10	médio	ordem bíblica	Qual livro vem imediatamente antes de 2 Samuel?	1 Samuel	Neemias	Oseias	1 Coríntios	0	1 Samuel vem antes de 2 Samuel na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-11	fácil	estrutura da Bíblia	A qual Testamento pertence 1 Reis?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	1 Reis pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de 1 Reis
+chapters-11	difícil	estrutura da Bíblia	Quantos capítulos possui 1 Reis?	23	27	22	21	2	1 Reis possui 22 capítulos.	Estrutura de 1 Reis
+next-11	médio	ordem bíblica	Qual livro vem imediatamente depois de 1 Reis?	Efésios	2 Reis	Salmos	Obadias	1	2 Reis vem depois de 1 Reis na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-11	médio	ordem bíblica	Qual livro vem imediatamente antes de 1 Reis?	Ester	Joel	2 Coríntios	2 Samuel	3	2 Samuel vem antes de 1 Reis na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-12	fácil	estrutura da Bíblia	A qual Testamento pertence 2 Reis?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	2 Reis pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de 2 Reis
+chapters-12	difícil	estrutura da Bíblia	Quantos capítulos possui 2 Reis?	30	25	24	26	1	2 Reis possui 25 capítulos.	Estrutura de 2 Reis
+next-12	médio	ordem bíblica	Qual livro vem imediatamente depois de 2 Reis?	1 Crônicas	Provérbios	Jonas	Filipenses	0	1 Crônicas vem depois de 2 Reis na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-12	médio	ordem bíblica	Qual livro vem imediatamente antes de 2 Reis?	Amós	Gálatas	1 Reis	Jó	2	1 Reis vem antes de 2 Reis na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-13	fácil	estrutura da Bíblia	A qual Testamento pertence 1 Crônicas?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	1 Crônicas pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de 1 Crônicas
+chapters-13	difícil	estrutura da Bíblia	Quantos capítulos possui 1 Crônicas?	29	28	30	34	0	1 Crônicas possui 29 capítulos.	Estrutura de 1 Crônicas
+next-13	médio	ordem bíblica	Qual livro vem imediatamente depois de 1 Crônicas?	Eclesiastes	Miqueias	Colossenses	2 Crônicas	3	2 Crônicas vem depois de 1 Crônicas na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-13	médio	ordem bíblica	Qual livro vem imediatamente antes de 1 Crônicas?	Efésios	2 Reis	Salmos	Obadias	1	2 Reis vem antes de 1 Crônicas na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-14	fácil	estrutura da Bíblia	A qual Testamento pertence 2 Crônicas?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	2 Crônicas pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de 2 Crônicas
+chapters-14	difícil	estrutura da Bíblia	Quantos capítulos possui 2 Crônicas?	35	37	41	36	3	2 Crônicas possui 36 capítulos.	Estrutura de 2 Crônicas
+next-14	médio	ordem bíblica	Qual livro vem imediatamente depois de 2 Crônicas?	Naum	1 Tessalonicenses	Esdras	Cântico dos Cânticos	2	Esdras vem depois de 2 Crônicas na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-14	médio	ordem bíblica	Qual livro vem imediatamente antes de 2 Crônicas?	1 Crônicas	Provérbios	Jonas	Filipenses	0	1 Crônicas vem antes de 2 Crônicas na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-15	fácil	estrutura da Bíblia	A qual Testamento pertence Esdras?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Esdras pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Esdras
+chapters-15	difícil	estrutura da Bíblia	Quantos capítulos possui Esdras?	11	15	10	9	2	Esdras possui 10 capítulos.	Estrutura de Esdras
+next-15	médio	ordem bíblica	Qual livro vem imediatamente depois de Esdras?	2 Tessalonicenses	Neemias	Isaías	Habacuque	1	Neemias vem depois de Esdras na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-15	médio	ordem bíblica	Qual livro vem imediatamente antes de Esdras?	Eclesiastes	Miqueias	Colossenses	2 Crônicas	3	2 Crônicas vem antes de Esdras na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-16	fácil	estrutura da Bíblia	A qual Testamento pertence Neemias?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Neemias pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Neemias
+chapters-16	difícil	estrutura da Bíblia	Quantos capítulos possui Neemias?	18	13	12	14	1	Neemias possui 13 capítulos.	Estrutura de Neemias
+next-16	médio	ordem bíblica	Qual livro vem imediatamente depois de Neemias?	Ester	Jeremias	Sofonias	1 Timóteo	0	Ester vem depois de Neemias na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-16	médio	ordem bíblica	Qual livro vem imediatamente antes de Neemias?	Naum	1 Tessalonicenses	Esdras	Cântico dos Cânticos	2	Esdras vem antes de Neemias na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-17	fácil	estrutura da Bíblia	A qual Testamento pertence Ester?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Ester pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Ester
+chapters-17	difícil	estrutura da Bíblia	Quantos capítulos possui Ester?	10	9	11	15	0	Ester possui 10 capítulos.	Estrutura de Ester
+next-17	médio	ordem bíblica	Qual livro vem imediatamente depois de Ester?	Lamentações	Ageu	2 Timóteo	Jó	3	Jó vem depois de Ester na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-17	médio	ordem bíblica	Qual livro vem imediatamente antes de Ester?	2 Tessalonicenses	Neemias	Isaías	Habacuque	1	Neemias vem antes de Ester na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-18	fácil	estrutura da Bíblia	A qual Testamento pertence Jó?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Jó pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Jó
+chapters-18	difícil	estrutura da Bíblia	Quantos capítulos possui Jó?	41	43	47	42	3	Jó possui 42 capítulos.	Estrutura de Jó
+next-18	médio	ordem bíblica	Qual livro vem imediatamente depois de Jó?	Zacarias	Tito	Salmos	Ezequiel	2	Salmos vem depois de Jó na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-18	médio	ordem bíblica	Qual livro vem imediatamente antes de Jó?	Ester	Jeremias	Sofonias	1 Timóteo	0	Ester vem antes de Jó na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-19	fácil	estrutura da Bíblia	A qual Testamento pertence Salmos?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Salmos pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Salmos
+chapters-19	difícil	estrutura da Bíblia	Quantos capítulos possui Salmos?	151	155	150	149	2	Salmos possui 150 capítulos.	Estrutura de Salmos
+next-19	médio	ordem bíblica	Qual livro vem imediatamente depois de Salmos?	Filemom	Provérbios	Daniel	Malaquias	1	Provérbios vem depois de Salmos na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-19	médio	ordem bíblica	Qual livro vem imediatamente antes de Salmos?	Lamentações	Ageu	2 Timóteo	Jó	3	Jó vem antes de Salmos na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-20	fácil	estrutura da Bíblia	A qual Testamento pertence Provérbios?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Provérbios pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Provérbios
+chapters-20	difícil	estrutura da Bíblia	Quantos capítulos possui Provérbios?	36	31	30	32	1	Provérbios possui 31 capítulos.	Estrutura de Provérbios
+next-20	médio	ordem bíblica	Qual livro vem imediatamente depois de Provérbios?	Eclesiastes	Oseias	Mateus	Hebreus	0	Eclesiastes vem depois de Provérbios na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-20	médio	ordem bíblica	Qual livro vem imediatamente antes de Provérbios?	Zacarias	Tito	Salmos	Ezequiel	2	Salmos vem antes de Provérbios na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-21	fácil	estrutura da Bíblia	A qual Testamento pertence Eclesiastes?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Eclesiastes pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Eclesiastes
+chapters-21	difícil	estrutura da Bíblia	Quantos capítulos possui Eclesiastes?	12	11	13	17	0	Eclesiastes possui 12 capítulos.	Estrutura de Eclesiastes
+next-21	médio	ordem bíblica	Qual livro vem imediatamente depois de Eclesiastes?	Joel	Marcos	Tiago	Cântico dos Cânticos	3	Cântico dos Cânticos vem depois de Eclesiastes na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-21	médio	ordem bíblica	Qual livro vem imediatamente antes de Eclesiastes?	Filemom	Provérbios	Daniel	Malaquias	1	Provérbios vem antes de Eclesiastes na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-22	fácil	estrutura da Bíblia	A qual Testamento pertence Cântico dos Cânticos?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Cântico dos Cânticos pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Cântico dos Cânticos
+chapters-22	difícil	estrutura da Bíblia	Quantos capítulos possui Cântico dos Cânticos?	7	9	13	8	3	Cântico dos Cânticos possui 8 capítulos.	Estrutura de Cântico dos Cânticos
+next-22	médio	ordem bíblica	Qual livro vem imediatamente depois de Cântico dos Cânticos?	Lucas	1 Pedro	Isaías	Amós	2	Isaías vem depois de Cântico dos Cânticos na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-22	médio	ordem bíblica	Qual livro vem imediatamente antes de Cântico dos Cânticos?	Eclesiastes	Oseias	Mateus	Hebreus	0	Eclesiastes vem antes de Cântico dos Cânticos na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-23	fácil	estrutura da Bíblia	A qual Testamento pertence Isaías?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Isaías pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Isaías
+chapters-23	difícil	estrutura da Bíblia	Quantos capítulos possui Isaías?	67	71	66	65	2	Isaías possui 66 capítulos.	Estrutura de Isaías
+next-23	médio	ordem bíblica	Qual livro vem imediatamente depois de Isaías?	2 Pedro	Jeremias	Obadias	João	1	Jeremias vem depois de Isaías na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-23	médio	ordem bíblica	Qual livro vem imediatamente antes de Isaías?	Joel	Marcos	Tiago	Cântico dos Cânticos	3	Cântico dos Cânticos vem antes de Isaías na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-24	fácil	estrutura da Bíblia	A qual Testamento pertence Jeremias?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Jeremias pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Jeremias
+chapters-24	difícil	estrutura da Bíblia	Quantos capítulos possui Jeremias?	57	52	51	53	1	Jeremias possui 52 capítulos.	Estrutura de Jeremias
+next-24	médio	ordem bíblica	Qual livro vem imediatamente depois de Jeremias?	Lamentações	Jonas	Atos	1 João	0	Lamentações vem depois de Jeremias na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-24	médio	ordem bíblica	Qual livro vem imediatamente antes de Jeremias?	Lucas	1 Pedro	Isaías	Amós	2	Isaías vem antes de Jeremias na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-25	fácil	estrutura da Bíblia	A qual Testamento pertence Lamentações?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Lamentações pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Lamentações
+chapters-25	difícil	estrutura da Bíblia	Quantos capítulos possui Lamentações?	5	4	6	7	0	Lamentações possui 5 capítulos.	Estrutura de Lamentações
+next-25	médio	ordem bíblica	Qual livro vem imediatamente depois de Lamentações?	Miqueias	Romanos	2 João	Ezequiel	3	Ezequiel vem depois de Lamentações na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-25	médio	ordem bíblica	Qual livro vem imediatamente antes de Lamentações?	2 Pedro	Jeremias	Obadias	João	1	Jeremias vem antes de Lamentações na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-26	fácil	estrutura da Bíblia	A qual Testamento pertence Ezequiel?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Ezequiel pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Ezequiel
+chapters-26	difícil	estrutura da Bíblia	Quantos capítulos possui Ezequiel?	47	49	53	48	3	Ezequiel possui 48 capítulos.	Estrutura de Ezequiel
+next-26	médio	ordem bíblica	Qual livro vem imediatamente depois de Ezequiel?	1 Coríntios	3 João	Daniel	Naum	2	Daniel vem depois de Ezequiel na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-26	médio	ordem bíblica	Qual livro vem imediatamente antes de Ezequiel?	Lamentações	Jonas	Atos	1 João	0	Lamentações vem antes de Ezequiel na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-27	fácil	estrutura da Bíblia	A qual Testamento pertence Daniel?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Daniel pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Daniel
+chapters-27	difícil	estrutura da Bíblia	Quantos capítulos possui Daniel?	13	17	12	11	2	Daniel possui 12 capítulos.	Estrutura de Daniel
+next-27	médio	ordem bíblica	Qual livro vem imediatamente depois de Daniel?	Judas	Oseias	Habacuque	2 Coríntios	1	Oseias vem depois de Daniel na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-27	médio	ordem bíblica	Qual livro vem imediatamente antes de Daniel?	Miqueias	Romanos	2 João	Ezequiel	3	Ezequiel vem antes de Daniel na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-28	fácil	estrutura da Bíblia	A qual Testamento pertence Oseias?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Oseias pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Oseias
+chapters-28	difícil	estrutura da Bíblia	Quantos capítulos possui Oseias?	19	14	13	15	1	Oseias possui 14 capítulos.	Estrutura de Oseias
+next-28	médio	ordem bíblica	Qual livro vem imediatamente depois de Oseias?	Joel	Sofonias	Gálatas	Apocalipse	0	Joel vem depois de Oseias na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-28	médio	ordem bíblica	Qual livro vem imediatamente antes de Oseias?	1 Coríntios	3 João	Daniel	Naum	2	Daniel vem antes de Oseias na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-29	fácil	estrutura da Bíblia	A qual Testamento pertence Joel?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Joel pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Joel
+chapters-29	difícil	estrutura da Bíblia	Quantos capítulos possui Joel?	3	2	4	5	0	Joel possui 3 capítulos.	Estrutura de Joel
+next-29	médio	ordem bíblica	Qual livro vem imediatamente depois de Joel?	Ageu	Efésios	Gênesis	Amós	3	Amós vem depois de Joel na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-29	médio	ordem bíblica	Qual livro vem imediatamente antes de Joel?	Judas	Oseias	Habacuque	2 Coríntios	1	Oseias vem antes de Joel na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-30	fácil	estrutura da Bíblia	A qual Testamento pertence Amós?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Amós pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Amós
+chapters-30	difícil	estrutura da Bíblia	Quantos capítulos possui Amós?	8	10	14	9	3	Amós possui 9 capítulos.	Estrutura de Amós
+next-30	médio	ordem bíblica	Qual livro vem imediatamente depois de Amós?	Filipenses	Êxodo	Obadias	Zacarias	2	Obadias vem depois de Amós na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-30	médio	ordem bíblica	Qual livro vem imediatamente antes de Amós?	Joel	Sofonias	Gálatas	Apocalipse	0	Joel vem antes de Amós na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-31	fácil	estrutura da Bíblia	A qual Testamento pertence Obadias?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Obadias pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Obadias
+chapters-31	difícil	estrutura da Bíblia	Quantos capítulos possui Obadias?	2	5	1	3	2	Obadias possui 1 capítulo.	Estrutura de Obadias
+next-31	médio	ordem bíblica	Qual livro vem imediatamente depois de Obadias?	Levítico	Jonas	Malaquias	Colossenses	1	Jonas vem depois de Obadias na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-31	médio	ordem bíblica	Qual livro vem imediatamente antes de Obadias?	Ageu	Efésios	Gênesis	Amós	3	Amós vem antes de Obadias na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-32	fácil	estrutura da Bíblia	A qual Testamento pertence Jonas?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Jonas pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Jonas
+chapters-32	difícil	estrutura da Bíblia	Quantos capítulos possui Jonas?	6	4	3	5	1	Jonas possui 4 capítulos.	Estrutura de Jonas
+next-32	médio	ordem bíblica	Qual livro vem imediatamente depois de Jonas?	Miqueias	Mateus	1 Tessalonicenses	Números	0	Miqueias vem depois de Jonas na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-32	médio	ordem bíblica	Qual livro vem imediatamente antes de Jonas?	Filipenses	Êxodo	Obadias	Zacarias	2	Obadias vem antes de Jonas na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-33	fácil	estrutura da Bíblia	A qual Testamento pertence Miqueias?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Miqueias pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Miqueias
+chapters-33	difícil	estrutura da Bíblia	Quantos capítulos possui Miqueias?	7	6	8	12	0	Miqueias possui 7 capítulos.	Estrutura de Miqueias
+next-33	médio	ordem bíblica	Qual livro vem imediatamente depois de Miqueias?	Marcos	2 Tessalonicenses	Deuteronômio	Naum	3	Naum vem depois de Miqueias na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-33	médio	ordem bíblica	Qual livro vem imediatamente antes de Miqueias?	Levítico	Jonas	Malaquias	Colossenses	1	Jonas vem antes de Miqueias na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-34	fácil	estrutura da Bíblia	A qual Testamento pertence Naum?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Naum pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Naum
+chapters-34	difícil	estrutura da Bíblia	Quantos capítulos possui Naum?	2	4	5	3	3	Naum possui 3 capítulos.	Estrutura de Naum
+next-34	médio	ordem bíblica	Qual livro vem imediatamente depois de Naum?	1 Timóteo	Josué	Habacuque	Lucas	2	Habacuque vem depois de Naum na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-34	médio	ordem bíblica	Qual livro vem imediatamente antes de Naum?	Miqueias	Mateus	1 Tessalonicenses	Números	0	Miqueias vem antes de Naum na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-35	fácil	estrutura da Bíblia	A qual Testamento pertence Habacuque?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Habacuque pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Habacuque
+chapters-35	difícil	estrutura da Bíblia	Quantos capítulos possui Habacuque?	4	5	3	2	2	Habacuque possui 3 capítulos.	Estrutura de Habacuque
+next-35	médio	ordem bíblica	Qual livro vem imediatamente depois de Habacuque?	Juízes	Sofonias	João	2 Timóteo	1	Sofonias vem depois de Habacuque na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-35	médio	ordem bíblica	Qual livro vem imediatamente antes de Habacuque?	Marcos	2 Tessalonicenses	Deuteronômio	Naum	3	Naum vem antes de Habacuque na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-36	fácil	estrutura da Bíblia	A qual Testamento pertence Sofonias?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Sofonias pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Sofonias
+chapters-36	difícil	estrutura da Bíblia	Quantos capítulos possui Sofonias?	5	3	2	4	1	Sofonias possui 3 capítulos.	Estrutura de Sofonias
+next-36	médio	ordem bíblica	Qual livro vem imediatamente depois de Sofonias?	Ageu	Atos	Tito	Rute	0	Ageu vem depois de Sofonias na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-36	médio	ordem bíblica	Qual livro vem imediatamente antes de Sofonias?	1 Timóteo	Josué	Habacuque	Lucas	2	Habacuque vem antes de Sofonias na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-37	fácil	estrutura da Bíblia	A qual Testamento pertence Ageu?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Ageu pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Ageu
+chapters-37	difícil	estrutura da Bíblia	Quantos capítulos possui Ageu?	2	1	3	4	0	Ageu possui 2 capítulos.	Estrutura de Ageu
+next-37	médio	ordem bíblica	Qual livro vem imediatamente depois de Ageu?	Romanos	Filemom	1 Samuel	Zacarias	3	Zacarias vem depois de Ageu na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-37	médio	ordem bíblica	Qual livro vem imediatamente antes de Ageu?	Juízes	Sofonias	João	2 Timóteo	1	Sofonias vem antes de Ageu na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-38	fácil	estrutura da Bíblia	A qual Testamento pertence Zacarias?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Zacarias pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Zacarias
+chapters-38	difícil	estrutura da Bíblia	Quantos capítulos possui Zacarias?	13	15	19	14	3	Zacarias possui 14 capítulos.	Estrutura de Zacarias
+next-38	médio	ordem bíblica	Qual livro vem imediatamente depois de Zacarias?	Hebreus	2 Samuel	Malaquias	1 Coríntios	2	Malaquias vem depois de Zacarias na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-38	médio	ordem bíblica	Qual livro vem imediatamente antes de Zacarias?	Ageu	Atos	Tito	Rute	0	Ageu vem antes de Zacarias na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-39	fácil	estrutura da Bíblia	A qual Testamento pertence Malaquias?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	0	Malaquias pertence ao Antigo Testamento na ordem protestante de 66 livros.	Estrutura de Malaquias
+chapters-39	difícil	estrutura da Bíblia	Quantos capítulos possui Malaquias?	5	6	4	3	2	Malaquias possui 4 capítulos.	Estrutura de Malaquias
+next-39	médio	ordem bíblica	Qual livro vem imediatamente depois de Malaquias?	1 Reis	Mateus	2 Coríntios	Tiago	1	Mateus vem depois de Malaquias na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-39	médio	ordem bíblica	Qual livro vem imediatamente antes de Malaquias?	Romanos	Filemom	1 Samuel	Zacarias	3	Zacarias vem antes de Malaquias na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-40	fácil	estrutura da Bíblia	A qual Testamento pertence Mateus?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Mateus pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Mateus
+chapters-40	difícil	estrutura da Bíblia	Quantos capítulos possui Mateus?	33	28	27	29	1	Mateus possui 28 capítulos.	Estrutura de Mateus
+next-40	médio	ordem bíblica	Qual livro vem imediatamente depois de Mateus?	Marcos	Gálatas	1 Pedro	2 Reis	0	Marcos vem depois de Mateus na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-40	médio	ordem bíblica	Qual livro vem imediatamente antes de Mateus?	Hebreus	2 Samuel	Malaquias	1 Coríntios	2	Malaquias vem antes de Mateus na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-41	fácil	estrutura da Bíblia	A qual Testamento pertence Marcos?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Marcos pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Marcos
+chapters-41	difícil	estrutura da Bíblia	Quantos capítulos possui Marcos?	16	15	17	21	0	Marcos possui 16 capítulos.	Estrutura de Marcos
+next-41	médio	ordem bíblica	Qual livro vem imediatamente depois de Marcos?	Efésios	2 Pedro	1 Crônicas	Lucas	3	Lucas vem depois de Marcos na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-41	médio	ordem bíblica	Qual livro vem imediatamente antes de Marcos?	1 Reis	Mateus	2 Coríntios	Tiago	1	Mateus vem antes de Marcos na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-42	fácil	estrutura da Bíblia	A qual Testamento pertence Lucas?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Lucas pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Lucas
+chapters-42	difícil	estrutura da Bíblia	Quantos capítulos possui Lucas?	23	25	29	24	3	Lucas possui 24 capítulos.	Estrutura de Lucas
+next-42	médio	ordem bíblica	Qual livro vem imediatamente depois de Lucas?	1 João	2 Crônicas	João	Filipenses	2	João vem depois de Lucas na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-42	médio	ordem bíblica	Qual livro vem imediatamente antes de Lucas?	Marcos	Gálatas	1 Pedro	2 Reis	0	Marcos vem antes de Lucas na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-43	fácil	estrutura da Bíblia	A qual Testamento pertence João?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	João pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de João
+chapters-43	difícil	estrutura da Bíblia	Quantos capítulos possui João?	22	26	21	20	2	João possui 21 capítulos.	Estrutura de João
+next-43	médio	ordem bíblica	Qual livro vem imediatamente depois de João?	Esdras	Atos	Colossenses	2 João	1	Atos vem depois de João na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-43	médio	ordem bíblica	Qual livro vem imediatamente antes de João?	Efésios	2 Pedro	1 Crônicas	Lucas	3	Lucas vem antes de João na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-44	fácil	estrutura da Bíblia	A qual Testamento pertence Atos?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Atos pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Atos
+chapters-44	difícil	estrutura da Bíblia	Quantos capítulos possui Atos?	33	28	27	29	1	Atos possui 28 capítulos.	Estrutura de Atos
+next-44	médio	ordem bíblica	Qual livro vem imediatamente depois de Atos?	Romanos	1 Tessalonicenses	3 João	Neemias	0	Romanos vem depois de Atos na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-44	médio	ordem bíblica	Qual livro vem imediatamente antes de Atos?	1 João	2 Crônicas	João	Filipenses	2	João vem antes de Atos na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-45	fácil	estrutura da Bíblia	A qual Testamento pertence Romanos?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Romanos pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Romanos
+chapters-45	difícil	estrutura da Bíblia	Quantos capítulos possui Romanos?	16	15	17	21	0	Romanos possui 16 capítulos.	Estrutura de Romanos
+next-45	médio	ordem bíblica	Qual livro vem imediatamente depois de Romanos?	2 Tessalonicenses	Judas	Ester	1 Coríntios	3	1 Coríntios vem depois de Romanos na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-45	médio	ordem bíblica	Qual livro vem imediatamente antes de Romanos?	Esdras	Atos	Colossenses	2 João	1	Atos vem antes de Romanos na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-46	fácil	estrutura da Bíblia	A qual Testamento pertence 1 Coríntios?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	1 Coríntios pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 1 Coríntios
+chapters-46	difícil	estrutura da Bíblia	Quantos capítulos possui 1 Coríntios?	15	17	21	16	3	1 Coríntios possui 16 capítulos.	Estrutura de 1 Coríntios
+next-46	médio	ordem bíblica	Qual livro vem imediatamente depois de 1 Coríntios?	Apocalipse	Jó	2 Coríntios	1 Timóteo	2	2 Coríntios vem depois de 1 Coríntios na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-46	médio	ordem bíblica	Qual livro vem imediatamente antes de 1 Coríntios?	Romanos	1 Tessalonicenses	3 João	Neemias	0	Romanos vem antes de 1 Coríntios na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-47	fácil	estrutura da Bíblia	A qual Testamento pertence 2 Coríntios?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	2 Coríntios pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 2 Coríntios
+chapters-47	difícil	estrutura da Bíblia	Quantos capítulos possui 2 Coríntios?	14	18	13	12	2	2 Coríntios possui 13 capítulos.	Estrutura de 2 Coríntios
+next-47	médio	ordem bíblica	Qual livro vem imediatamente depois de 2 Coríntios?	Salmos	Gálatas	2 Timóteo	Gênesis	1	Gálatas vem depois de 2 Coríntios na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-47	médio	ordem bíblica	Qual livro vem imediatamente antes de 2 Coríntios?	2 Tessalonicenses	Judas	Ester	1 Coríntios	3	1 Coríntios vem antes de 2 Coríntios na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-48	fácil	estrutura da Bíblia	A qual Testamento pertence Gálatas?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Gálatas pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Gálatas
+chapters-48	difícil	estrutura da Bíblia	Quantos capítulos possui Gálatas?	11	6	5	7	1	Gálatas possui 6 capítulos.	Estrutura de Gálatas
+next-48	médio	ordem bíblica	Qual livro vem imediatamente depois de Gálatas?	Efésios	Tito	Êxodo	Provérbios	0	Efésios vem depois de Gálatas na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-48	médio	ordem bíblica	Qual livro vem imediatamente antes de Gálatas?	Apocalipse	Jó	2 Coríntios	1 Timóteo	2	2 Coríntios vem antes de Gálatas na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-49	fácil	estrutura da Bíblia	A qual Testamento pertence Efésios?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Efésios pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Efésios
+chapters-49	difícil	estrutura da Bíblia	Quantos capítulos possui Efésios?	6	5	7	11	0	Efésios possui 6 capítulos.	Estrutura de Efésios
+next-49	médio	ordem bíblica	Qual livro vem imediatamente depois de Efésios?	Filemom	Levítico	Eclesiastes	Filipenses	3	Filipenses vem depois de Efésios na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-49	médio	ordem bíblica	Qual livro vem imediatamente antes de Efésios?	Salmos	Gálatas	2 Timóteo	Gênesis	1	Gálatas vem antes de Efésios na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-50	fácil	estrutura da Bíblia	A qual Testamento pertence Filipenses?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Filipenses pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Filipenses
+chapters-50	difícil	estrutura da Bíblia	Quantos capítulos possui Filipenses?	3	5	6	4	3	Filipenses possui 4 capítulos.	Estrutura de Filipenses
+next-50	médio	ordem bíblica	Qual livro vem imediatamente depois de Filipenses?	Números	Cântico dos Cânticos	Colossenses	Hebreus	2	Colossenses vem depois de Filipenses na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-50	médio	ordem bíblica	Qual livro vem imediatamente antes de Filipenses?	Efésios	Tito	Êxodo	Provérbios	0	Efésios vem antes de Filipenses na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-51	fácil	estrutura da Bíblia	A qual Testamento pertence Colossenses?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Colossenses pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Colossenses
+chapters-51	difícil	estrutura da Bíblia	Quantos capítulos possui Colossenses?	5	6	4	3	2	Colossenses possui 4 capítulos.	Estrutura de Colossenses
+next-51	médio	ordem bíblica	Qual livro vem imediatamente depois de Colossenses?	Isaías	1 Tessalonicenses	Tiago	Deuteronômio	1	1 Tessalonicenses vem depois de Colossenses na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-51	médio	ordem bíblica	Qual livro vem imediatamente antes de Colossenses?	Filemom	Levítico	Eclesiastes	Filipenses	3	Filipenses vem antes de Colossenses na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-52	fácil	estrutura da Bíblia	A qual Testamento pertence 1 Tessalonicenses?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	1 Tessalonicenses pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 1 Tessalonicenses
+chapters-52	difícil	estrutura da Bíblia	Quantos capítulos possui 1 Tessalonicenses?	7	5	4	6	1	1 Tessalonicenses possui 5 capítulos.	Estrutura de 1 Tessalonicenses
+next-52	médio	ordem bíblica	Qual livro vem imediatamente depois de 1 Tessalonicenses?	2 Tessalonicenses	1 Pedro	Josué	Jeremias	0	2 Tessalonicenses vem depois de 1 Tessalonicenses na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-52	médio	ordem bíblica	Qual livro vem imediatamente antes de 1 Tessalonicenses?	Números	Cântico dos Cânticos	Colossenses	Hebreus	2	Colossenses vem antes de 1 Tessalonicenses na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-53	fácil	estrutura da Bíblia	A qual Testamento pertence 2 Tessalonicenses?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	2 Tessalonicenses pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 2 Tessalonicenses
+chapters-53	difícil	estrutura da Bíblia	Quantos capítulos possui 2 Tessalonicenses?	3	2	4	5	0	2 Tessalonicenses possui 3 capítulos.	Estrutura de 2 Tessalonicenses
+next-53	médio	ordem bíblica	Qual livro vem imediatamente depois de 2 Tessalonicenses?	2 Pedro	Juízes	Lamentações	1 Timóteo	3	1 Timóteo vem depois de 2 Tessalonicenses na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-53	médio	ordem bíblica	Qual livro vem imediatamente antes de 2 Tessalonicenses?	Isaías	1 Tessalonicenses	Tiago	Deuteronômio	1	1 Tessalonicenses vem antes de 2 Tessalonicenses na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-54	fácil	estrutura da Bíblia	A qual Testamento pertence 1 Timóteo?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	1 Timóteo pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 1 Timóteo
+chapters-54	difícil	estrutura da Bíblia	Quantos capítulos possui 1 Timóteo?	5	7	11	6	3	1 Timóteo possui 6 capítulos.	Estrutura de 1 Timóteo
+next-54	médio	ordem bíblica	Qual livro vem imediatamente depois de 1 Timóteo?	Rute	Ezequiel	2 Timóteo	1 João	2	2 Timóteo vem depois de 1 Timóteo na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-54	médio	ordem bíblica	Qual livro vem imediatamente antes de 1 Timóteo?	2 Tessalonicenses	1 Pedro	Josué	Jeremias	0	2 Tessalonicenses vem antes de 1 Timóteo na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-55	fácil	estrutura da Bíblia	A qual Testamento pertence 2 Timóteo?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	2 Timóteo pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 2 Timóteo
+chapters-55	difícil	estrutura da Bíblia	Quantos capítulos possui 2 Timóteo?	5	6	4	3	2	2 Timóteo possui 4 capítulos.	Estrutura de 2 Timóteo
+next-55	médio	ordem bíblica	Qual livro vem imediatamente depois de 2 Timóteo?	Daniel	Tito	2 João	1 Samuel	1	Tito vem depois de 2 Timóteo na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-55	médio	ordem bíblica	Qual livro vem imediatamente antes de 2 Timóteo?	2 Pedro	Juízes	Lamentações	1 Timóteo	3	1 Timóteo vem antes de 2 Timóteo na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-56	fácil	estrutura da Bíblia	A qual Testamento pertence Tito?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Tito pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Tito
+chapters-56	difícil	estrutura da Bíblia	Quantos capítulos possui Tito?	5	3	2	4	1	Tito possui 3 capítulos.	Estrutura de Tito
+next-56	médio	ordem bíblica	Qual livro vem imediatamente depois de Tito?	Filemom	3 João	2 Samuel	Oseias	0	Filemom vem depois de Tito na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-56	médio	ordem bíblica	Qual livro vem imediatamente antes de Tito?	Rute	Ezequiel	2 Timóteo	1 João	2	2 Timóteo vem antes de Tito na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-57	fácil	estrutura da Bíblia	A qual Testamento pertence Filemom?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Filemom pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Filemom
+chapters-57	difícil	estrutura da Bíblia	Quantos capítulos possui Filemom?	1	3	2	5	0	Filemom possui 1 capítulo.	Estrutura de Filemom
+next-57	médio	ordem bíblica	Qual livro vem imediatamente depois de Filemom?	Judas	1 Reis	Joel	Hebreus	3	Hebreus vem depois de Filemom na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-57	médio	ordem bíblica	Qual livro vem imediatamente antes de Filemom?	Daniel	Tito	2 João	1 Samuel	1	Tito vem antes de Filemom na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-58	fácil	estrutura da Bíblia	A qual Testamento pertence Hebreus?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Hebreus pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Hebreus
+chapters-58	difícil	estrutura da Bíblia	Quantos capítulos possui Hebreus?	12	14	18	13	3	Hebreus possui 13 capítulos.	Estrutura de Hebreus
+next-58	médio	ordem bíblica	Qual livro vem imediatamente depois de Hebreus?	2 Reis	Amós	Tiago	Apocalipse	2	Tiago vem depois de Hebreus na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-58	médio	ordem bíblica	Qual livro vem imediatamente antes de Hebreus?	Filemom	3 João	2 Samuel	Oseias	0	Filemom vem antes de Hebreus na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-59	fácil	estrutura da Bíblia	A qual Testamento pertence Tiago?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Tiago pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Tiago
+chapters-59	difícil	estrutura da Bíblia	Quantos capítulos possui Tiago?	6	7	5	4	2	Tiago possui 5 capítulos.	Estrutura de Tiago
+next-59	médio	ordem bíblica	Qual livro vem imediatamente depois de Tiago?	Obadias	1 Pedro	Gênesis	1 Crônicas	1	1 Pedro vem depois de Tiago na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-59	médio	ordem bíblica	Qual livro vem imediatamente antes de Tiago?	Judas	1 Reis	Joel	Hebreus	3	Hebreus vem antes de Tiago na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-60	fácil	estrutura da Bíblia	A qual Testamento pertence 1 Pedro?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	1 Pedro pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 1 Pedro
+chapters-60	difícil	estrutura da Bíblia	Quantos capítulos possui 1 Pedro?	7	5	4	6	1	1 Pedro possui 5 capítulos.	Estrutura de 1 Pedro
+next-60	médio	ordem bíblica	Qual livro vem imediatamente depois de 1 Pedro?	2 Pedro	Êxodo	2 Crônicas	Jonas	0	2 Pedro vem depois de 1 Pedro na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-60	médio	ordem bíblica	Qual livro vem imediatamente antes de 1 Pedro?	2 Reis	Amós	Tiago	Apocalipse	2	Tiago vem antes de 1 Pedro na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-61	fácil	estrutura da Bíblia	A qual Testamento pertence 2 Pedro?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	2 Pedro pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 2 Pedro
+chapters-61	difícil	estrutura da Bíblia	Quantos capítulos possui 2 Pedro?	3	2	4	5	0	2 Pedro possui 3 capítulos.	Estrutura de 2 Pedro
+next-61	médio	ordem bíblica	Qual livro vem imediatamente depois de 2 Pedro?	Levítico	Esdras	Miqueias	1 João	3	1 João vem depois de 2 Pedro na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-61	médio	ordem bíblica	Qual livro vem imediatamente antes de 2 Pedro?	Obadias	1 Pedro	Gênesis	1 Crônicas	1	1 Pedro vem antes de 2 Pedro na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-62	fácil	estrutura da Bíblia	A qual Testamento pertence 1 João?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	1 João pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 1 João
+chapters-62	difícil	estrutura da Bíblia	Quantos capítulos possui 1 João?	4	6	7	5	3	1 João possui 5 capítulos.	Estrutura de 1 João
+next-62	médio	ordem bíblica	Qual livro vem imediatamente depois de 1 João?	Neemias	Naum	2 João	Números	2	2 João vem depois de 1 João na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-62	médio	ordem bíblica	Qual livro vem imediatamente antes de 1 João?	2 Pedro	Êxodo	2 Crônicas	Jonas	0	2 Pedro vem antes de 1 João na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-63	fácil	estrutura da Bíblia	A qual Testamento pertence 2 João?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	2 João pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 2 João
+chapters-63	difícil	estrutura da Bíblia	Quantos capítulos possui 2 João?	2	5	1	3	2	2 João possui 1 capítulo.	Estrutura de 2 João
+next-63	médio	ordem bíblica	Qual livro vem imediatamente depois de 2 João?	Habacuque	3 João	Deuteronômio	Ester	1	3 João vem depois de 2 João na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-63	médio	ordem bíblica	Qual livro vem imediatamente antes de 2 João?	Levítico	Esdras	Miqueias	1 João	3	1 João vem antes de 2 João na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-64	fácil	estrutura da Bíblia	A qual Testamento pertence 3 João?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	3 João pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de 3 João
+chapters-64	difícil	estrutura da Bíblia	Quantos capítulos possui 3 João?	5	1	3	2	1	3 João possui 1 capítulo.	Estrutura de 3 João
+next-64	médio	ordem bíblica	Qual livro vem imediatamente depois de 3 João?	Judas	Josué	Jó	Sofonias	0	Judas vem depois de 3 João na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-64	médio	ordem bíblica	Qual livro vem imediatamente antes de 3 João?	Neemias	Naum	2 João	Números	2	2 João vem antes de 3 João na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-65	fácil	estrutura da Bíblia	A qual Testamento pertence Judas?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Judas pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Judas
+chapters-65	difícil	estrutura da Bíblia	Quantos capítulos possui Judas?	1	3	2	5	0	Judas possui 1 capítulo.	Estrutura de Judas
+next-65	médio	ordem bíblica	Qual livro vem imediatamente depois de Judas?	Juízes	Salmos	Ageu	Apocalipse	3	Apocalipse vem depois de Judas na ordem bíblica comum.	Ordem canônica dos 66 livros
+previous-65	médio	ordem bíblica	Qual livro vem imediatamente antes de Judas?	Habacuque	3 João	Deuteronômio	Ester	1	3 João vem antes de Judas na ordem bíblica comum.	Ordem canônica dos 66 livros
+testament-66	fácil	estrutura da Bíblia	A qual Testamento pertence Apocalipse?	Antigo Testamento	Novo Testamento	Livros apócrifos	Não é livro bíblico	1	Apocalipse pertence ao Novo Testamento na ordem protestante de 66 livros.	Estrutura de Apocalipse
+chapters-66	difícil	estrutura da Bíblia	Quantos capítulos possui Apocalipse?	21	23	27	22	3	Apocalipse possui 22 capítulos.	Estrutura de Apocalipse
+previous-66	médio	ordem bíblica	Qual livro vem imediatamente antes de Apocalipse?	Judas	Josué	Jó	Sofonias	0	Judas vem antes de Apocalipse na ordem bíblica comum.	Ordem canônica dos 66 livros

@@ -1,18 +1,17 @@
-"""Baixa/normaliza as fontes autorizadas e cria data/biblia.db.
+"""Baixa, normaliza e valida as fontes autorizadas de ``data/biblia.db``.
 
-O script usa somente a biblioteca padrão. Para a Open Translation Bible,
-informe --otb-dir apontando para lang/pt-BR de um checkout oficial.
+O banco antigo só é substituído depois que todas as traduções passam pela
+auditoria estrutural. Assim, uma fonte incompleta ou um erro no importador não
+entra silenciosamente nos pacotes Windows e Android.
 """
 
 from __future__ import annotations
 
-import argparse
 import html
 import io
-import json
+import os
 import re
 import sqlite3
-import sys
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
@@ -57,6 +56,23 @@ BOOKS = [
     ("JUD", "Judas", "Jude"), ("REV", "Apocalipse", "Revelation"),
 ]
 BOOK_BY_CODE = {code: (i + 1, pt, en) for i, (code, pt, en) in enumerate(BOOKS)}
+EXPECTED_CHAPTER_COUNTS = (
+    50, 40, 27, 36, 34, 24, 21, 4, 31, 24, 22, 25, 29, 36, 10, 13, 10,
+    42, 150, 31, 12, 8, 66, 52, 5, 48, 12, 14, 3, 9, 1, 4, 7, 3, 3, 3,
+    2, 14, 4, 28, 16, 24, 21, 28, 16, 16, 13, 6, 6, 4, 4, 5, 3, 6, 4,
+    3, 1, 13, 5, 5, 3, 5, 1, 1, 1, 22,
+)
+EXPECTED_CHAPTERS = {
+    code: count for (code, _pt, _en), count in zip(BOOKS, EXPECTED_CHAPTER_COUNTS)
+}
+# BPM e WEB seguem a mesma tradição textual e não numeram quatro versículos
+# preservados por Almeida. A lista explícita impede aceitar novas lacunas por
+# acidente sem classificar essas diferenças editoriais legítimas como defeito.
+EXPECTED_NUMERIC_GAPS = {
+    "bpm": {("LUK", 17, 36), ("ACT", 8, 37), ("ACT", 15, 34), ("ACT", 24, 7)},
+    "almeida": set(),
+    "web": {("LUK", 17, 36), ("ACT", 8, 37), ("ACT", 15, 34), ("ACT", 24, 7)},
+}
 
 GENERAL_LAW = """
 <h2>Base legal brasileira comum</h2>
@@ -111,18 +127,7 @@ TRANSLATIONS = [
         ),
     },
     {
-        "id": "otb", "name": "Open Translation Bible — Português", "language": "Português (Brasil)", "display_order": 3,
-        "license": "Creative Commons Atribuição-CompartilhaIgual 4.0 (CC BY-SA 4.0)",
-        "source": "OpenTranslationBible/open-bible", "source_url": "https://github.com/OpenTranslationBible/open-bible",
-        "legal_html": legal_html(
-            "Open Translation Bible — Português", "CC BY-SA 4.0",
-            "Repositório oficial OpenTranslationBible/open-bible", "https://github.com/OpenTranslationBible/open-bible",
-            "A licença CC BY-SA 4.0 autoriza copiar, redistribuir e adaptar, inclusive comercialmente, desde que sejam mantidas a atribuição e a mesma licença nas adaptações. O texto foi importado sem alteração de conteúdo; apenas a marcação Markdown foi removida para leitura por voz e por leitor de tela.",
-            '<h2>Atribuição</h2><p>Open Translation Bible (OTB), © OpenBible, licenciada sob <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.pt_BR">CC BY-SA 4.0</a>. Fonte: <a href="https://openbible.uk/">openbible.uk</a>. O texto bíblico e adaptações dele permanecem sob CC BY-SA 4.0.</p><h2>Nota de integridade da fonte</h2><p>Na revisão oficial importada (commit 8390a1f), o arquivo de 1 Reis 19 está vazio. O aplicativo sinaliza o capítulo como indisponível e não completa uma tradução com o texto de outra. Para esse capítulo, escolha uma das outras três edições.</p>',
-        ),
-    },
-    {
-        "id": "web", "name": "World English Bible", "language": "English", "display_order": 4,
+        "id": "web", "name": "World English Bible", "language": "English", "display_order": 3,
         "license": "Public Domain", "source": "eBible.org — engwebp",
         "source_url": "https://worldenglish.bible/",
         "legal_html": legal_html(
@@ -180,6 +185,11 @@ def parse_usfm_zip(url: str, english=False):
             chapter_match = re.match(r"\\c\s+(\d+)", line)
             verse_match = re.match(r"\\v\s+([^\s]+)\s*(.*)", line)
             if chapter_match:
+                # O último versículo pertence ao capítulo anterior. Fechá-lo
+                # antes de trocar ``chapter`` evita referências duplicadas.
+                if current_verse is not None:
+                    yield number, code, name, chapter, current_verse, clean_usfm(" ".join(buffer))
+                    current_verse, buffer = None, []
                 chapter = int(chapter_match.group(1))
             elif verse_match:
                 if current_verse is not None:
@@ -235,25 +245,6 @@ def parse_usfx(data: bytes):
         yield from rows
 
 
-def parse_otb(directory: Path):
-    """Lê os JSON oficiais em ordem canônica e remove só Markdown visual."""
-    folders = sorted((p for p in directory.iterdir() if p.is_dir()), key=lambda p: int(p.name.split(".", 1)[0]))
-    for number, folder in enumerate(folders, 1):
-        json_dir = folder / "json"
-        code = BOOKS[number - 1][0]
-        name = BOOKS[number - 1][1]
-        for path in sorted(json_dir.glob("*.json")):
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            chapter = int(payload["chapter"])
-            for item in payload["verses"]:
-                if "verse" not in item:
-                    continue
-                pieces = [part.removeprefix("> ").strip() for part in item.get("text", []) if part.strip() != "---"]
-                text = " ".join(piece for piece in pieces if piece)
-                if text:
-                    yield number, code, name, chapter, str(item["verse"]), text
-
-
 def insert_rows(connection, translation_id, rows):
     """Insere em lotes para reduzir tempo e memória durante a construção."""
     prepared = []
@@ -267,12 +258,63 @@ def insert_rows(connection, translation_id, rows):
         connection.executemany("INSERT INTO verses VALUES (?,?,?,?,?,?,?,?)", prepared)
 
 
-def build(otb_dir: Path):
-    """Recria o banco completo com metadados, índices e quatro edições."""
+def validate_database(connection: sqlite3.Connection):
+    """Interrompe a construção se qualquer edição estiver incompleta ou ambígua."""
+    translation_ids = [item["id"] for item in TRANSLATIONS]
+    stored_ids = [row[0] for row in connection.execute(
+        "SELECT id FROM translations ORDER BY display_order"
+    )]
+    if stored_ids != translation_ids:
+        raise ValueError(f"Traduções inesperadas: {stored_ids}")
+
+    for translation_id in translation_ids:
+        empty = connection.execute(
+            "SELECT COUNT(*) FROM verses WHERE translation_id=? AND trim(text)=''",
+            (translation_id,),
+        ).fetchone()[0]
+        if empty:
+            raise ValueError(f"{translation_id}: {empty} textos vazios")
+
+        duplicates = connection.execute("""
+            SELECT book_code, chapter, verse, COUNT(*)
+            FROM verses WHERE translation_id=?
+            GROUP BY book_code, chapter, verse HAVING COUNT(*) > 1
+        """, (translation_id,)).fetchall()
+        if duplicates:
+            raise ValueError(f"{translation_id}: referências duplicadas: {duplicates[:5]}")
+
+        actual_gaps = set()
+        for code, expected_count in EXPECTED_CHAPTERS.items():
+            chapters = [row[0] for row in connection.execute("""
+                SELECT DISTINCT chapter FROM verses
+                WHERE translation_id=? AND book_code=? ORDER BY chapter
+            """, (translation_id, code))]
+            expected = list(range(1, expected_count + 1))
+            if chapters != expected:
+                raise ValueError(
+                    f"{translation_id}/{code}: capítulos {chapters}; esperado {expected}"
+                )
+            for chapter in chapters:
+                numbers = sorted({int(match.group()) for (verse,) in connection.execute("""
+                    SELECT verse FROM verses
+                    WHERE translation_id=? AND book_code=? AND chapter=?
+                """, (translation_id, code, chapter)) if (match := re.match(r"\d+", verse))})
+                missing = set(range(1, numbers[-1] + 1)) - set(numbers)
+                actual_gaps.update((code, chapter, number) for number in missing)
+        if actual_gaps != EXPECTED_NUMERIC_GAPS[translation_id]:
+            raise ValueError(
+                f"{translation_id}: lacunas {sorted(actual_gaps)}; esperado "
+                f"{sorted(EXPECTED_NUMERIC_GAPS[translation_id])}"
+            )
+
+
+def build():
+    """Cria e audita três edições completas antes da troca atômica do banco."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if DB_PATH.exists():
-        DB_PATH.unlink()
-    connection = sqlite3.connect(DB_PATH)
+    pending_path = DB_PATH.with_suffix(".db.new")
+    if pending_path.exists():
+        pending_path.unlink()
+    connection = sqlite3.connect(pending_path)
     connection.executescript("""
         CREATE TABLE translations (
           id TEXT PRIMARY KEY, name TEXT NOT NULL, language TEXT NOT NULL,
@@ -285,6 +327,8 @@ def build(otb_dir: Path):
           chapter INTEGER NOT NULL, verse TEXT NOT NULL,
           verse_sort REAL NOT NULL, text TEXT NOT NULL
         );
+        CREATE UNIQUE INDEX reference_unique_idx
+          ON verses(translation_id, book_code, chapter, verse);
         CREATE INDEX chapter_idx ON verses(translation_id, book_number, chapter, verse_sort);
         CREATE INDEX book_idx ON verses(translation_id, book_code, chapter);
     """)
@@ -297,27 +341,22 @@ def build(otb_dir: Path):
     insert_rows(connection, "bpm", parse_usfm_zip("https://ebible.org/Scriptures/porbrbsl_usfm.zip"))
     print("Importando João Ferreira de Almeida…")
     insert_rows(connection, "almeida", parse_usfx(download("https://raw.githubusercontent.com/seven1m/open-bibles/master/por-almeida.usfx.xml")))
-    print("Importando Open Translation Bible…")
-    insert_rows(connection, "otb", parse_otb(otb_dir))
     print("Importando World English Bible…")
     insert_rows(connection, "web", parse_usfm_zip("https://ebible.org/Scriptures/engwebp_usfm.zip", english=True))
     connection.commit()
+    validate_database(connection)
     connection.execute("VACUUM")
     counts = connection.execute("SELECT translation_id, COUNT(*) FROM verses GROUP BY translation_id ORDER BY translation_id").fetchall()
     connection.close()
+    os.replace(pending_path, DB_PATH)
     print(f"Banco criado em {DB_PATH}")
     for translation, count in counts:
         print(f"  {translation}: {count} versículos")
 
 
 def main():
-    """Lê argumentos da linha de comando e inicia a construção."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--otb-dir", type=Path, required=True, help="Pasta oficial lang/pt-BR da Open Translation Bible")
-    args = parser.parse_args()
-    if not args.otb_dir.is_dir():
-        parser.error(f"Pasta não encontrada: {args.otb_dir}")
-    build(args.otb_dir)
+    """Constrói o banco usando somente as três fontes completas verificadas."""
+    build()
 
 
 if __name__ == "__main__":

@@ -10,9 +10,21 @@ $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) 'biblia_acessivel_p
 $workPath = Join-Path $temporaryRoot 'build'
 $specPath = Join-Path $temporaryRoot 'spec'
 $entryPoint = Join-Path $projectRoot 'app.py'
+$buildPython = if ($env:BIBLIA_BUILD_PYTHON) {
+    $env:BIBLIA_BUILD_PYTHON
+} else {
+    (Get-Command python -ErrorAction Stop).Source
+}
+
+# Impede a criação silenciosa de um EXE com uma combinação Qt já conhecida
+# por falhar depois de congelada. O workflow instala estes mesmos pinos.
+$buildVersions = & $buildPython -c "import PySide6, PyInstaller; print(f'{PySide6.__version__}|{PyInstaller.__version__}')"
+if ($LASTEXITCODE -ne 0 -or $buildVersions.Trim() -ne '6.8.3|6.21.0') {
+    throw "Ambiente de compilação incompatível: $buildVersions. Instale requirements-build.txt ou defina BIBLIA_BUILD_PYTHON."
+}
 
 # PyInstaller deve estar instalado somente no ambiente usado para compilar.
-python -m PyInstaller `
+& $buildPython -m PyInstaller `
     --noconfirm `
     --clean `
     --onefile `

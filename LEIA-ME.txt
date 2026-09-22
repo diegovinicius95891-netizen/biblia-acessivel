@@ -1,0 +1,68 @@
+BÍBLIA ACESSÍVEL PARA WINDOWS
+
+COMO ABRIR
+
+1. Extraia todo o conteúdo do arquivo ZIP para uma pasta.
+2. Mantenha a pasta data ao lado de BibliaAcessivel.exe.
+3. Abra BibliaAcessivel.exe. Não é necessário instalar Python.
+
+NAVEGAÇÃO PRINCIPAL
+
+Tab e Shift+Tab percorrem Livros, Capítulos, Versículos, Área de leitura e Mais opções.
+Setas cima e baixo navegam dentro da seção atual.
+Nos Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo Testamento.
+Espaço ou Enter ativa o item atual. A tecla Aplicações ou Shift+F10 abre as ações do item.
+
+NOTAS
+
+No menu Aplicações de um versículo, escolha Criar anotação. As notas ficam em Mais opções, Anotações por dia.
+O aplicativo guarda notas e marcadores somente no computador, em %APPDATA%\BibliaAcessivel\user_data.db.
+Se encontrar um banco antigo, ele migra as notas e cria uma cópia de segurança antes da alteração.
+
+RECURSOS PESSOAIS E DE ESTUDO
+
+Mais opções contém busca inteligente, 17 planos de leitura, Diário de oração, Meu momento com Deus, favoritos com categorias, histórico, temas, informações dos livros, personagens, memorização, Harpa Cristã com 640 hinos, quiz com 298 perguntas, Status do quiz, estatísticas, Modo culto e backup.
+Todas essas áreas funcionam pelo teclado. Espaço ou Enter abre o item destacado e Escape volta à Bíblia.
+No Modo culto, digite a referência e pressione Enter: a passagem aparece e recebe foco imediatamente, sem abrir uma ação Ler versículo.
+
+ATALHOS
+
+Ctrl+F pesquisa. Ctrl+G vai para uma passagem. Ctrl+D alterna favorito. Ctrl+M cria anotação.
+Ctrl+L abre planos. Ctrl+O abre o Diário de oração. Ctrl+H abre o histórico.
+Ctrl+Shift+D abre Meu momento com Deus. Ctrl+Shift+C copia o versículo atual.
+
+BACKUP E PRIVACIDADE
+
+Backup e restauração ficam em Mais opções. O JSON é validado antes da importação.
+Pedidos de oração, devocionais, anotações e favoritos permanecem no computador e não são enviados à inteligência artificial.
+
+VOZ
+
+Em Mais opções, Configurações, escolha Voz SAPI. É possível selecionar uma voz instalada no Windows ou desativar a voz interna.
+Quando a voz interna estiver desativada, Enter no versículo pede ao leitor de tela que anuncie o texto novamente.
+
+INTELIGÊNCIA ARTIFICIAL
+
+Os recursos de IA são opcionais, exigem internet e uma chave própria do Google Gemini.
+Em Configurações, informe a chave, escolha o modelo e salve. A chave fica criptografada para a conta atual do Windows.
+O programa limita o tamanho dos resumos para evitar respostas enormes ou cortadas.
+
+PRIVACIDADE E LICENÇAS
+
+Nenhuma anotação, marcador ou chave de API acompanha este pacote.
+As fontes dos textos, licenças e justificativas legais estão no aplicativo e em THIRD_PARTY_NOTICES.md.
+
+ARQUIVOS NECESSÁRIOS
+
+BibliaAcessivel.exe — aplicativo.
+data\biblia.db — textos bíblicos e metadados.
+data\harpa_crista.json — letras dos 640 hinos da Harpa Cristã.
+data\quiz_questions.tsv — catálogo compartilhado com 298 perguntas de estudo.
+LEIA-ME.txt — estas instruções.
+THIRD_PARTY_NOTICES.md — atribuições e licenças de terceiros.
+
+ATUALIZAÇÕES
+
+O aplicativo verifica no máximo uma vez por dia se existe uma GitHub Release estável mais recente.
+Ajuda oferece Verificar atualizações e Novidades da versão. Configurações permite desligar a verificação automática ou suas notificações.
+O pacote só é instalado depois da conferência de tamanho e SHA-256. Antes da instalação, os dados pessoais recebem um backup automático.

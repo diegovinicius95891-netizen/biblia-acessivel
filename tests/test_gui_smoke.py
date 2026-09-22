@@ -7,13 +7,14 @@ import unittest
 from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("BIBLIA_DISABLE_AUTO_UPDATE", "1")
 
 try:
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QDialog, QLineEdit
     from biblia.dialogs import ApiKeyDialog, ApplicationsDialog, ModelDialog, NoteEditorDialog
-    from biblia.main_window import BookList, ChapterList, MainWindow, VerseList
+    from biblia.main_window import BookList, ChapterList, MainWindow, VerseList, VOICE_OFF
     from biblia.user_data import UserDataDatabase
 except ImportError:  # Permite validar o banco antes da instalação da interface.
     QApplication = None
@@ -32,14 +33,35 @@ class GuiSmokeTests(unittest.TestCase):
         """Compartilha uma única aplicação Qt entre os testes."""
         cls.app = QApplication.instance() or QApplication([])
 
+    def setUp(self):
+        """Cria um banco pessoal isolado para cada teste de interface."""
+        self._temporary = TemporaryDirectory()
+        self._windows = []
+
+    def tearDown(self):
+        """Descarta os dados produzidos pelo cenário."""
+        for window in self._windows:
+            window.close()
+        self.app.processEvents()
+        self._temporary.cleanup()
+
+    def make_window(self):
+        """Abre a janela sem tocar no banco pessoal real do projeto."""
+        window = MainWindow(DB_PATH, Path(self._temporary.name) / "user_data.db")
+        self._windows.append(window)
+        return window
+
     def test_clean_main_screen_navigation_and_secondary_pages(self):
         """Valida as cinco seções principais e telas internas acionadas por Mais opções."""
-        window = MainWindow(DB_PATH)
+        window = self.make_window()
         self.assertFalse(hasattr(window, "tabs"))
         self.assertIs(window.page_stack, window.centralWidget())
         self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
-        self.assertEqual(8, window.more_options.count())
-        self.assertEqual(4, window.translation_list.count())
+        self.assertEqual(24, window.more_options.count())
+        labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
+        self.assertIn("Harpa Cristã", labels)
+        self.assertIn("Status do quiz", labels)
+        self.assertEqual(3, window.translation_list.count())
         self.assertEqual(39, window.book_list.count())
 
         window.book_list.setFocus()
@@ -73,7 +95,8 @@ class GuiSmokeTests(unittest.TestCase):
             for index in range(window.legal_text.count())
         )
         self.assertIn("LEGISLAÇÃO BRASILEIRA", legal_content)
-        self.assertIn("CC BY-SA 4.0", legal_content)
+        self.assertIn("três edições bíblicas completas", legal_content)
+        self.assertIn("Open Translation Bible em português foi retirada", legal_content)
         self.assertGreater(window.help_text.count(), 1)
         window.more_options.setCurrentRow(7)
         QTest.keyClick(window.more_options, Qt.Key_Space)
@@ -84,13 +107,44 @@ class GuiSmokeTests(unittest.TestCase):
 
     def test_end_of_book_is_announced_and_does_not_cross_books(self):
         """Mantém direita no último capítulo e adiciona a mensagem terminal."""
-        window = MainWindow(DB_PATH)
+        window = self.make_window()
         window._show_location("JHN", 21, focus_reading=False)
         ending = window.verse_list.item(window.verse_list.count() - 1)
         self.assertEqual("Fim do livro. Não há capítulos seguintes.", ending.text())
         QTest.keyClick(window.verse_list, Qt.Key_Right)
         self.assertEqual("JHN", window.active_book_code)
         self.assertEqual(21, window.active_chapter)
+        window.close()
+
+    def test_extended_pages_are_registered_and_keyboard_accessible(self):
+        """Abre cada novo recurso e valida nomes, foco e busca temática local."""
+        window = self.make_window()
+        page_ids = (
+            "dashboard", "plans", "prayers", "daily_devotional", "favorites",
+            "history", "topics", "books_info", "characters", "memorization",
+            "hymnal", "quiz", "quiz_status", "statistics", "worship", "backup",
+        )
+        for page_id in page_ids:
+            with self.subTest(page=page_id):
+                self.assertIn(page_id, window.secondary_pages)
+                window.open_more_option(page_id)
+                self.app.processEvents()
+                self.assertNotEqual(window.main_page_index, window.page_stack.currentIndex())
+                self.assertTrue(window.focusWidget().accessibleName())
+        self.assertEqual(640, window.extended.hymnal_list.count())
+        self.assertEqual(298, window.extended.quiz_list.count())
+        window.user_data.record_quiz_attempt("smoke", "fácil", "Jesus", True)
+        window.extended.refresh_quiz_status()
+        self.assertIn("Acertos: 1", [
+            window.extended.quiz_status_list.item(index).text()
+            for index in range(window.extended.quiz_status_list.count())
+        ])
+        window.open_more_option("search")
+        window.search_edit.setText("ansiedade")
+        window.search_mode.setCurrentIndex(window.search_mode.findData("topic"))
+        window.perform_search()
+        self.assertGreater(window.search_results.count(), 0)
+        self.assertEqual("ansiedade", window.user_data.searches()[0]["query"])
         window.close()
 
     def test_applications_key_is_detected(self):
@@ -117,13 +171,14 @@ class GuiSmokeTests(unittest.TestCase):
 
     def test_settings_ai_and_notes_are_accessible(self):
         """Confere configurações, tarefas de IA e a nova rota para anotações."""
-        window = MainWindow(DB_PATH)
+        window = self.make_window()
         self.assertTrue(hasattr(window, "action_create_note"))
         self.assertEqual("Anotações organizadas por dia", window.notes_list.accessibleName())
         self.assertEqual("Opções de configurações", window.settings_options.accessibleName())
-        self.assertEqual(6, window.settings_options.count())
+        self.assertEqual(9, window.settings_options.count())
         self.assertIn("chave da API", window.settings_options.item(0).text())
         self.assertIn("modelo", window.settings_options.item(1).text())
+        self.assertIn("Voz SAPI", window.settings_options.item(4).text())
         self.assertTrue(all(model_id.startswith("gemini-") for _label, model_id in ModelDialog.MODELS))
         window.pending_api_key = ""
         window._refresh_settings_options()
@@ -136,11 +191,22 @@ class GuiSmokeTests(unittest.TestCase):
             QTest.keyClick(window.settings_options, Qt.Key_Space)
         self.assertEqual("sk-teste", window.pending_api_key)
         self.assertTrue(window.get_api_key_button.isHidden())
+        window.settings_options.setCurrentRow(4)
+        with patch(
+            "biblia.main_window.ChoiceDialog.get_choice", return_value=(VOICE_OFF, True)
+        ):
+            QTest.keyClick(window.settings_options, Qt.Key_Space)
+        self.assertEqual(VOICE_OFF, window.pending_voice_name)
         window._show_location("JHN", 3, "16", focus_reading=False)
         instruction, text, title = window._prepare_ai_task("verse")
         self.assertIn("João 3:16", instruction)
         self.assertTrue(text.startswith("16."))
         self.assertIn("João 3:16", title)
+        window.voice_name = VOICE_OFF
+        with patch.object(window, "_announce_for") as announce:
+            window.speak_current_verse()
+        self.assertTrue(announce.called)
+        self.assertIn("16.", announce.call_args.args[1])
         window.close()
 
     def test_applications_dialog_and_buttons_accept_space_or_enter(self):
@@ -154,7 +220,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertEqual(QDialog.Accepted, dialog.result())
         self.assertEqual("copy", dialog.selected_value)
 
-        window = MainWindow(DB_PATH)
+        window = self.make_window()
         activated = []
         window.save_settings_button.clicked.disconnect()
         window.save_settings_button.clicked.connect(lambda: activated.append(True))
@@ -166,7 +232,7 @@ class GuiSmokeTests(unittest.TestCase):
 
     def test_application_menus_focus_ai_and_preserve_verse_actions(self):
         """Confere títulos, foco inicial na IA e ações existentes do versículo."""
-        window = MainWindow(DB_PATH)
+        window = self.make_window()
 
         with patch("biblia.main_window.ApplicationsDialog.choose", return_value=None) as choose:
             window.show_book_menu()
@@ -186,7 +252,7 @@ class GuiSmokeTests(unittest.TestCase):
             action_ids = [action_id for _label, action_id in options]
             self.assertEqual("ai_verse", action_ids[0])
             self.assertEqual(
-                {"copy_text", "copy_reference", "bookmark", "note", "speak"},
+                {"copy_text", "copy_reference", "bookmark", "note", "memorize", "speak"},
                 set(action_ids[1:]),
             )
 
@@ -195,7 +261,7 @@ class GuiSmokeTests(unittest.TestCase):
     def test_note_grouping_and_devotional_file_export(self):
         """Salva anotação por dia e exporta um devocional com referência substituível."""
         with TemporaryDirectory() as directory:
-            window = MainWindow(DB_PATH)
+            window = self.make_window()
             window.user_data.close()
             window.user_data = UserDataDatabase(Path(directory) / "user_data.db")
             window._show_location("JHN", 3, "16", focus_reading=False)
@@ -248,6 +314,22 @@ class GuiSmokeTests(unittest.TestCase):
         dialog.title_editor.setFocus()
         QTest.keyClick(dialog.title_editor, Qt.Key_Return)
         self.assertTrue(dialog.body_editor.hasFocus())
+
+    def test_worship_mode_shows_passage_immediately_and_returns_to_search(self):
+        """Enter preenche o texto sem menu intermediário e permite nova referência."""
+        window = self.make_window()
+        window.show()
+        self.app.processEvents()
+        window.open_more_option("worship")
+        window.extended.worship_edit.setText("João 3:16")
+        QTest.keyClick(window.extended.worship_edit, Qt.Key_Return)
+        self.assertEqual(1, window.extended.worship_result.count())
+        self.assertIn("Deus", window.extended.worship_result.item(0).text())
+        self.assertIn("João 3:16", window.extended.worship_heading.text())
+        self.assertTrue(window.extended.worship_result.hasFocus())
+        window.extended.focus_worship_search()
+        self.assertTrue(window.extended.worship_edit.hasFocus())
+        window.close()
 
 
 if __name__ == "__main__":

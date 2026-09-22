@@ -1,0 +1,70 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.bibliaacessivel.app'
+    compileSdk 35
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    defaultConfig {
+        applicationId 'com.bibliaacessivel.app'
+        minSdk 26
+        targetSdk 35
+        versionCode 8
+        versionName '2.1.5'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main.assets.srcDir layout.buildDirectory.dir('generated/bibleAssets')
+        test.resources.srcDir rootProject.file('../data')
+    }
+
+    signingConfigs {
+        release {
+            def defaultKeystore = new File(System.getProperty('user.home'), '.android/debug.keystore')
+            def configuredKeystore = System.getenv('ANDROID_RELEASE_KEYSTORE')
+            storeFile configuredKeystore ? file(configuredKeystore) : defaultKeystore
+            storePassword System.getenv('ANDROID_RELEASE_STORE_PASSWORD') ?: 'android'
+            keyAlias System.getenv('ANDROID_RELEASE_KEY_ALIAS') ?: 'androiddebugkey'
+            keyPassword System.getenv('ANDROID_RELEASE_KEY_PASSWORD') ?: 'android'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+
+    // Mantém a biblioteca FileProvider na linha compatível com compileSdk 35.
+    lint {
+        disable 'GradleDependency'
+    }
+}
+
+def syncSharedContent = tasks.register('syncSharedContent', Copy) {
+    from rootProject.file('../data')
+    include 'biblia.db', 'harpa_crista.json', 'quiz_questions.tsv'
+    from rootProject.file('..')
+    include 'THIRD_PARTY_NOTICES.md'
+    into layout.buildDirectory.dir('generated/bibleAssets')
+}
+
+tasks.named('preBuild').configure {
+    dependsOn syncSharedContent
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.13.1'
+    testImplementation 'junit:junit:4.13.2'
+}
