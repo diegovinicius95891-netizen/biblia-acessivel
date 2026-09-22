@@ -24,7 +24,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 2.1.4\n\n" +
+            "Novidades da versão Android 2.1.5\n\n" +
+            "Ativar um versículo agora abre diretamente o menu de ações; não é mais necessário tocar e segurar. Com o TalkBack, basta o toque duplo normal.\n\n" +
+            "Novo botão Continuar de onde parou na tela principal, com a última referência salva.\n\n" +
+            "Nova seção Estudos com resumos de livro e capítulo e Teólogo de IA: exegese, hermenêutica, contexto histórico, teologia bíblica, comparação de interpretações, palavras importantes, aplicação, esboço e pergunta livre.\n\n" +
+            "O Teólogo de IA também pode ser aberto pelo menu de qualquer versículo, e todas as perguntas sugeridas podem ser editadas antes do envio.\n\n" +
             "Banco bíblico reconstruído e auditado. Foram corrigidas referências duplicadas no fim de capítulos da Bíblia Portuguesa Mundial e da World English Bible.\n\n" +
             "Permanecem três traduções completas. A Open Translation Bible foi retirada porque a fonte oficial continua sem 1 Reis 19.\n\n" +
             "Cada pergunta do quiz agora registra somente a primeira resposta. Duplicações antigas são corrigidas automaticamente.\n\n" +

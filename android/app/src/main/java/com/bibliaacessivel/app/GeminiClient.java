@@ -35,7 +35,9 @@ final class GeminiClient {
         payload.put("system_instruction", new JSONObject().put("parts", new JSONArray().put(
                 new JSONObject().put("text", "Responda em português do Brasil, em texto simples, " +
                         "sem Markdown. Baseie-se no texto fornecido, respeite o limite pedido e " +
-                        "reserve espaço para uma conclusão completa. Avise que a resposta é gerada por IA."))));
+                        "reserve espaço para uma conclusão completa. Não invente citações, palavras em " +
+                        "idiomas bíblicos ou consensos acadêmicos. Diferencie o texto bíblico, o contexto " +
+                        "e as interpretações. Avise que a resposta é gerada por IA e pode conter erros."))));
         payload.put("contents", new JSONArray().put(new JSONObject()
                 .put("role", "user")
                 .put("parts", new JSONArray().put(new JSONObject().put("text",

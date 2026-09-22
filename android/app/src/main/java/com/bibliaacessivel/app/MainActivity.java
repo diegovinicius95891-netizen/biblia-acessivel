@@ -134,13 +134,15 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         setContentView(root);
     }
 
-    /** Cria a tela principal com exatamente cinco destinos. */
+    /** Cria a tela principal e destaca a retomada da última leitura salva. */
     private void showMainMenu() {
         backAction = null;
         LinearLayout root = rootLayout();
         root.addView(heading("Bíblia Acessível"));
         root.addView(paragraph(currentReference() +
                 ". Com o TalkBack, deslize para a direita ou para a esquerda para conhecer as opções e toque duas vezes para abrir."));
+        root.addView(actionButton("Continuar de onde parou — " + currentReference(),
+                "Continuar a leitura em " + currentReference(), this::showReading));
         root.addView(actionButton("Livros", "Abrir seção Livros", this::showBooks));
         root.addView(actionButton("Capítulos", "Abrir capítulos de " + selectedBook.name,
                 this::showChapters));
@@ -226,7 +228,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         list.requestFocus();
     }
 
-    /** Lista os textos do capítulo e repete o atual por voz ou TalkBack. */
+    /** Lista os textos do capítulo e abre suas ações com uma única ativação. */
     private void showVerses() {
         LinearLayout root = screen("Versículos de " + currentChapterReference(), this::showMainMenu);
         List<Models.Verse> verses = bible.chapter(translationId, selectedBook.code, selectedChapter);
@@ -235,13 +237,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         list.setOnItemClickListener((parent, view, position, id) -> {
             selectedVerse = verses.get(position);
             savePosition();
-            speakOrAnnounce(view, selectedVerse.toString());
-        });
-        list.setOnItemLongClickListener((parent, view, position, id) -> {
-            selectedVerse = verses.get(position);
-            savePosition();
             showVerseActions();
-            return true;
         });
         root.addView(list, fill());
         int maximum = bible.chapterCount(translationId, selectedBook.code);
@@ -256,7 +252,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         }
         root.addView(actionButton("Aplicações do versículo atual",
                 "Abrir ações de " + currentReference(), this::showVerseActions));
-        root.addView(paragraph("Ative para ouvir ou repetir. Toque e segure para Aplicações."));
+        root.addView(paragraph("Toque uma vez para abrir as ações. Com o TalkBack, toque duas vezes no versículo anunciado."));
         setContentView(root);
         list.setSelection(verseIndex(verses, selectedVerse == null ? "1" : selectedVerse.number));
         list.requestFocus();
@@ -288,9 +284,10 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void showMoreOptions() {
         LinearLayout root = screen("Mais opções", this::showMainMenu);
         String[] options = {
-                "Traduções", "Ir para uma referência", "Pesquisar na Bíblia", "Fazer devocional",
-                "Anotações por dia", "Harpa Cristã", "Quiz bíblico", "Status do quiz",
-                "Modo culto", "Atualizações", "Configurações", "Licenças, leis e justificativa", "Ajuda"
+                "Traduções", "Ir para uma referência", "Pesquisar na Bíblia", "Estudos — Teólogo de IA",
+                "Fazer devocional", "Anotações por dia", "Harpa Cristã", "Quiz bíblico",
+                "Status do quiz", "Modo culto", "Atualizações", "Configurações",
+                "Licenças, leis e justificativa", "Ajuda"
         };
         ListView list = listView(Arrays.asList(options));
         list.setContentDescription("Mais opções");
@@ -299,21 +296,79 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 case 0: showTranslations(); break;
                 case 1: showReference(); break;
                 case 2: showSearch(); break;
-                case 3: showDevotional(); break;
-                case 4: showNotes(); break;
-                case 5: showHymnal(); break;
-                case 6: showQuiz(); break;
-                case 7: showQuizStatus(); break;
-                case 8: showWorshipMode(); break;
-                case 9: showUpdates(); break;
-                case 10: showSettings(); break;
-                case 11: showLegal(); break;
+                case 3: showStudies(); break;
+                case 4: showDevotional(); break;
+                case 5: showNotes(); break;
+                case 6: showHymnal(); break;
+                case 7: showQuiz(); break;
+                case 8: showQuizStatus(); break;
+                case 9: showWorshipMode(); break;
+                case 10: showUpdates(); break;
+                case 11: showSettings(); break;
+                case 12: showLegal(); break;
                 default: showHelp();
             }
         });
         root.addView(list, fill());
         setContentView(root);
         list.requestFocus();
+    }
+
+    /** Lista categorias prontas e a pergunta livre do Teólogo de IA. */
+    private void showStudies() {
+        LinearLayout root = screen("Estudos — Teólogo de IA", this::showMoreOptions);
+        root.addView(paragraph("Escolha uma categoria. A pergunta sugerida poderá ser editada antes do envio. " +
+                "A resposta usa a passagem atual e exige sua chave do Google Gemini."));
+        root.addView(actionButton("Resumir o capítulo atual",
+                "Gerar resumo de " + currentChapterReference(), () ->
+                        runAi("Resumo de " + currentChapterReference(),
+                                "Resuma o capítulo em no máximo 320 palavras, destaque sua mensagem " +
+                                        "central e conclua completamente.",
+                                () -> bible.chapterText(
+                                        translationId, selectedBook.code, selectedChapter),
+                                this::showStudies)));
+        root.addView(actionButton("Resumir o livro atual",
+                "Gerar resumo de " + selectedBook.name, () ->
+                        runAi("Resumo de " + selectedBook.name,
+                                "Resuma o livro em no máximo 550 palavras, apresente estrutura, temas " +
+                                        "principais e conclusão completa.",
+                                () -> bible.bookText(translationId, selectedBook.code),
+                                this::showStudies)));
+        List<AiStudyCatalog.Topic> topics = AiStudyCatalog.TOPICS;
+        ListView list = listView(topics);
+        list.setContentDescription("Categorias de estudo com inteligência artificial");
+        list.setOnItemClickListener((parent, view, position, id) ->
+                showAiStudyComposer(topics.get(position), this::showStudies));
+        root.addView(list, fill());
+        setContentView(root);
+        list.requestFocus();
+    }
+
+    /** Abre um campo editável com a pergunta sugerida e o texto bíblico usado como contexto. */
+    private void showAiStudyComposer(AiStudyCatalog.Topic topic, Runnable back) {
+        LinearLayout root = screen("Teólogo de IA — " + topic.label, back);
+        root.addView(paragraph("Passagem atual: " + currentReference() + ". " + selectedVerse.text));
+        EditText question = editText("Pergunta para o Teólogo de IA", true);
+        question.setMinLines(3);
+        question.setText(topic.suggestedQuestion);
+        root.addView(question, fill());
+        root.addView(actionButton("Perguntar à IA", "Enviar pergunta sobre " + currentReference(), () -> {
+            try {
+                String instruction = AiStudyCatalog.instruction(
+                        topic, question.getText().toString(), currentReference());
+                runAi(topic.label + " — " + currentReference(), instruction,
+                        () -> currentReference() + " — " + selectedVerse.text +
+                                "\n\nContexto completo do capítulo:\n" +
+                                bible.chapterText(translationId, selectedBook.code, selectedChapter),
+                        () -> showAiStudyComposer(topic, back));
+            } catch (IllegalArgumentException error) {
+                question.setError(error.getMessage());
+                question.requestFocus();
+            }
+        }));
+        setContentView(root);
+        question.requestFocus();
+        if (!topic.suggestedQuestion.isEmpty()) question.selectAll();
     }
 
     /** Permite trocar a tradução e recarrega a mesma referência quando possível. */
@@ -521,11 +576,16 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Explica comandos essenciais, gestos e privacidade. */
     private void showHelp() {
-        showTextScreen("Ajuda", "NAVEGAÇÃO\n\nNa tela principal, use Livros, Capítulos, " +
-                "Versículos, Área de leitura ou Mais opções. Com o TalkBack ligado, deslize para a direita " +
+        showTextScreen("Ajuda", "NAVEGAÇÃO\n\nNa tela principal, Continuar de onde parou abre " +
+                "imediatamente a última leitura. Use também Livros, Capítulos, Versículos, Área de leitura " +
+                "ou Mais opções. Com o TalkBack ligado, deslize para a direita " +
                 "para ouvir a próxima opção ou para a esquerda para ouvir a opção anterior. Toque duas vezes " +
-                "para abrir. O gesto Voltar do Android retorna à tela anterior. Toque e segure " +
-                "livro, capítulo ou versículo para abrir Aplicações.\n\nVOZ\n\nAtivar um versículo usa a " +
+                "para abrir. O gesto Voltar do Android retorna à tela anterior. Ao ativar um versículo, " +
+                "o menu de ações abre sem precisar segurar.\n\nESTUDOS COM IA\n\nMais opções, Estudos " +
+                "oferece exegese, hermenêutica, contexto histórico, teologia bíblica, comparação de " +
+                "interpretações, aplicação e pergunta livre. A pergunta sempre pode ser editada antes do " +
+                "envio. O Teólogo de IA é um assistente de estudo e não substitui orientação pastoral.\n\nVOZ\n\nAtivar a opção " +
+                "Ouvir ou repetir no menu do versículo usa a " +
                 "voz escolhida. Se a voz estiver desligada, o TalkBack anuncia novamente o texto.\n\n" +
                 "HARPA, QUIZ E MODO CULTO\n\nA Harpa Cristã possui 640 hinos pesquisáveis e funciona " +
                 "offline. O quiz possui 298 perguntas e registra acertos e erros em Status do quiz. No Modo " +
@@ -802,13 +862,14 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 .setNegativeButton("Cancelar", null).show();
     }
 
-    /** Oferece IA, anotação, cópia, marcador e voz para o texto atual. */
+    /** Oferece IA, estudos, anotação, cópia, marcador e voz para o texto atual. */
     private void showVerseActions() {
         if (selectedVerse == null) return;
         boolean marked = userData.isBookmarked(
                 translationId, selectedBook.code, selectedChapter, selectedVerse.number);
         String[] actions = {
-                "Gerar explicação do versículo com IA", "Criar anotação", "Copiar texto",
+                "Gerar explicação do versículo com IA", "Teólogo de IA — exegese, hermenêutica e estudos",
+                "Criar anotação", "Copiar texto",
                 "Copiar referência e texto", marked ? "Remover marcador" : "Adicionar marcador",
                 "Ouvir ou repetir pelo leitor de tela"
         };
@@ -820,10 +881,11 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                                     "Explique " + currentReference() + " em linguagem simples, em no máximo 280 palavras.",
                                     () -> selectedVerse.toString());
                             break;
-                        case 1: createNote(); break;
-                        case 2: copy(selectedVerse.text); break;
-                        case 3: copy(currentReference() + " — " + selectedVerse.text); break;
-                        case 4:
+                        case 1: showVerseAiStudies(); break;
+                        case 2: createNote(); break;
+                        case 3: copy(selectedVerse.text); break;
+                        case 4: copy(currentReference() + " — " + selectedVerse.text); break;
+                        case 5:
                             boolean nowMarked = userData.toggleBookmark(
                                     translationId, selectedBook.code, selectedChapter, selectedVerse.number);
                             toast(nowMarked ? "Marcador adicionado." : "Marcador removido.");
@@ -832,6 +894,19 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                             speakOrAnnounce(getWindow().getDecorView(), selectedVerse.toString());
                     }
                 }).setNegativeButton("Cancelar", null).show();
+    }
+
+    /** Mostra as categorias teológicas a partir do menu do versículo atual. */
+    private void showVerseAiStudies() {
+        List<AiStudyCatalog.Topic> topics = AiStudyCatalog.TOPICS;
+        String[] labels = new String[topics.size()];
+        for (int index = 0; index < topics.size(); index++) labels[index] = topics.get(index).label;
+        new AlertDialog.Builder(this)
+                .setTitle("Teólogo de IA — " + currentReference())
+                .setItems(labels, (dialog, which) ->
+                        showAiStudyComposer(topics.get(which), this::showVerseActions))
+                .setNegativeButton("Cancelar", null)
+                .show();
     }
 
     /** Solicita título e corpo e grava a nota somente quando houver conteúdo. */
@@ -867,6 +942,12 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Executa a rede fora da thread visual e anuncia começo, sucesso ou falha. */
     private void runAi(String title, String instruction, Supplier<String> textSupplier) {
+        runAi(title, instruction, textSupplier, this::showMainMenu);
+    }
+
+    /** Executa a IA e mantém uma rota de retorno adequada à tela que iniciou o estudo. */
+    private void runAi(String title, String instruction, Supplier<String> textSupplier,
+                       Runnable resultBack) {
         String apiKey = secureStore.loadApiKey();
         if (apiKey.isEmpty()) {
             new AlertDialog.Builder(this).setTitle("Chave necessária")
@@ -883,7 +964,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         new Thread(() -> {
             try {
                 String result = GeminiClient.generate(apiKey, model, instruction, textSupplier.get());
-                runOnUiThread(() -> showTextScreen(title, result, this::showMainMenu));
+                runOnUiThread(() -> showTextScreen(title, result, resultBack));
             } catch (Exception error) {
                 runOnUiThread(() -> new AlertDialog.Builder(this)
                         .setTitle("Falha na inteligência artificial")

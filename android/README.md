@@ -5,11 +5,13 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 ## Recursos incluídos
 
 - Bíblia offline com as três traduções completas do aplicativo desktop.
-- Tela principal com Livros, Capítulos, Versículos, Área de leitura e Mais opções.
+- Tela principal com Continuar de onde parou, Livros, Capítulos, Versículos, Área de leitura e Mais opções.
 - Com o TalkBack, deslizar para a direita ou esquerda percorre as opções e o toque duplo abre a opção anunciada.
 - Ao fim dos versículos, há uma opção para abrir o próximo capítulo; no último capítulo, o fim do livro é anunciado.
 - Antigo e Novo Testamento, continuidade da última posição e pesquisa offline.
+- Um toque no versículo abre suas ações; com TalkBack, use o toque duplo normal, sem gesto de segurar.
 - Aplicações do livro, capítulo e versículo, mantendo a ação de IA em primeiro lugar.
+- Seção Estudos com resumos de capítulo e livro, Teólogo de IA, categorias prontas e pergunta livre editável usando a chave Gemini do usuário.
 - Notas locais organizadas por dia e título e marcadores de versículos.
 - Devocional com troca de referência e salvamento pelo seletor de documentos do Android.
 - Vozes instaladas no Android, ajuste de velocidade e opção de voz desativada.
