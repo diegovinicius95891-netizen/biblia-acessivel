@@ -22,6 +22,13 @@ jobs:
           java-version: "17"
           cache: gradle
 
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          # O pacote legado "tools" deixou de existir; pedir somente
+          # platform-tools evita que o preparador falhe antes do sdkmanager.
+          packages: platform-tools
+
       - name: Instalar SDK utilizado
         shell: bash
         run: |
