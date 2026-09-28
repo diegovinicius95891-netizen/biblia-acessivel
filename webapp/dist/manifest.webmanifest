@@ -1,0 +1,11 @@
+{
+  "name": "Bíblia Acessível Online",
+  "short_name": "Bíblia Acessível",
+  "description": "Leitura bíblica acessível, Harpa Cristã, quiz e estudos.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#061126",
+  "theme_color": "#09172f",
+  "icons": []
+}

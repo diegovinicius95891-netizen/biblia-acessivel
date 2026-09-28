@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#09172f">
+  <meta name="description" content="Bíblia acessível online com leitura, busca, Harpa Cristã, quiz e estudos com IA opcional.">
+  <title>Bíblia Acessível Online</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2309172f'/%3E%3Cpath d='M15 13h25c6 0 9 3 9 9v29H24c-6 0-9-3-9-9V13Z' fill='%23f4c95d'/%3E%3Cpath d='M24 13v38M31 26h11M36.5 20v22' stroke='%2309172f' stroke-width='4'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">Leitura sem barreiras</p>
+      <h1>Bíblia Acessível</h1>
+    </div>
+    <p id="current-reference" class="current-reference" aria-live="polite">Preparando a leitura…</p>
+  </header>
+
+  <nav class="section-nav" aria-label="Seções principais">
+    <button type="button" data-view="reading" aria-current="page">Leitura</button>
+    <button type="button" data-view="search">Pesquisar</button>
+    <button type="button" data-view="studies">Estudos com IA</button>
+    <button type="button" data-view="hymnal">Harpa Cristã</button>
+    <button type="button" data-view="quiz">Quiz</button>
+    <button type="button" data-view="more">Mais opções</button>
+  </nav>
+
+  <main id="conteudo" tabindex="-1">
+    <section id="view-reading" class="view active" aria-labelledby="reading-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Continue de onde parou</p>
+          <h2 id="reading-title">Leitura</h2>
+        </div>
+        <button id="read-aloud" type="button" class="secondary">Ouvir texto</button>
+      </div>
+
+      <div class="selectors" aria-label="Escolha da passagem">
+        <label>Tradução<select id="translation-select"></select></label>
+        <label>Livro<select id="book-select"></select></label>
+        <label>Capítulo<select id="chapter-select"></select></label>
+      </div>
+
+      <div class="reader-grid">
+        <aside class="verse-panel" aria-labelledby="verses-title">
+          <h3 id="verses-title">Versículos</h3>
+          <div id="verse-list" class="verse-list"></div>
+        </aside>
+        <article class="reading-card" aria-labelledby="selected-reference">
+          <p id="selected-reference" class="verse-reference"></p>
+          <p id="selected-text" class="verse-text" tabindex="0"></p>
+          <div class="action-row" aria-label="Ações do versículo">
+            <button id="copy-verse" type="button">Copiar</button>
+            <button id="favorite-verse" type="button">Favoritar</button>
+            <button id="note-verse" type="button">Anotar</button>
+            <button id="study-verse" type="button">Estudar com IA</button>
+          </div>
+        </article>
+      </div>
+
+      <div class="chapter-navigation">
+        <button id="previous-chapter" type="button" class="secondary">Capítulo anterior</button>
+        <button id="next-chapter" type="button" class="secondary">Próximo capítulo</button>
+      </div>
+    </section>
+
+    <section id="view-search" class="view" aria-labelledby="search-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">Encontre palavras e passagens</p><h2 id="search-title">Pesquisar na Bíblia</h2></div></div>
+      <form id="search-form" class="search-form">
+        <label for="search-query">Palavra ou frase</label>
+        <div class="inline-form"><input id="search-query" type="search" required autocomplete="off"><button type="submit">Pesquisar</button></div>
+      </form>
+      <p id="search-progress" class="muted" aria-live="polite"></p>
+      <ol id="search-results" class="result-list"></ol>
+    </section>
+
+    <section id="view-studies" class="view" aria-labelledby="studies-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">Perguntas guiadas pela passagem atual</p><h2 id="studies-title">Teólogo de IA</h2></div></div>
+      <p class="notice">A IA pode errar e não substitui orientação pastoral. A passagem é enviada ao Google Gemini somente quando você confirmar.</p>
+      <div class="study-layout">
+        <div>
+          <label>Tipo de estudo<select id="study-type">
+            <option value="summary-chapter">Resumo do capítulo</option>
+            <option value="summary-book">Resumo do livro</option>
+            <option value="exegesis">Exegese</option>
+            <option value="hermeneutics">Hermenêutica</option>
+            <option value="history">Contexto histórico e cultural</option>
+            <option value="theology">Teologia bíblica</option>
+            <option value="interpretations">Comparar interpretações</option>
+            <option value="words">Palavras e expressões</option>
+            <option value="application">Aplicação prática</option>
+            <option value="outline">Esboço para estudo</option>
+            <option value="free">Pergunta livre</option>
+          </select></label>
+          <label for="study-question">Pergunta<textarea id="study-question" rows="6"></textarea></label>
+          <button id="ask-ai" type="button">Perguntar sobre a passagem atual</button>
+        </div>
+        <article class="ai-result" aria-labelledby="ai-result-title">
+          <h3 id="ai-result-title">Resposta</h3>
+          <div id="ai-result" tabindex="0">Escolha um estudo ou escreva sua pergunta.</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="view-hymnal" class="view" aria-labelledby="hymnal-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">640 hinos em texto</p><h2 id="hymnal-title">Harpa Cristã</h2></div></div>
+      <label for="hymn-query">Número, título ou trecho</label>
+      <div class="inline-form"><input id="hymn-query" type="search"><button id="search-hymn" type="button">Pesquisar hinos</button></div>
+      <div class="library-grid"><ol id="hymn-results" class="result-list compact"></ol><article id="hymn-content" class="reading-card" tabindex="0">Escolha um hino.</article></div>
+    </section>
+
+    <section id="view-quiz" class="view" aria-labelledby="quiz-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">Estudo e memorização</p><h2 id="quiz-title">Quiz bíblico</h2></div><p id="quiz-status" class="score"></p></div>
+      <article class="quiz-card">
+        <p id="quiz-meta" class="muted"></p>
+        <h3 id="quiz-question"></h3>
+        <div id="quiz-answers" class="answer-list"></div>
+        <div id="quiz-feedback" class="feedback" aria-live="assertive"></div>
+        <button id="next-question" type="button" class="secondary">Próxima pergunta</button>
+      </article>
+    </section>
+
+    <section id="view-more" class="view" aria-labelledby="more-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">Preferências e conteúdo pessoal</p><h2 id="more-title">Mais opções</h2></div></div>
+      <div class="settings-grid">
+        <article class="panel"><h3>Configurações da IA</h3><label for="api-key">Chave do Google Gemini</label><input id="api-key" type="password" autocomplete="off"><label class="check"><input id="remember-key" type="checkbox"> Guardar a chave neste navegador</label><label>Modelo<select id="ai-model"><option>gemini-2.5-flash-lite</option><option>gemini-2.5-flash</option><option>gemini-2.5-pro</option></select></label><div class="action-row"><button id="save-settings" type="button">Salvar configurações</button><a class="button-link secondary" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Obter chave</a></div></article>
+        <article class="panel"><h3>Aparência e voz</h3><label>Tamanho do texto<input id="font-size" type="range" min="100" max="180" step="10" value="100"></label><label class="check"><input id="high-contrast" type="checkbox"> Contraste reforçado</label><button id="stop-speaking" type="button" class="secondary">Parar leitura em voz</button></article>
+        <article class="panel"><h3>Favoritos</h3><ol id="favorites-list" class="saved-list"></ol></article>
+        <article class="panel"><h3>Anotações</h3><ol id="notes-list" class="saved-list"></ol></article>
+        <article class="panel wide"><h3>Ajuda, privacidade e fontes</h3><p>Use Tab para avançar, Shift+Tab para voltar e Enter ou Espaço para ativar. Sua posição, favoritos e notas ficam somente neste navegador. A chave da IA fica apenas na sessão, exceto se você escolher guardá-la.</p><details><summary>Licenças dos textos</summary><p>Bíblia Portuguesa Mundial, João Ferreira de Almeida e World English Bible: textos identificados como domínio público por suas fontes. Harpa Cristã: catálogo textual com atribuição e justificativa de acessibilidade.</p><p><a href="data/THIRD_PARTY_NOTICES.md" target="_blank">Abrir fontes, atribuições e licenças completas</a></p></details><details><summary>Legislação de acessibilidade</summary><p>O projeto considera a Lei nº 9.610/1998, especialmente o artigo 46, inciso I, alínea d, e o Tratado de Marraqueche promulgado pelo Decreto nº 9.522/2018 e regulamentado pelo Decreto nº 10.882/2021.</p><p><a href="https://www.planalto.gov.br/ccivil_03/leis/l9610.htm" target="_blank" rel="noopener">Lei nº 9.610/1998</a> · <a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/decreto/d9522.htm" target="_blank" rel="noopener">Decreto nº 9.522/2018</a> · <a href="https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/decreto/d10882.htm" target="_blank" rel="noopener">Decreto nº 10.882/2021</a></p></details></article>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <dialog id="note-dialog"><form method="dialog"><h2>Anotação</h2><p id="note-reference"></p><label for="note-text">Texto da anotação</label><textarea id="note-text" rows="7" required></textarea><div class="action-row"><button value="cancel" class="secondary">Cancelar</button><button id="save-note" value="default">Salvar</button></div></form></dialog>
+  <noscript>Ative o JavaScript para carregar os textos bíblicos e usar a navegação acessível.</noscript>
+</body>
+</html>
