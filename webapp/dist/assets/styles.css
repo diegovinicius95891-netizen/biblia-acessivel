@@ -69,6 +69,8 @@ main { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: 1.5rem 0 
 .ai-result { min-height: 25rem; padding: 1.25rem; white-space: pre-wrap; }
 .library-grid { margin-top: 1rem; }
 #hymn-content { justify-content: start; white-space: pre-wrap; font-family: Georgia, serif; font-size: 1.18rem; }
+#devotional-content { justify-content: start; }
+.devotional-body { font-family: Georgia, "Times New Roman", serif; font-size: 1.16rem; }
 .quiz-card { max-width: 52rem; padding: clamp(1rem, 4vw, 2.25rem); }
 .answer-list { display: grid; gap: .65rem; margin: 1rem 0; }
 .answer-list button { color: var(--ink); background: var(--navy); border-color: var(--line); text-align: left; }

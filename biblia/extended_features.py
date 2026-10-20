@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
+import threading
 from datetime import date, timedelta
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, Qt, QUrl, QUrlQuery
+from PySide6.QtCore import QObject, QSettings, QTimer, Qt, QUrl, QUrlQuery, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QComboBox,
@@ -29,11 +31,19 @@ from PySide6.QtWidgets import (
 
 from .dialogs import AccessibleButton, AccessibleResultDialog, AccessibleTextDialog, ActivatableList, ApplicationsDialog
 from .hymnal import load_hymnal, search_hymns
+from .online_devotionals import DevotionalFeedError, OnlineDevotionalService
 from .plans import build_plan_catalog, progress_summary
 from .quiz_catalog import categories as quiz_categories, load_quiz_catalog
 from .references import parse_reference
 from .study_content import CHARACTERS, book_information
 from .topics import TOPICS
+
+
+class DevotionalSignals(QObject):
+    """Entrega resultados da rede à thread gráfica sem tocar em controles."""
+
+    finished = Signal(object, bool)
+    failed = Signal(str, bool)
 
 
 class ExtendedFeatures:
@@ -53,8 +63,20 @@ class ExtendedFeatures:
         self.plan_catalog = build_plan_catalog(self.db, host.current_translation_id())
         self.hymns = load_hymnal(host.install_dir / "data" / "harpa_crista.json")
         self.quiz_questions = load_quiz_catalog(host.install_dir / "data" / "quiz_questions.tsv")
+        self.online_service = OnlineDevotionalService(host.app_data_dir / "devocionais_do_site.json")
+        self.online_posts = self.online_service.load_cache()
+        self.online_busy = False
+        self.devotional_signals = DevotionalSignals(host)
+        self.devotional_signals.finished.connect(self._online_fetch_finished)
+        self.devotional_signals.failed.connect(self._online_fetch_failed)
         self._build_pages()
         self._append_menu_options()
+        self.devotional_timer = QTimer(host)
+        self.devotional_timer.setInterval(24 * 60 * 60 * 1000)
+        self.devotional_timer.timeout.connect(lambda: self.check_online_devotionals(False, True))
+        if os.environ.get("BIBLIA_DISABLE_AUTO_UPDATE") != "1":
+            self.devotional_timer.start()
+            QTimer.singleShot(1800, lambda: self.check_online_devotionals(False, True))
 
     def _register(self, page_id: str, title: str, content, focus):
         """Usa o mesmo contêiner e a mesma política de Escape das páginas antigas."""
@@ -76,6 +98,7 @@ class ExtendedFeatures:
         self._build_home()
         self._build_plans()
         self._build_prayers()
+        self._build_online_devotionals()
         self._build_daily_devotional()
         self._build_favorites()
         self._build_history()
@@ -97,6 +120,7 @@ class ExtendedFeatures:
             ("Planos de leitura", "plans"),
             ("Diário de oração", "prayers"),
             ("Meu momento com Deus", "daily_devotional"),
+            ("Devocionais novos do site", "online_devotionals"),
             ("Favoritos", "favorites"),
             ("Histórico de leitura", "history"),
             ("Temas bíblicos", "topics"),
@@ -114,6 +138,113 @@ class ExtendedFeatures:
             item = QListWidgetItem(label)
             item.setData(Qt.UserRole, page_id)
             self.host.more_options.addItem(item)
+
+    # Devocionais públicos -------------------------------------------
+    def _build_online_devotionals(self):
+        """Cria histórico acessível com atualização manual e cache offline."""
+        section = QGroupBox("Devocionais do site")
+        layout = QVBoxLayout(section)
+        self.online_status = QLabel(
+            "Os textos publicados no site aparecem aqui e ficam disponíveis após a primeira consulta."
+        )
+        self.online_status.setWordWrap(True)
+        layout.addWidget(self.online_status)
+        refresh = AccessibleButton("&Procurar novos devocionais")
+        refresh.clicked.connect(lambda: self.check_online_devotionals(True, False))
+        layout.addWidget(refresh)
+        self.online_list = ActivatableList()
+        self.online_list.setAccessibleName("Devocionais publicados no site")
+        self.online_list.setAccessibleDescription(
+            "Cima e baixo navegam. Espaço ou Enter abre o texto escolhido."
+        )
+        self.online_list.selectionRequested.connect(self._open_online_devotional)
+        layout.addWidget(self.online_list, 1)
+        self._register("online_devotionals", "Devocionais do site", section, self.online_list)
+        self.refresh_online_devotionals()
+
+    def refresh_online_devotionals(self):
+        """Mostra a cópia válida mais recente, inclusive sem internet."""
+        self.online_list.clear()
+        for post in self.online_posts:
+            item = QListWidgetItem(f"{post.date_label} — {post.title}")
+            item.setData(Qt.UserRole, post.identifier)
+            self.online_list.addItem(item)
+        if self.online_list.count():
+            self.online_list.setCurrentRow(0)
+            self.online_status.setText(
+                f"{self.online_list.count()} devocionais disponíveis. O mais recente aparece primeiro."
+            )
+        else:
+            self.online_list.addItem("Nenhum devocional foi carregado. Use Procurar novos devocionais.")
+            self.online_status.setText("Ainda não há uma cópia local dos devocionais do site.")
+
+    def _open_online_devotional(self, item):
+        """Abre título, data e corpo em parágrafos navegáveis."""
+        identifier = str(item.data(Qt.UserRole) or "")
+        post = next((entry for entry in self.online_posts if entry.identifier == identifier), None)
+        if not post:
+            return
+        text = f"Publicado em {post.date_label}\n\n{post.content}"
+        AccessibleResultDialog(self.host, post.title, text).exec()
+
+    def check_online_devotionals(self, force: bool, silent: bool):
+        """Consulta no máximo uma vez ao dia, exceto por pedido manual."""
+        settings = QSettings()
+        if not force and settings.value("devotionals/last_check", "") == date.today().isoformat():
+            return
+        if self.online_busy:
+            if not silent:
+                self.host._announce_for(self.online_list, "A consulta já está em andamento.")
+            return
+        self.online_busy = True
+        if not silent:
+            self.online_status.setText("Procurando novos devocionais, aguarde.")
+
+        def worker():
+            try:
+                posts = self.online_service.fetch()
+                self.devotional_signals.finished.emit(posts, silent)
+            except DevotionalFeedError as error:
+                self.devotional_signals.failed.emit(str(error), silent)
+
+        threading.Thread(target=worker, daemon=True, name="devotional-feed").start()
+
+    def _online_fetch_finished(self, posts, silent: bool):
+        """Atualiza lista, controle de novidade e aviso acessível."""
+        self.online_busy = False
+        self.online_posts = posts
+        settings = QSettings()
+        previous = str(settings.value("devotionals/latest_id", ""))
+        latest = posts[0].identifier if posts else ""
+        new_posts = []
+        if previous and latest != previous:
+            for post in posts:
+                if post.identifier == previous:
+                    break
+                new_posts.append(post)
+        if latest:
+            settings.setValue("devotionals/latest_id", latest)
+        settings.setValue("devotionals/last_check", date.today().isoformat())
+        settings.sync()
+        self.refresh_online_devotionals()
+        if new_posts and settings.value("devotionals/notify", True, type=bool):
+            first = new_posts[0]
+            count = len(new_posts)
+            message = (
+                f"Novo devocional publicado: {first.title}."
+                if count == 1
+                else f"{count} novos devocionais foram publicados. O mais recente é: {first.title}."
+            )
+            QMessageBox.information(self.host, "Novo devocional", message)
+        elif not silent:
+            self.host._announce_for(self.online_list, "Devocionais atualizados.")
+
+    def _online_fetch_failed(self, message: str, silent: bool):
+        """Preserva o cache e evita interromper a abertura por falha de rede."""
+        self.online_busy = False
+        self.refresh_online_devotionals()
+        if not silent:
+            self.host._warn("Devocionais indisponíveis", message)
 
     # Início -----------------------------------------------------------
     def _build_home(self):
@@ -1016,8 +1147,10 @@ class ExtendedFeatures:
             "books_info": self.refresh_books_info, "memorization": self.refresh_memory,
             "hymnal": self.refresh_hymnal, "quiz": self.refresh_quiz,
             "quiz_status": self.refresh_quiz_status, "statistics": self.refresh_statistics,
+            "online_devotionals": self.refresh_online_devotionals,
         }
         if page_id in refreshers: refreshers[page_id]()
+        if page_id == "online_devotionals": self.check_online_devotionals(False, True)
         if page_id == "worship": self.worship_edit.selectAll()
 
     def _text_prompt(self, title: str, label: str):

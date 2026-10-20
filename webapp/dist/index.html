@@ -25,6 +25,7 @@
     <button type="button" data-view="reading" aria-current="page">Leitura</button>
     <button type="button" data-view="search">Pesquisar</button>
     <button type="button" data-view="studies">Estudos com IA</button>
+    <button type="button" data-view="devotionals">Devocionais</button>
     <button type="button" data-view="hymnal">Harpa Cristã</button>
     <button type="button" data-view="quiz">Quiz</button>
     <button type="button" data-view="more">Mais opções</button>
@@ -105,6 +106,12 @@
           <div id="ai-result" tabindex="0">Escolha um estudo ou escreva sua pergunta.</div>
         </article>
       </div>
+    </section>
+
+    <section id="view-devotionals" class="view" aria-labelledby="devotionals-title" hidden>
+      <div class="section-heading"><div><p class="eyebrow">Publicações do site de Diego</p><h2 id="devotionals-title">Devocionais</h2></div><button id="refresh-devotionals" type="button" class="secondary">Procurar novidades</button></div>
+      <p id="devotionals-status" class="notice" role="status">Carregando os textos publicados.</p>
+      <div class="library-grid"><ol id="devotionals-list" class="result-list compact"></ol><article id="devotional-content" class="reading-card" tabindex="0">Escolha um devocional.</article></div>
     </section>
 
     <section id="view-hymnal" class="view" aria-labelledby="hymnal-title" hidden>

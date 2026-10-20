@@ -7,6 +7,12 @@
     <string name="update_progress_description">Progresso do download da atualização Android</string>
     <string name="update_cancel_download">Cancelar download</string>
     <string name="update_cancel_description">Cancelar o download da atualização Android</string>
+    <string name="devotionals_empty_status">Ainda não há uma cópia local. A Bíblia continua disponível offline.</string>
+    <string name="devotionals_loading">Procurando novos devocionais, aguarde.</string>
+    <plurals name="devotionals_available">
+        <item quantity="one">%1$d devocional disponível. O mais recente aparece primeiro.</item>
+        <item quantity="other">%1$d devocionais disponíveis. O mais recente aparece primeiro.</item>
+    </plurals>
     <plurals name="worship_loaded">
         <item quantity="one">Passagem exibida: %1$s. %2$d versículo.</item>
         <item quantity="other">Passagem exibida: %1$s. %2$d versículos.</item>

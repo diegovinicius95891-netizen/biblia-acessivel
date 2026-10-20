@@ -42,6 +42,7 @@ Mais opções contém as páginas pessoais e de estudo. Espaço ou Enter abre so
 - `update_service.py`: versões semânticas, GitHub Releases, download e SHA-256, sem dependência da interface.
 - `update_ui.py`: consulta em thread, diálogos acessíveis, progresso moderado, backup e helper de reinício.
 - `changelog.py`: novidades da versão instalada para consulta offline.
+- `online_devotionals.py`: valida a fonte pública HTTPS, ordena publicações e mantém cache atômico para leitura offline.
 
 ## Fluxo da IA opcional
 

@@ -258,6 +258,8 @@ class MainWindow(QMainWindow):
         self.pending_update_automatic = self.update_automatic
         self.update_notify = self.settings.value("updates/notify", True, type=bool)
         self.pending_update_notify = self.update_notify
+        self.devotional_notify = self.settings.value("devotionals/notify", True, type=bool)
+        self.pending_devotional_notify = self.devotional_notify
         self.tts = None
         self._tts_checked = False
         self._loading = False
@@ -1643,6 +1645,7 @@ class MainWindow(QMainWindow):
             (f"Alto contraste — {self._choice_label(CONTRAST_OPTIONS, self.pending_high_contrast)}", "high_contrast"),
             (f"Atualizações automáticas — {self._choice_label(UPDATE_AUTOMATIC_OPTIONS, self.pending_update_automatic)}", "update_automatic"),
             (f"Notificar nova versão — {self._choice_label(UPDATE_NOTIFICATION_OPTIONS, self.pending_update_notify)}", "update_notify"),
+            (f"Notificar novos devocionais — {self._choice_label(UPDATE_NOTIFICATION_OPTIONS, self.pending_devotional_notify)}", "devotional_notify"),
         )
         for label, option_id in entries:
             item = QListWidgetItem(label)
@@ -1689,6 +1692,11 @@ class MainWindow(QMainWindow):
                 self, "Notificação de nova versão",
                 UPDATE_NOTIFICATION_OPTIONS, self.pending_update_notify
             )
+        elif option_id == "devotional_notify":
+            value, accepted = ChoiceDialog.get_choice(
+                self, "Notificação de novos devocionais",
+                UPDATE_NOTIFICATION_OPTIONS, self.pending_devotional_notify
+            )
         else:
             value, accepted = ChoiceDialog.get_choice(
                 self, "Alto contraste", CONTRAST_OPTIONS, self.pending_high_contrast
@@ -1708,6 +1716,8 @@ class MainWindow(QMainWindow):
                 self.pending_update_automatic = bool(value)
             elif option_id == "update_notify":
                 self.pending_update_notify = bool(value)
+            elif option_id == "devotional_notify":
+                self.pending_devotional_notify = bool(value)
             else:
                 self.pending_high_contrast = bool(value)
             self._refresh_settings_options()
@@ -1790,6 +1800,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("accessibility/high_contrast", self.pending_high_contrast)
         self.settings.setValue("updates/automatic", self.pending_update_automatic)
         self.settings.setValue("updates/notify", self.pending_update_notify)
+        self.settings.setValue("devotionals/notify", self.pending_devotional_notify)
         self.settings.sync()
         self.api_key = self.pending_api_key
         self.ai_model = self.pending_ai_model
@@ -1800,6 +1811,7 @@ class MainWindow(QMainWindow):
         self.high_contrast = self.pending_high_contrast
         self.update_automatic = self.pending_update_automatic
         self.update_notify = self.pending_update_notify
+        self.devotional_notify = self.pending_devotional_notify
         self._apply_accessibility_settings()
         self._refresh_settings_options()
         self._announce_for(self.settings_options, "Configurações salvas.")

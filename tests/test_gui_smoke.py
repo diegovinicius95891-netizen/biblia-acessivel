@@ -57,10 +57,11 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertFalse(hasattr(window, "tabs"))
         self.assertIs(window.page_stack, window.centralWidget())
         self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
-        self.assertEqual(24, window.more_options.count())
+        self.assertEqual(25, window.more_options.count())
         labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
         self.assertIn("Harpa Cristã", labels)
         self.assertIn("Status do quiz", labels)
+        self.assertIn("Devocionais novos do site", labels)
         self.assertEqual(3, window.translation_list.count())
         self.assertEqual(39, window.book_list.count())
 
@@ -120,7 +121,7 @@ class GuiSmokeTests(unittest.TestCase):
         """Abre cada novo recurso e valida nomes, foco e busca temática local."""
         window = self.make_window()
         page_ids = (
-            "dashboard", "plans", "prayers", "daily_devotional", "favorites",
+            "dashboard", "plans", "prayers", "daily_devotional", "online_devotionals", "favorites",
             "history", "topics", "books_info", "characters", "memorization",
             "hymnal", "quiz", "quiz_status", "statistics", "worship", "backup",
         )
@@ -175,7 +176,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertTrue(hasattr(window, "action_create_note"))
         self.assertEqual("Anotações organizadas por dia", window.notes_list.accessibleName())
         self.assertEqual("Opções de configurações", window.settings_options.accessibleName())
-        self.assertEqual(9, window.settings_options.count())
+        self.assertEqual(10, window.settings_options.count())
         self.assertIn("chave da API", window.settings_options.item(0).text())
         self.assertIn("modelo", window.settings_options.item(1).text())
         self.assertIn("Voz SAPI", window.settings_options.item(4).text())

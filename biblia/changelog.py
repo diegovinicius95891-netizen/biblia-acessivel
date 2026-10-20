@@ -1,6 +1,14 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 2.1.4
+CURRENT_CHANGELOG = """Novidades da versão 4.0.0
+
+Nova seção Devocionais do site. Ela consulta automaticamente os textos publicados por Diego, apresenta todo o histórico e mantém a última cópia para leitura sem internet.
+
+O aplicativo procura novidades uma vez por dia e avisa somente quando encontra uma publicação que ainda não havia sido identificada. A notificação pode ser desligada nas Configurações.
+
+Windows e Android agora usam a mesma versão principal 4.0.0, preservando posição de leitura, notas, favoritos, quiz, chave de IA e demais dados pessoais durante a atualização.
+
+Revisão geral de rede, cache, acessibilidade, inicialização e validação dos dados bíblicos. Falhas temporárias do site não impedem a leitura da Bíblia nem apagam a cópia local dos devocionais.
 
 Banco bíblico reconstruído e auditado. Foram corrigidas referências duplicadas que apareciam no fim de capítulos da Bíblia Portuguesa Mundial e da World English Bible.
 

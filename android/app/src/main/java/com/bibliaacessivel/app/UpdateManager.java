@@ -24,7 +24,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 2.1.5\n\n" +
+            "Novidades da versão Android 4.0.0\n\n" +
+            "Nova seção Devocionais do site com todo o histórico publicado por Diego, atualização manual e cópia para leitura sem internet.\n\n" +
+            "O Android verifica a fonte pública uma vez por dia e mostra uma notificação somente quando encontra uma publicação nova. Tocar no aviso abre diretamente a seção.\n\n" +
+            "As notificações de devocionais podem ser ligadas ou desligadas nas Configurações. No Android 13 ou superior, o aplicativo explica e solicita a permissão do sistema.\n\n" +
+            "Windows e Android agora compartilham a versão principal 4.0.0, mantendo separados seus arquivos de atualização.\n\n" +
             "Ativar um versículo agora abre diretamente o menu de ações; não é mais necessário tocar e segurar. Com o TalkBack, basta o toque duplo normal.\n\n" +
             "Novo botão Continuar de onde parou na tela principal, com a última referência salva.\n\n" +
             "Nova seção Estudos com resumos de livro e capítulo e Teólogo de IA: exegese, hermenêutica, contexto histórico, teologia bíblica, comparação de interpretações, palavras importantes, aplicação, esboço e pergunta livre.\n\n" +

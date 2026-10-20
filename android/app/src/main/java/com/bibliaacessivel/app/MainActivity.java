@@ -1,5 +1,6 @@
 package com.bibliaacessivel.app;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -7,6 +8,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
@@ -76,6 +78,10 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private ArrayAdapter<String> worshipAdapter;
     private Models.Book worshipBook;
     private int worshipChapter;
+    private List<DevotionalFeed.Item> onlineDevotionals = new ArrayList<>();
+    private TextView onlineDevotionalStatus;
+    private ListView onlineDevotionalList;
+    private ArrayAdapter<String> onlineDevotionalAdapter;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -92,8 +98,14 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 quizCatalog = QuizCatalog.load(this);
                 restorePosition();
                 runOnUiThread(() -> {
-                    showMainMenu();
+                    if (getIntent().getBooleanExtra(DevotionalNotifications.OPEN_DEVOTIONALS, false)) {
+                        showOnlineDevotionals();
+                    } else {
+                        showMainMenu();
+                    }
                     updateManager.onAppReady();
+                    DevotionalNotifications.schedule(this);
+                    getWindow().getDecorView().postDelayed(this::ensureDevotionalNotificationPermission, 1200);
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> showFatalError(error));
@@ -285,7 +297,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout root = screen("Mais opções", this::showMainMenu);
         String[] options = {
                 "Traduções", "Ir para uma referência", "Pesquisar na Bíblia", "Estudos — Teólogo de IA",
-                "Fazer devocional", "Anotações por dia", "Harpa Cristã", "Quiz bíblico",
+                "Fazer devocional", "Devocionais novos do site", "Anotações por dia", "Harpa Cristã", "Quiz bíblico",
                 "Status do quiz", "Modo culto", "Atualizações", "Configurações",
                 "Licenças, leis e justificativa", "Ajuda"
         };
@@ -298,14 +310,15 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 case 2: showSearch(); break;
                 case 3: showStudies(); break;
                 case 4: showDevotional(); break;
-                case 5: showNotes(); break;
-                case 6: showHymnal(); break;
-                case 7: showQuiz(); break;
-                case 8: showQuizStatus(); break;
-                case 9: showWorshipMode(); break;
-                case 10: showUpdates(); break;
-                case 11: showSettings(); break;
-                case 12: showLegal(); break;
+                case 5: showOnlineDevotionals(); break;
+                case 6: showNotes(); break;
+                case 7: showHymnal(); break;
+                case 8: showQuiz(); break;
+                case 9: showQuizStatus(); break;
+                case 10: showWorshipMode(); break;
+                case 11: showUpdates(); break;
+                case 12: showSettings(); break;
+                case 13: showLegal(); break;
                 default: showHelp();
             }
         });
@@ -491,6 +504,72 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         reference.requestFocus();
     }
 
+    /** Exibe todo o histórico do site e mantém uma cópia para leitura offline. */
+    private void showOnlineDevotionals() {
+        onlineDevotionals = DevotionalFeed.loadCache(this);
+        LinearLayout root = screen("Devocionais do site", this::showMoreOptions);
+        onlineDevotionalStatus = paragraph("Carregando a cópia dos devocionais.");
+        root.addView(onlineDevotionalStatus);
+        root.addView(actionButton("Procurar novos devocionais",
+                "Atualizar agora os devocionais publicados no site", () -> refreshOnlineDevotionals(true)));
+        onlineDevotionalList = listView(new ArrayList<String>());
+        onlineDevotionalList.setContentDescription(
+                "Devocionais publicados. Toque duas vezes para abrir o texto.");
+        onlineDevotionalAdapter = (ArrayAdapter<String>) onlineDevotionalList.getAdapter();
+        onlineDevotionalList.setOnItemClickListener((parent, view, position, id) -> {
+            if (position < 0 || position >= onlineDevotionals.size()) return;
+            DevotionalFeed.Item item = onlineDevotionals.get(position);
+            showTextScreen(item.title, "Publicado em " + item.dateLabel() + "\n\n" + item.content,
+                    this::showOnlineDevotionals);
+        });
+        root.addView(onlineDevotionalList, fill());
+        setContentView(root);
+        populateOnlineDevotionals();
+        onlineDevotionalList.requestFocus();
+        refreshOnlineDevotionals(false);
+    }
+
+    /** Atualiza rótulos sem recriar a tela nem perder a rota de foco. */
+    private void populateOnlineDevotionals() {
+        if (onlineDevotionalAdapter == null) return;
+        onlineDevotionalAdapter.clear();
+        for (DevotionalFeed.Item item : onlineDevotionals) onlineDevotionalAdapter.add(item.toString());
+        if (onlineDevotionals.isEmpty()) {
+            onlineDevotionalAdapter.add("Nenhum devocional carregado. Use Procurar novos devocionais.");
+            onlineDevotionalStatus.setText(R.string.devotionals_empty_status);
+        } else {
+            onlineDevotionalStatus.setText(getResources().getQuantityString(
+                    R.plurals.devotionals_available, onlineDevotionals.size(), onlineDevotionals.size()));
+        }
+        onlineDevotionalAdapter.notifyDataSetChanged();
+    }
+
+    /** Consulta em segundo plano; uma falha nunca remove o histórico já baixado. */
+    private void refreshOnlineDevotionals(boolean manual) {
+        if (onlineDevotionalStatus != null) onlineDevotionalStatus.setText(R.string.devotionals_loading);
+        new Thread(() -> {
+            try {
+                List<DevotionalFeed.Item> posts = DevotionalFeed.fetch(this);
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    onlineDevotionals = posts;
+                    if (!posts.isEmpty()) {
+                        preferences.edit().putString("devotionals_latest_id", posts.get(0).id)
+                                .putString("devotionals_last_background_check", LocalDate.now().toString()).apply();
+                    }
+                    populateOnlineDevotionals();
+                    if (manual) toast("Devocionais atualizados.");
+                });
+            } catch (Exception error) {
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    populateOnlineDevotionals();
+                    if (manual) toast("Não foi possível consultar o site. A cópia local foi preservada.");
+                });
+            }
+        }, "devotional-screen-refresh").start();
+    }
+
     /** Agrupa notas por data e abre dia completo ou título isolado. */
     private void showNotes() {
         LinearLayout root = screen("Anotações por dia", this::showMoreOptions);
@@ -524,6 +603,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                         (preferences.getBoolean("updates_automatic", true) ? "Ativadas" : "Desativadas"),
                 "Alternar notificações de atualização. " +
                         (preferences.getBoolean("updates_notify", true) ? "Ativadas" : "Desativadas"),
+                "Alternar notificações de novos devocionais. " +
+                        (preferences.getBoolean("devotionals_notify", true) ? "Ativadas" : "Desativadas"),
                 "Abrir configurações de acessibilidade do Android"
         };
         ListView list = listView(Arrays.asList(options));
@@ -537,6 +618,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 case 4: chooseSpeechRate(); break;
                 case 5: updateManager.toggleAutomatic(); showSettings(); break;
                 case 6: updateManager.toggleNotifications(); showSettings(); break;
+                case 7: toggleDevotionalNotifications(); break;
                 default: startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
             }
         });
@@ -592,9 +674,38 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "culto, digite uma passagem e confirme: o texto aparece imediatamente, sem precisar tocar " +
                 "em Ler versículo.\n\nATUALIZAÇÕES\n\nA versão Android consulta somente releases android-v " +
                 "e baixa somente BibliaAcessivel-Android.apk com seu SHA-256. O Windows usa outro pacote. " +
-                "A consulta automática pode ser desligada nas Configurações.\n\n" +
+                "A consulta automática pode ser desligada nas Configurações.\n\nDEVOCIONAIS DO SITE\n\n" +
+                "A seção Devocionais novos do site mostra todos os textos publicados por Diego e guarda a última " +
+                "cópia para leitura sem internet. O Android verifica uma vez por dia e avisa quando encontra uma " +
+                "publicação realmente nova. A notificação pode ser desligada nas Configurações.\n\n" +
                 "PRIVACIDADE\n\nNotas e marcadores ficam somente no aparelho. A chave Gemini é protegida " +
                 "pelo Android Keystore. A IA é opcional e exige internet.", this::showMoreOptions);
+    }
+
+    /** Alterna o trabalho diário e solicita permissão apenas quando necessário. */
+    private void toggleDevotionalNotifications() {
+        boolean enabled = !preferences.getBoolean("devotionals_notify", true);
+        preferences.edit().putBoolean("devotionals_notify", enabled).apply();
+        DevotionalNotifications.schedule(this);
+        if (enabled) ensureDevotionalNotificationPermission();
+        toast("Notificações de devocionais " + (enabled ? "ativadas." : "desativadas."));
+        showSettings();
+    }
+
+    /** Explica e pede a permissão do Android 13 ou superior uma única vez. */
+    private void ensureDevotionalNotificationPermission() {
+        if (Build.VERSION.SDK_INT < 33 || !preferences.getBoolean("devotionals_notify", true) ||
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED ||
+                preferences.getBoolean("devotionals_permission_asked", false)) return;
+        new AlertDialog.Builder(this).setTitle("Avisos de novos devocionais")
+                .setMessage("Permita notificações para receber um aviso quando um novo devocional for publicado no site. A Bíblia continuará funcionando se você não permitir.")
+                .setPositiveButton("Continuar", (dialog, which) -> {
+                    preferences.edit().putBoolean("devotionals_permission_asked", true).apply();
+                    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 4002);
+                })
+                .setNegativeButton("Agora não", (dialog, which) ->
+                        preferences.edit().putBoolean("devotionals_permission_asked", true).apply())
+                .show();
     }
 
     /** Abre pesquisa offline e lista acessível dos 640 hinos. */
@@ -1387,6 +1498,14 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     @Override public void onBackPressed() {
         if (backAction != null) backAction.run();
         else super.onBackPressed();
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent.getBooleanExtra(DevotionalNotifications.OPEN_DEVOTIONALS, false) && bible != null) {
+            showOnlineDevotionals();
+        }
     }
 
     @Override protected void onDestroy() {

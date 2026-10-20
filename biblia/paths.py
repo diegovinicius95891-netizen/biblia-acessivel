@@ -9,6 +9,11 @@ from pathlib import Path
 
 def personal_data_directory() -> Path:
     """Retorna a pasta persistente do perfil Windows com fallback portável seguro."""
+    # O override existe somente para testes de pacote e evita tocar nos dados
+    # reais do usuário ao abrir um executável recém-compilado em automação.
+    test_directory = os.environ.get("BIBLIA_TEST_DATA_DIR")
+    if test_directory:
+        return Path(test_directory)
     base = os.environ.get("APPDATA") or os.environ.get("LOCALAPPDATA")
     if base:
         return Path(base) / "BibliaAcessivel"

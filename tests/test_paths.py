@@ -3,8 +3,9 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
-from biblia.paths import migrate_legacy_personal_database
+from biblia.paths import migrate_legacy_personal_database, personal_data_directory
 
 
 class PersonalPathTests(unittest.TestCase):
@@ -21,6 +22,13 @@ class PersonalPathTests(unittest.TestCase):
             destination.write_bytes(b"nova")
             self.assertFalse(migrate_legacy_personal_database(legacy, destination))
             self.assertEqual(b"nova", destination.read_bytes())
+
+    def test_package_smoke_override_is_explicit_and_isolated(self):
+        """Permite abrir o EXE em teste sem alterar o perfil pessoal verdadeiro."""
+        with TemporaryDirectory() as directory, patch.dict(
+            "os.environ", {"BIBLIA_TEST_DATA_DIR": directory}, clear=False
+        ):
+            self.assertEqual(Path(directory), personal_data_directory())
 
 
 if __name__ == "__main__":

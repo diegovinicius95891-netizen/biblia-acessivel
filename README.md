@@ -1,5 +1,13 @@
 # Bíblia Acessível
 
+Versão atual: **4.0.0** para Windows e Android.
+
+Em Mais opções, **Devocionais novos do site** consulta diariamente os textos publicados em
+`audiogames.com.br/diego/devocionais`, mantém o histórico para leitura offline e avisa somente
+quando encontra uma publicação nova. No Android, a verificação usa o agendador do sistema e a
+notificação abre diretamente o histórico; no Windows, a consulta ocorre na abertura e enquanto
+o aplicativo estiver em execução. A preferência pode ser desligada em Configurações.
+
 Aplicativo desktop em Python para leitura acessível da Bíblia. A leitura, a pesquisa e a voz funcionam offline; somente o recurso opcional de IA exige internet.
 
 O repositório também contém uma versão Android nativa em `android/`. Ela reutiliza o mesmo banco bíblico, funciona a partir do Android 8 e foi construída com controles padrão reconhecidos pelo TalkBack. Windows e Android possuem canais de atualização separados: tags `v...` distribuem ZIP Windows e tags `android-v...` distribuem somente APK Android. Consulte [android/README.md](android/README.md).

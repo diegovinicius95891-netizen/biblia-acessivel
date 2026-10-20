@@ -12,6 +12,7 @@ const state = {
   bookData: null,
   bookCache: new Map(),
   hymns: null,
+  devotionals: readJson("devotionals", []),
   quiz: null,
   searchRun: 0
 };
@@ -200,6 +201,7 @@ function showView(name) {
   heading?.setAttribute("tabindex", "-1");
   heading?.focus();
   if (name === "hymnal") loadHymns();
+  if (name === "devotionals") loadDevotionals(false);
   if (name === "quiz") loadQuiz();
   if (name === "more") renderSavedItems();
   if (name === "studies") updateStudyQuestion(false);
@@ -212,6 +214,64 @@ async function changeChapter(delta) {
   state.verse = "1";
   await changePassage({ focusVerse: true });
   toast(`Capítulo ${state.chapter}.`);
+}
+
+function normalizeDevotionals(records) {
+  if (!Array.isArray(records)) throw new Error("A lista recebida é inválida.");
+  const seen = new Set();
+  return records.filter(item => {
+    const status = String(item?.status || "publicado").trim().toLowerCase();
+    const id = String(item?.id || "").trim();
+    if (!id || seen.has(id) || !String(item?.titulo || "").trim() || !String(item?.conteudo || "").trim()) return false;
+    if (status && status !== "publicado" && status !== "published") return false;
+    seen.add(id); return true;
+  }).sort((a, b) => String(b.data || b.atualizado_em || "").localeCompare(String(a.data || a.atualizado_em || "")));
+}
+
+function devotionalDate(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}${match[4] ? ` às ${match[4]}:${match[5]}` : ""}` : (value || "Data não informada");
+}
+
+function renderDevotionals() {
+  const list = $("#devotionals-list");
+  list.replaceChildren();
+  state.devotionals.forEach(item => {
+    const row = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = `${devotionalDate(item.data || item.atualizado_em)} — ${item.titulo}`;
+    button.addEventListener("click", () => {
+      const content = $("#devotional-content");
+      content.replaceChildren();
+      const heading = document.createElement("h3"); heading.textContent = item.titulo;
+      const date = document.createElement("p"); date.className = "eyebrow"; date.textContent = `Publicado em ${devotionalDate(item.data || item.atualizado_em)}`;
+      const body = document.createElement("div"); body.className = "devotional-body";
+      String(item.conteudo).split(/\r?\n/).filter(Boolean).forEach(text => { const paragraph = document.createElement("p"); paragraph.textContent = text; body.append(paragraph); });
+      content.append(heading, date, body); content.focus();
+    });
+    row.append(button); list.append(row);
+  });
+  $("#devotionals-status").textContent = state.devotionals.length
+    ? `${state.devotionals.length} devocionais disponíveis. O mais recente aparece primeiro.`
+    : "Nenhum devocional foi carregado ainda.";
+}
+
+async function loadDevotionals(manual) {
+  renderDevotionals();
+  const status = $("#devotionals-status");
+  status.textContent = "Procurando novos devocionais, aguarde.";
+  try {
+    state.devotionals = normalizeDevotionals(await fetchJson("../devocionais/posts.json"));
+    writeJson("devotionals", state.devotionals);
+    renderDevotionals();
+    if (manual) toast("Devocionais atualizados.");
+  } catch (error) {
+    renderDevotionals();
+    status.textContent = state.devotionals.length
+      ? "Não foi possível consultar agora. Exibindo a última cópia salva neste navegador."
+      : `Não foi possível carregar os devocionais. ${error.message}`;
+  }
 }
 
 function favorites() { return readJson("favorites", []); }
@@ -428,6 +488,7 @@ function bindEvents() {
   $("#read-aloud").addEventListener("click", () => { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(`${reference()}. ${selectedVerse().text}`)); });
   $("#stop-speaking").addEventListener("click", () => speechSynthesis.cancel());
   $("#search-form").addEventListener("submit", searchBible); $("#search-hymn").addEventListener("click", renderHymns); $("#hymn-query").addEventListener("search", renderHymns);
+  $("#refresh-devotionals").addEventListener("click", () => loadDevotionals(true));
   $("#next-question").addEventListener("click", nextQuestion); $("#study-type").addEventListener("change", () => updateStudyQuestion(true)); $("#ask-ai").addEventListener("click", askAi);
   $("#save-settings").addEventListener("click", saveSettings);
   $("#font-size").addEventListener("input", event => { const value = Number(event.target.value); document.documentElement.style.setProperty("--base-scale", String(value / 100)); localStorage.setItem(STORAGE + "fontScale", String(value)); });
