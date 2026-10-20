@@ -24,23 +24,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.0.0\n\n" +
-            "Nova seção Devocionais do site com todo o histórico publicado por Diego, atualização manual e cópia para leitura sem internet.\n\n" +
-            "O Android verifica a fonte pública uma vez por dia e mostra uma notificação somente quando encontra uma publicação nova. Tocar no aviso abre diretamente a seção.\n\n" +
-            "As notificações de devocionais podem ser ligadas ou desligadas nas Configurações. No Android 13 ou superior, o aplicativo explica e solicita a permissão do sistema.\n\n" +
-            "Windows e Android agora compartilham a versão principal 4.0.0, mantendo separados seus arquivos de atualização.\n\n" +
-            "Ativar um versículo agora abre diretamente o menu de ações; não é mais necessário tocar e segurar. Com o TalkBack, basta o toque duplo normal.\n\n" +
-            "Novo botão Continuar de onde parou na tela principal, com a última referência salva.\n\n" +
-            "Nova seção Estudos com resumos de livro e capítulo e Teólogo de IA: exegese, hermenêutica, contexto histórico, teologia bíblica, comparação de interpretações, palavras importantes, aplicação, esboço e pergunta livre.\n\n" +
-            "O Teólogo de IA também pode ser aberto pelo menu de qualquer versículo, e todas as perguntas sugeridas podem ser editadas antes do envio.\n\n" +
-            "Banco bíblico reconstruído e auditado. Foram corrigidas referências duplicadas no fim de capítulos da Bíblia Portuguesa Mundial e da World English Bible.\n\n" +
-            "Permanecem três traduções completas. A Open Translation Bible foi retirada porque a fonte oficial continua sem 1 Reis 19.\n\n" +
-            "Cada pergunta do quiz agora registra somente a primeira resposta. Duplicações antigas são corrigidas automaticamente.\n\n" +
-            "Nova seção Harpa Cristã com 640 hinos e pesquisa offline.\n\n" +
-            "Quiz ampliado para 298 perguntas de estudo.\n\n" +
-            "Nova seção Status do quiz com acertos, erros e aproveitamento.\n\n" +
-            "O atualizador continua aceitando somente releases android-v e o APK Android.\n\n" +
-            "O botão Atualizar agora fica sempre visível; depois do download, Instalar agora abre o instalador oficial do Android.";
+            "Novidades da versão Android 4.0.1\n\n" +
+            "Nova seção Rádio Gospel com os louvores publicados no site de Diego e controles para tocar, pausar, continuar, parar, voltar e avançar.\n\n" +
+            "Nova opção Ideias, sugestões e suporte, que abre o e-mail já endereçado para diego@audiogames.com.br.\n\n" +
+            "A verificação automática de atualizações permanece ativada por padrão e pode ser desligada nas Configurações.\n\n" +
+            "A busca de novos devocionais agora funciona periodicamente com o aplicativo fechado, usando o menor intervalo permitido pelo Android.\n\n" +
+            "A permissão para mostrar avisos na barra de notificações é solicitada novamente nesta versão. Também há um atalho direto para as configurações de notificações do Android.\n\n" +
+            "Mensagens de falha foram simplificadas e não exibem nomes internos ou instruções técnicas.\n\n" +
+            "A atualização preserva posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;
     private final UserDatabase userData;

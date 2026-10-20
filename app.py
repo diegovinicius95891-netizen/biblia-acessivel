@@ -13,11 +13,8 @@ def main() -> int:
     try:
         from PySide6.QtWidgets import QApplication, QMessageBox
     except ImportError as error:
-        print(
-            "PySide6 não pôde ser carregado. Execute: python -m pip install -r requirements.txt. "
-            f"Detalhes técnicos: {error}",
-            file=sys.stderr,
-        )
+        logging.getLogger(__name__).error("Interface indisponível", exc_info=error)
+        print("Não foi possível abrir a interface do aplicativo.", file=sys.stderr)
         return 1
 
     from biblia.main_window import MainWindow
@@ -27,14 +24,18 @@ def main() -> int:
     app.setApplicationName("Bíblia Acessível")
     app.setOrganizationName("Projeto Bíblia Acessível")
 
-    # No executável de arquivo único, ``__file__`` aponta para a pasta
-    # temporária interna. Os dados editáveis continuam ao lado do EXE.
+    # O pacote oficial mantém uma cópia externa para atualização e também uma
+    # cópia interna para que o EXE continue funcional quando for baixado sozinho.
     application_dir = (
         Path(sys.executable).resolve().parent
         if getattr(sys, "frozen", False)
         else Path(__file__).resolve().parent
     )
-    database = application_dir / "data" / "biblia.db"
+    bundled_dir = Path(getattr(sys, "_MEIPASS", application_dir)).resolve()
+    external_database = application_dir / "data" / "biblia.db"
+    bundled_database = bundled_dir / "data" / "biblia.db"
+    database = external_database if external_database.exists() else bundled_database
+    resource_dir = application_dir if external_database.exists() else bundled_dir
     personal_dir = personal_data_directory()
     personal_dir.mkdir(parents=True, exist_ok=True)
     user_database = personal_dir / "user_data.db"
@@ -51,19 +52,19 @@ def main() -> int:
         logging.getLogger(__name__).error("Falha inesperada", exc_info=(error_type, error, traceback))
         QMessageBox.critical(
             None, "Falha inesperada",
-            "O aplicativo encontrou uma falha. Os detalhes técnicos foram registrados na pasta pessoal da Bíblia Acessível.",
+            "O aplicativo encontrou uma falha e não conseguiu concluir esta ação. Tente novamente.",
         )
 
     sys.excepthook = report_unexpected
     if not database.exists():
         QMessageBox.critical(
             None,
-            "Dados não encontrados",
-            "O arquivo data/biblia.db não foi encontrado. Execute scripts/build_database.py.",
+            "Não foi possível abrir a Bíblia",
+            "Os textos bíblicos não puderam ser carregados nesta instalação. Baixe novamente o aplicativo e tente outra vez.",
         )
         return 2
 
-    window = MainWindow(database, user_database, personal_dir, application_dir)
+    window = MainWindow(database, user_database, personal_dir, application_dir, resource_dir)
     window.show()
     return app.exec()
 

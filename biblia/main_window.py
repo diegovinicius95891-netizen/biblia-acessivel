@@ -14,7 +14,7 @@ from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QSettings, Qt, QUrl, Signal
+from PySide6.QtCore import QObject, QSettings, Qt, QUrl, QUrlQuery, Signal
 from PySide6.QtGui import (
     QAccessible,
     QAccessibleAnnouncementEvent,
@@ -232,6 +232,7 @@ class MainWindow(QMainWindow):
         user_data_path: Path | None = None,
         app_data_dir: Path | None = None,
         install_dir: Path | None = None,
+        resource_dir: Path | None = None,
     ):
         """Abre bancos, constrói controles e restaura a última posição."""
         super().__init__()
@@ -239,6 +240,7 @@ class MainWindow(QMainWindow):
         self.user_data = UserDataDatabase(user_data_path or database_path.with_name("user_data.db"))
         self.app_data_dir = app_data_dir or self.user_data.path.parent
         self.install_dir = install_dir or database_path.parent.parent
+        self.resource_dir = resource_dir or self.install_dir
         self.settings = QSettings()
         self.api_key = self._load_saved_api_key()
         self.pending_api_key = self.api_key
@@ -495,6 +497,18 @@ class MainWindow(QMainWindow):
     def open_more_option(self, item_or_id):
         """Abre a opção destacada como única tela visível do aplicativo."""
         page_id = item_or_id.data(Qt.UserRole) if isinstance(item_or_id, QListWidgetItem) else item_or_id
+        if page_id == "ideas":
+            query = QUrlQuery()
+            query.addQueryItem("subject", "Ideia ou problema na Bíblia Acessível")
+            query.addQueryItem("body", "Olá, Diego!\n\nQuero enviar a seguinte ideia ou relatar este problema:\n\n")
+            address = QUrl("mailto:diego@audiogames.com.br")
+            address.setQuery(query)
+            if not QDesktopServices.openUrl(address):
+                self._warn(
+                    "Não foi possível abrir o e-mail",
+                    "Não consegui abrir o aplicativo de e-mail. Escreva para diego@audiogames.com.br.",
+                )
+            return
         if page_id == "notes":
             self.refresh_notes()
         elif page_id == "devotional":
@@ -691,7 +705,9 @@ class MainWindow(QMainWindow):
             "RECURSOS LOCAIS\n"
             "Mais opções também contém planos de leitura, favoritos com categorias, histórico, temas, "
             "informações sobre livros, personagens, memorização, Harpa Cristã com 640 hinos, quiz com "
-            "298 perguntas, Status do quiz, estatísticas, Modo culto e backup. "
+            "298 perguntas, Status do quiz, estatísticas, Modo culto, Rádio Gospel e backup. A Rádio "
+            "Gospel toca pela internet os louvores publicados no site e oferece controles acessíveis. "
+            "Ideias, sugestões e suporte abre um e-mail para diego@audiogames.com.br. "
             "A busca Automática encontra palavras ou temas relacionados sem serviço pago.\n\n"
             "ATALHOS\n"
             "Ctrl+F: pesquisa. Ctrl+G: ir para passagem. Ctrl+D: favorito. Ctrl+M: anotação. "
@@ -1482,7 +1498,10 @@ class MainWindow(QMainWindow):
         try:
             Path(filename).write_text(content, encoding="utf-8")
         except OSError as error:
-            self._warn("Não foi possível salvar", str(error))
+            self._warn(
+                "Não foi possível salvar o devocional",
+                "Não consegui salvar o texto no local escolhido. Escolha outro local e tente novamente.",
+            )
             return
         self.statusBar().showMessage(f"Devocional salvo em {filename}.")
         QMessageBox.information(self, "Devocional salvo", f"Arquivo salvo em:\n{filename}")

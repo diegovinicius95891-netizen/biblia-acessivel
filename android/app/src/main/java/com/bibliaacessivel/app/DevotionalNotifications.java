@@ -13,6 +13,7 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.work.Constraints;
+import androidx.work.ExistingWorkPolicy;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
@@ -32,6 +33,7 @@ final class DevotionalNotifications {
     static void schedule(Context context) {
         SharedPreferences preferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
         WorkManager manager = WorkManager.getInstance(context);
+        createChannel(context);
         if (!preferences.getBoolean("devotionals_notify", true)) {
             manager.cancelUniqueWork(PERIODIC_NAME);
             return;
@@ -39,11 +41,21 @@ final class DevotionalNotifications {
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED).build();
         PeriodicWorkRequest periodic = new PeriodicWorkRequest.Builder(
-                DevotionalWorker.class, 24, TimeUnit.HOURS)
+                DevotionalWorker.class, 15, TimeUnit.MINUTES)
                 .setConstraints(constraints).build();
         manager.enqueueUniquePeriodicWork(PERIODIC_NAME, ExistingPeriodicWorkPolicy.UPDATE, periodic);
-        manager.enqueue(new OneTimeWorkRequest.Builder(DevotionalWorker.class)
-                .setConstraints(constraints).build());
+        manager.enqueueUniqueWork(PERIODIC_NAME + "-now", ExistingWorkPolicy.REPLACE,
+                new OneTimeWorkRequest.Builder(DevotionalWorker.class)
+                        .setConstraints(constraints).build());
+    }
+
+    static void createChannel(Context context) {
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null) return;
+        NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
+                "Novos devocionais", NotificationManager.IMPORTANCE_DEFAULT);
+        channel.setDescription("Avisa quando Diego publica um novo devocional no site.");
+        manager.createNotificationChannel(channel);
     }
 
     static void show(Context context, DevotionalFeed.Item item, int count) {
@@ -51,10 +63,7 @@ final class DevotionalNotifications {
                 context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return;
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
-        NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                "Novos devocionais", NotificationManager.IMPORTANCE_DEFAULT);
-        channel.setDescription("Avisa quando Diego publica um novo devocional no site.");
-        manager.createNotificationChannel(channel);
+        createChannel(context);
         Intent intent = new Intent(context, MainActivity.class)
                 .putExtra(OPEN_DEVOTIONALS, true)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);

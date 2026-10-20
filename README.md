@@ -1,6 +1,6 @@
 # Bíblia Acessível
 
-Versão atual: **4.0.0** para Windows e Android.
+Versão atual: **4.0.1** para Windows e Android.
 
 Em Mais opções, **Devocionais novos do site** consulta diariamente os textos publicados em
 `audiogames.com.br/diego/devocionais`, mantém o histórico para leitura offline e avisa somente
@@ -61,6 +61,8 @@ O aplicativo salva automaticamente tradução, testamento, livro, capítulo e it
 - Favoritos de versículos, capítulos e passagens com categorias próprias; anotações pesquisáveis para versículos, capítulos ou intervalos.
 - Histórico de leitura, posição exata para continuar, versículo diário, informações dos 66 livros, personagens e temas.
 - Harpa Cristã com os 640 hinos, pesquisa offline por número, título ou trecho e leitura acessível da letra completa.
+- Rádio Gospel com catálogo atualizado pelo site, player acessível, reprodução contínua e controles de faixa e volume.
+- Ideias, sugestões e suporte abre o e-mail já endereçado para `diego@audiogames.com.br`.
 - Memorização em três níveis e 298 perguntas de quiz sobre conteúdo, ordem e estrutura da Bíblia.
 - Status do quiz com perguntas respondidas, acertos, erros, aproveitamento e detalhamento por dificuldade.
 - Modo culto com foco direto no campo: Enter exibe a passagem sem abrir “Ler versículo”; o texto recebe foco e há comandos para copiar, trocar de capítulo ou digitar outra referência.

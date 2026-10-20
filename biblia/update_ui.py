@@ -319,7 +319,7 @@ class UpdateController(QObject):
             LOGGER.exception("Não foi possível iniciar a instalação")
             QMessageBox.warning(
                 self.host, "Não foi possível instalar",
-                "A atualização permanece baixada e a versão atual continua utilizável. " + str(error),
+                "Não consegui iniciar a instalação. A versão atual continua funcionando e você pode tentar novamente mais tarde.",
             )
 
     def _backup_personal_data(self, version: str) -> Path:

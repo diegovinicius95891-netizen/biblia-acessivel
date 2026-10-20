@@ -1,34 +1,18 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.0.0
+CURRENT_CHANGELOG = """Novidades da versão 4.0.1
 
-Nova seção Devocionais do site. Ela consulta automaticamente os textos publicados por Diego, apresenta todo o histórico e mantém a última cópia para leitura sem internet.
+Nova seção Rádio Gospel com os louvores publicados no site de Diego. O player oferece tocar, pausar, continuar, parar, faixa anterior, próxima faixa e volume. O catálogo fica guardado para consulta; o áudio exige internet.
 
-O aplicativo procura novidades uma vez por dia e avisa somente quando encontra uma publicação que ainda não havia sido identificada. A notificação pode ser desligada nas Configurações.
+Nova opção Ideias, sugestões e suporte. Ela abre o aplicativo de e-mail já endereçado para diego@audiogames.com.br.
 
-Windows e Android agora usam a mesma versão principal 4.0.0, preservando posição de leitura, notas, favoritos, quiz, chave de IA e demais dados pessoais durante a atualização.
+A verificação automática de atualizações continua ativada por padrão e só deixa de funcionar quando a própria pessoa a desativa nas Configurações.
 
-Revisão geral de rede, cache, acessibilidade, inicialização e validação dos dados bíblicos. Falhas temporárias do site não impedem a leitura da Bíblia nem apagam a cópia local dos devocionais.
+O executável do Windows agora leva os textos bíblicos e os catálogos essenciais dentro dele. Assim, quem baixar somente o EXE também consegue abrir a Bíblia. O ZIP continua oferecendo a estrutura completa para o atualizador.
 
-Banco bíblico reconstruído e auditado. Foram corrigidas referências duplicadas que apareciam no fim de capítulos da Bíblia Portuguesa Mundial e da World English Bible.
+Mensagens de falha foram revisadas para explicar a parte do aplicativo que não funcionou sem mostrar nomes internos, caminhos ou instruções de desenvolvimento.
 
-Agora cada tradução precisa passar por validação de 66 livros, 1.189 capítulos, referências únicas e textos não vazios antes de entrar no aplicativo.
+No Android, a consulta de novos devocionais passa a usar o trabalho periódico mais frequente permitido pelo sistema e continua funcionando com o aplicativo fechado. A permissão de notificações é solicitada novamente nesta versão e pode ser aberta diretamente pelas Configurações.
 
-A Open Translation Bible foi retirada porque a fonte oficial continua sem o capítulo 19 de 1 Reis. Permanecem três traduções completas: Bíblia Portuguesa Mundial, João Ferreira de Almeida e World English Bible.
-
-Cada pergunta do quiz agora pode registrar somente uma resposta. Resultados duplicados antigos são corrigidos automaticamente, preservando a primeira resposta.
-
-Leitura dos hinos da Harpa Cristã corrigida: cada trecho agora fica em uma caixa navegável com as setas cima e baixo.
-
-Reinício do aplicativo após uma atualização corrigido no Windows. Cada nova versão agora extrai suas próprias DLLs antes de abrir.
-
-Nova seção Harpa Cristã com os 640 hinos completos e pesquisa offline por número, título ou trecho.
-
-Quiz bíblico ampliado para 298 perguntas de estudo sobre conteúdo, ordem e estrutura da Bíblia.
-
-Nova seção Status do quiz com perguntas respondidas, acertos, erros, aproveitamento e detalhamento por dificuldade.
-
-Resultados do quiz entram no backup pessoal, sem guardar a alternativa escolhida.
-
-Atualizador Windows continua aceitando somente o ZIP próprio do canal Windows.
+Posição de leitura, notas, favoritos, quiz, planos, chave de IA e demais dados pessoais são preservados na atualização.
 """

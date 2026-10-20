@@ -57,11 +57,13 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertFalse(hasattr(window, "tabs"))
         self.assertIs(window.page_stack, window.centralWidget())
         self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
-        self.assertEqual(25, window.more_options.count())
+        self.assertEqual(27, window.more_options.count())
         labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
         self.assertIn("Harpa Cristã", labels)
         self.assertIn("Status do quiz", labels)
         self.assertIn("Devocionais novos do site", labels)
+        self.assertIn("Rádio Gospel", labels)
+        self.assertIn("Ideias, sugestões e suporte", labels)
         self.assertEqual(3, window.translation_list.count())
         self.assertEqual(39, window.book_list.count())
 
@@ -121,7 +123,7 @@ class GuiSmokeTests(unittest.TestCase):
         """Abre cada novo recurso e valida nomes, foco e busca temática local."""
         window = self.make_window()
         page_ids = (
-            "dashboard", "plans", "prayers", "daily_devotional", "online_devotionals", "favorites",
+            "dashboard", "plans", "prayers", "daily_devotional", "online_devotionals", "radio_gospel", "favorites",
             "history", "topics", "books_info", "characters", "memorization",
             "hymnal", "quiz", "quiz_status", "statistics", "worship", "backup",
         )

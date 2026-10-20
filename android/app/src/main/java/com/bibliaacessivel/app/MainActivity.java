@@ -10,6 +10,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Typeface;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
@@ -82,6 +84,13 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private TextView onlineDevotionalStatus;
     private ListView onlineDevotionalList;
     private ArrayAdapter<String> onlineDevotionalAdapter;
+    private List<GospelRadioFeed.Track> radioTracks = new ArrayList<>();
+    private TextView radioStatus;
+    private ListView radioList;
+    private ArrayAdapter<String> radioAdapter;
+    private MediaPlayer radioPlayer;
+    private int radioIndex = -1;
+    private boolean radioPreparing;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -142,7 +151,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void showFatalError(Exception error) {
         LinearLayout root = rootLayout();
         root.addView(heading("Não foi possível abrir a Bíblia"));
-        root.addView(paragraph(error.getMessage() == null ? error.toString() : error.getMessage()));
+        root.addView(paragraph("Não consegui carregar os textos bíblicos nesta instalação. " +
+                "Baixe novamente o aplicativo e tente outra vez."));
         setContentView(root);
     }
 
@@ -297,9 +307,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout root = screen("Mais opções", this::showMainMenu);
         String[] options = {
                 "Traduções", "Ir para uma referência", "Pesquisar na Bíblia", "Estudos — Teólogo de IA",
-                "Fazer devocional", "Devocionais novos do site", "Anotações por dia", "Harpa Cristã", "Quiz bíblico",
-                "Status do quiz", "Modo culto", "Atualizações", "Configurações",
-                "Licenças, leis e justificativa", "Ajuda"
+                "Fazer devocional", "Devocionais novos do site", "Rádio Gospel", "Anotações por dia",
+                "Harpa Cristã", "Quiz bíblico", "Status do quiz", "Modo culto", "Atualizações",
+                "Configurações", "Ideias, sugestões e suporte", "Licenças, leis e justificativa", "Ajuda"
         };
         ListView list = listView(Arrays.asList(options));
         list.setContentDescription("Mais opções");
@@ -311,14 +321,16 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 case 3: showStudies(); break;
                 case 4: showDevotional(); break;
                 case 5: showOnlineDevotionals(); break;
-                case 6: showNotes(); break;
-                case 7: showHymnal(); break;
-                case 8: showQuiz(); break;
-                case 9: showQuizStatus(); break;
-                case 10: showWorshipMode(); break;
-                case 11: showUpdates(); break;
-                case 12: showSettings(); break;
-                case 13: showLegal(); break;
+                case 6: showGospelRadio(); break;
+                case 7: showNotes(); break;
+                case 8: showHymnal(); break;
+                case 9: showQuiz(); break;
+                case 10: showQuizStatus(); break;
+                case 11: showWorshipMode(); break;
+                case 12: showUpdates(); break;
+                case 13: showSettings(); break;
+                case 14: openIdeasEmail(); break;
+                case 15: showLegal(); break;
                 default: showHelp();
             }
         });
@@ -555,7 +567,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                     onlineDevotionals = posts;
                     if (!posts.isEmpty()) {
                         preferences.edit().putString("devotionals_latest_id", posts.get(0).id)
-                                .putString("devotionals_last_background_check", LocalDate.now().toString()).apply();
+                                .apply();
                     }
                     populateOnlineDevotionals();
                     if (manual) toast("Devocionais atualizados.");
@@ -568,6 +580,169 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 });
             }
         }, "devotional-screen-refresh").start();
+    }
+
+    /** Mostra o catálogo público e controles nativos de reprodução contínua. */
+    private void showGospelRadio() {
+        radioTracks = GospelRadioFeed.loadCache(this);
+        LinearLayout root = screen("Rádio Gospel", this::showMoreOptions);
+        radioStatus = paragraph("Escolha um louvor. A lista fica guardada, mas a reprodução precisa de internet.");
+        radioStatus.setContentDescription("Estado da Rádio Gospel");
+        root.addView(radioStatus);
+        root.addView(actionButton("Atualizar lista de louvores",
+                "Buscar os louvores publicados no site", () -> refreshGospelRadio(true)));
+        radioList = listView(new ArrayList<String>());
+        radioList.setContentDescription("Louvores da Rádio Gospel. Toque duas vezes para reproduzir.");
+        radioAdapter = (ArrayAdapter<String>) radioList.getAdapter();
+        radioList.setOnItemClickListener((parent, view, position, id) -> playRadio(position));
+        root.addView(radioList, fill());
+        LinearLayout controls = horizontalRow();
+        controls.addView(actionButton("Pausar ou continuar", "Pausar ou continuar o louvor",
+                this::toggleRadioPause), weighted());
+        controls.addView(actionButton("Parar", "Parar a Rádio Gospel", this::stopRadio), weighted());
+        root.addView(controls);
+        LinearLayout navigation = horizontalRow();
+        navigation.addView(actionButton("Anterior", "Tocar o louvor anterior",
+                () -> changeRadioTrack(-1)), weighted());
+        navigation.addView(actionButton("Próximo", "Tocar o próximo louvor",
+                () -> changeRadioTrack(1)), weighted());
+        root.addView(navigation);
+        setContentView(root);
+        populateGospelRadio();
+        radioList.requestFocus();
+        refreshGospelRadio(false);
+    }
+
+    private void populateGospelRadio() {
+        if (radioAdapter == null) return;
+        radioAdapter.clear();
+        for (GospelRadioFeed.Track track : radioTracks) radioAdapter.add(track.toString());
+        if (radioTracks.isEmpty()) {
+            radioAdapter.add("Nenhum louvor carregado. Use Atualizar lista de louvores.");
+            radioStatus.setText("Ainda não há uma lista local da Rádio Gospel.");
+        } else if (radioIndex < 0) {
+            radioStatus.setText(radioTracks.size() + " louvores disponíveis. Escolha um para começar.");
+        }
+        radioAdapter.notifyDataSetChanged();
+        if (radioIndex >= 0 && radioIndex < radioTracks.size()) radioList.setSelection(radioIndex);
+    }
+
+    private void refreshGospelRadio(boolean manual) {
+        if (manual && radioStatus != null) radioStatus.setText("Atualizando a Rádio Gospel, aguarde.");
+        new Thread(() -> {
+            try {
+                List<GospelRadioFeed.Track> tracks = GospelRadioFeed.fetch(this);
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    radioTracks = tracks;
+                    populateGospelRadio();
+                    if (manual) toast("Lista da Rádio Gospel atualizada.");
+                });
+            } catch (Exception ignored) {
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    populateGospelRadio();
+                    if (manual) toast("Não foi possível atualizar a Rádio Gospel. Tente novamente.");
+                });
+            }
+        }, "gospel-radio-refresh").start();
+    }
+
+    private void playRadio(int index) {
+        if (index < 0 || index >= radioTracks.size()) return;
+        stopAndReleaseRadio();
+        radioIndex = index;
+        GospelRadioFeed.Track track = radioTracks.get(index);
+        radioPreparing = true;
+        if (radioStatus != null) radioStatus.setText("Carregando: " + track + ".");
+        try {
+            radioPlayer = new MediaPlayer();
+            radioPlayer.setAudioAttributes(new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .setUsage(AudioAttributes.USAGE_MEDIA).build());
+            radioPlayer.setDataSource(track.audioUrl);
+            radioPlayer.setOnPreparedListener(player -> runOnUiThread(() -> {
+                radioPreparing = false;
+                player.start();
+                if (radioStatus != null) radioStatus.setText("Tocando: " + track + ".");
+            }));
+            radioPlayer.setOnCompletionListener(player -> runOnUiThread(() -> changeRadioTrack(1)));
+            radioPlayer.setOnErrorListener((player, what, extra) -> {
+                runOnUiThread(() -> {
+                    radioPreparing = false;
+                    if (radioStatus != null) radioStatus.setText("Não foi possível tocar este louvor.");
+                    toast("Não foi possível tocar o louvor. Confira a conexão e tente novamente.");
+                });
+                return true;
+            });
+            radioPlayer.prepareAsync();
+            if (radioList != null) radioList.setSelection(index);
+        } catch (Exception ignored) {
+            radioPreparing = false;
+            stopAndReleaseRadio();
+            if (radioStatus != null) radioStatus.setText("Não foi possível tocar este louvor.");
+            toast("Não foi possível tocar o louvor. Confira a conexão e tente novamente.");
+        }
+    }
+
+    private void toggleRadioPause() {
+        if (radioPlayer == null) {
+            int selected = radioIndex >= 0 ? radioIndex : 0;
+            if (selected >= radioTracks.size()) selected = 0;
+            playRadio(selected);
+            return;
+        }
+        if (radioPreparing) return;
+        try {
+            GospelRadioFeed.Track track = radioTracks.get(radioIndex);
+            if (radioPlayer.isPlaying()) {
+                radioPlayer.pause();
+                if (radioStatus != null) radioStatus.setText("Pausado: " + track + ".");
+            } else {
+                radioPlayer.start();
+                if (radioStatus != null) radioStatus.setText("Tocando: " + track + ".");
+            }
+        } catch (Exception ignored) {
+            toast("Não foi possível controlar a reprodução agora.");
+        }
+    }
+
+    private void stopRadio() {
+        stopAndReleaseRadio();
+        if (radioStatus != null && radioIndex >= 0 && radioIndex < radioTracks.size()) {
+            radioStatus.setText("Parado: " + radioTracks.get(radioIndex) + ".");
+        }
+    }
+
+    private void changeRadioTrack(int direction) {
+        if (radioTracks.isEmpty()) {
+            toast("Não há louvores disponíveis para tocar agora.");
+            return;
+        }
+        int start = radioIndex >= 0 ? radioIndex : 0;
+        playRadio((start + direction + radioTracks.size()) % radioTracks.size());
+    }
+
+    private void stopAndReleaseRadio() {
+        if (radioPlayer == null) return;
+        try { radioPlayer.stop(); } catch (Exception ignored) {}
+        try { radioPlayer.reset(); } catch (Exception ignored) {}
+        try { radioPlayer.release(); } catch (Exception ignored) {}
+        radioPlayer = null;
+        radioPreparing = false;
+    }
+
+    /** Abre o aplicativo de e-mail já endereçado para sugestões e problemas. */
+    private void openIdeasEmail() {
+        Uri uri = Uri.parse("mailto:diego@audiogames.com.br").buildUpon()
+                .appendQueryParameter("subject", "Ideia ou problema na Bíblia Acessível")
+                .appendQueryParameter("body", "Olá, Diego!\n\nQuero enviar a seguinte ideia ou relatar este problema:\n\n")
+                .build();
+        try {
+            startActivity(new Intent(Intent.ACTION_SENDTO, uri));
+        } catch (Exception ignored) {
+            toast("Não consegui abrir o e-mail. Escreva para diego@audiogames.com.br.");
+        }
     }
 
     /** Agrupa notas por data e abre dia completo ou título isolado. */
@@ -605,6 +780,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                         (preferences.getBoolean("updates_notify", true) ? "Ativadas" : "Desativadas"),
                 "Alternar notificações de novos devocionais. " +
                         (preferences.getBoolean("devotionals_notify", true) ? "Ativadas" : "Desativadas"),
+                "Abrir configurações de notificações do Android",
                 "Abrir configurações de acessibilidade do Android"
         };
         ListView list = listView(Arrays.asList(options));
@@ -619,6 +795,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 case 5: updateManager.toggleAutomatic(); showSettings(); break;
                 case 6: updateManager.toggleNotifications(); showSettings(); break;
                 case 7: toggleDevotionalNotifications(); break;
+                case 8: openNotificationSettings(); break;
                 default: startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
             }
         });
@@ -672,12 +849,14 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "HARPA, QUIZ E MODO CULTO\n\nA Harpa Cristã possui 640 hinos pesquisáveis e funciona " +
                 "offline. O quiz possui 298 perguntas e registra acertos e erros em Status do quiz. No Modo " +
                 "culto, digite uma passagem e confirme: o texto aparece imediatamente, sem precisar tocar " +
-                "em Ler versículo.\n\nATUALIZAÇÕES\n\nA versão Android consulta somente releases android-v " +
+                "em Ler versículo. A Rádio Gospel toca pela internet os louvores publicados no site. " +
+                "Ideias, sugestões e suporte abre um e-mail para Diego.\n\nATUALIZAÇÕES\n\nA versão Android consulta somente releases android-v " +
                 "e baixa somente BibliaAcessivel-Android.apk com seu SHA-256. O Windows usa outro pacote. " +
                 "A consulta automática pode ser desligada nas Configurações.\n\nDEVOCIONAIS DO SITE\n\n" +
                 "A seção Devocionais novos do site mostra todos os textos publicados por Diego e guarda a última " +
-                "cópia para leitura sem internet. O Android verifica uma vez por dia e avisa quando encontra uma " +
-                "publicação realmente nova. A notificação pode ser desligada nas Configurações.\n\n" +
+                "cópia para leitura sem internet. O Android verifica periodicamente mesmo com o aplicativo " +
+                "fechado e avisa na barra de notificações quando encontra uma publicação realmente nova. " +
+                "A notificação pode ser desligada nas Configurações.\n\n" +
                 "PRIVACIDADE\n\nNotas e marcadores ficam somente no aparelho. A chave Gemini é protegida " +
                 "pelo Android Keystore. A IA é opcional e exige internet.", this::showMoreOptions);
     }
@@ -687,7 +866,10 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         boolean enabled = !preferences.getBoolean("devotionals_notify", true);
         preferences.edit().putBoolean("devotionals_notify", enabled).apply();
         DevotionalNotifications.schedule(this);
-        if (enabled) ensureDevotionalNotificationPermission();
+        if (enabled) {
+            preferences.edit().remove("devotionals_permission_prompt_version").apply();
+            ensureDevotionalNotificationPermission();
+        }
         toast("Notificações de devocionais " + (enabled ? "ativadas." : "desativadas."));
         showSettings();
     }
@@ -696,16 +878,29 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void ensureDevotionalNotificationPermission() {
         if (Build.VERSION.SDK_INT < 33 || !preferences.getBoolean("devotionals_notify", true) ||
                 checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED ||
-                preferences.getBoolean("devotionals_permission_asked", false)) return;
+                BuildConfig.VERSION_NAME.equals(preferences.getString(
+                        "devotionals_permission_prompt_version", ""))) return;
         new AlertDialog.Builder(this).setTitle("Avisos de novos devocionais")
-                .setMessage("Permita notificações para receber um aviso quando um novo devocional for publicado no site. A Bíblia continuará funcionando se você não permitir.")
+                .setMessage("Permita as notificações para receber o aviso na barra do Android mesmo quando a Bíblia estiver fechada. A Bíblia continuará funcionando se você não permitir.")
                 .setPositiveButton("Continuar", (dialog, which) -> {
-                    preferences.edit().putBoolean("devotionals_permission_asked", true).apply();
+                    preferences.edit().putString("devotionals_permission_prompt_version",
+                            BuildConfig.VERSION_NAME).apply();
                     requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 4002);
                 })
                 .setNegativeButton("Agora não", (dialog, which) ->
-                        preferences.edit().putBoolean("devotionals_permission_asked", true).apply())
+                        preferences.edit().putString("devotionals_permission_prompt_version",
+                                BuildConfig.VERSION_NAME).apply())
                 .show();
+    }
+
+    private void openNotificationSettings() {
+        Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+        try {
+            startActivity(intent);
+        } catch (Exception ignored) {
+            toast("Não foi possível abrir as configurações de notificações.");
+        }
     }
 
     /** Abre pesquisa offline e lista acessível dos 640 hinos. */
@@ -1509,6 +1704,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     }
 
     @Override protected void onDestroy() {
+        stopAndReleaseRadio();
         if (tts != null) {
             tts.stop();
             tts.shutdown();

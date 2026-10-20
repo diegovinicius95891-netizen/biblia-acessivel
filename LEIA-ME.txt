@@ -3,8 +3,8 @@ BÍBLIA ACESSÍVEL PARA WINDOWS
 COMO ABRIR
 
 1. Extraia todo o conteúdo do arquivo ZIP para uma pasta.
-2. Mantenha a pasta data ao lado de BibliaAcessivel.exe.
-3. Abra BibliaAcessivel.exe. Não é necessário instalar Python.
+2. Mantenha a pasta data ao lado de BibliaAcessivel.exe quando usar o pacote ZIP.
+3. Abra BibliaAcessivel.exe. Não é necessário instalar Python. O EXE também possui uma cópia interna dos textos para funcionar quando for baixado sozinho.
 
 NAVEGAÇÃO PRINCIPAL
 
@@ -21,7 +21,7 @@ Se encontrar um banco antigo, ele migra as notas e cria uma cópia de segurança
 
 RECURSOS PESSOAIS E DE ESTUDO
 
-Mais opções contém busca inteligente, 17 planos de leitura, Diário de oração, Meu momento com Deus, favoritos com categorias, histórico, temas, informações dos livros, personagens, memorização, Harpa Cristã com 640 hinos, quiz com 298 perguntas, Status do quiz, estatísticas, Modo culto e backup.
+Mais opções contém busca inteligente, 17 planos de leitura, Diário de oração, Meu momento com Deus, devocionais do site, favoritos com categorias, histórico, temas, informações dos livros, personagens, memorização, Harpa Cristã com 640 hinos, Rádio Gospel, quiz com 298 perguntas, Status do quiz, estatísticas, Modo culto, ideias e suporte e backup.
 Todas essas áreas funcionam pelo teclado. Espaço ou Enter abre o item destacado e Escape volta à Bíblia.
 No Modo culto, digite a referência e pressione Enter: a passagem aparece e recebe foco imediatamente, sem abrir uma ação Ler versículo.
 
@@ -46,6 +46,11 @@ INTELIGÊNCIA ARTIFICIAL
 Os recursos de IA são opcionais, exigem internet e uma chave própria do Google Gemini.
 Em Configurações, informe a chave, escolha o modelo e salve. A chave fica criptografada para a conta atual do Windows.
 O programa limita o tamanho dos resumos para evitar respostas enormes ou cortadas.
+
+RÁDIO GOSPEL E CONTATO
+
+A Rádio Gospel carrega os louvores publicados no site de Diego e oferece tocar, pausar, continuar, parar, anterior, próximo e volume. A lista fica guardada; o áudio exige internet.
+A opção Ideias, sugestões e suporte abre o aplicativo de e-mail para diego@audiogames.com.br.
 
 PRIVACIDADE E LICENÇAS
 

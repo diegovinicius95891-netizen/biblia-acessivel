@@ -12,6 +12,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QSettings, QTimer, Qt, QUrl, QUrlQuery, Signal
 from PySide6.QtGui import QDesktopServices
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -32,6 +33,7 @@ from PySide6.QtWidgets import (
 from .dialogs import AccessibleButton, AccessibleResultDialog, AccessibleTextDialog, ActivatableList, ApplicationsDialog
 from .hymnal import load_hymnal, search_hymns
 from .online_devotionals import DevotionalFeedError, OnlineDevotionalService
+from .online_radio import OnlineRadioService, RadioFeedError
 from .plans import build_plan_catalog, progress_summary
 from .quiz_catalog import categories as quiz_categories, load_quiz_catalog
 from .references import parse_reference
@@ -41,6 +43,13 @@ from .topics import TOPICS
 
 class DevotionalSignals(QObject):
     """Entrega resultados da rede à thread gráfica sem tocar em controles."""
+
+    finished = Signal(object, bool)
+    failed = Signal(str, bool)
+
+
+class RadioSignals(QObject):
+    """Entrega o catálogo da rádio à interface sem bloquear teclado ou leitor de tela."""
 
     finished = Signal(object, bool)
     failed = Signal(str, bool)
@@ -61,14 +70,27 @@ class ExtendedFeatures:
         self.db = host.db
         self.data = host.user_data
         self.plan_catalog = build_plan_catalog(self.db, host.current_translation_id())
-        self.hymns = load_hymnal(host.install_dir / "data" / "harpa_crista.json")
-        self.quiz_questions = load_quiz_catalog(host.install_dir / "data" / "quiz_questions.tsv")
+        self.hymns = load_hymnal(host.resource_dir / "data" / "harpa_crista.json")
+        self.quiz_questions = load_quiz_catalog(host.resource_dir / "data" / "quiz_questions.tsv")
         self.online_service = OnlineDevotionalService(host.app_data_dir / "devocionais_do_site.json")
         self.online_posts = self.online_service.load_cache()
         self.online_busy = False
         self.devotional_signals = DevotionalSignals(host)
         self.devotional_signals.finished.connect(self._online_fetch_finished)
         self.devotional_signals.failed.connect(self._online_fetch_failed)
+        self.radio_service = OnlineRadioService(host.app_data_dir / "radio_gospel.json")
+        self.radio_tracks = self.radio_service.load_cache()
+        self.radio_busy = False
+        self.radio_index = -1
+        self.radio_signals = RadioSignals(host)
+        self.radio_signals.finished.connect(self._radio_fetch_finished)
+        self.radio_signals.failed.connect(self._radio_fetch_failed)
+        self.radio_audio = QAudioOutput(host)
+        self.radio_audio.setVolume(0.8)
+        self.radio_player = QMediaPlayer(host)
+        self.radio_player.setAudioOutput(self.radio_audio)
+        self.radio_player.mediaStatusChanged.connect(self._radio_media_status_changed)
+        self.radio_player.errorOccurred.connect(self._radio_playback_failed)
         self._build_pages()
         self._append_menu_options()
         self.devotional_timer = QTimer(host)
@@ -99,6 +121,7 @@ class ExtendedFeatures:
         self._build_plans()
         self._build_prayers()
         self._build_online_devotionals()
+        self._build_radio()
         self._build_daily_devotional()
         self._build_favorites()
         self._build_history()
@@ -121,6 +144,7 @@ class ExtendedFeatures:
             ("Diário de oração", "prayers"),
             ("Meu momento com Deus", "daily_devotional"),
             ("Devocionais novos do site", "online_devotionals"),
+            ("Rádio Gospel", "radio_gospel"),
             ("Favoritos", "favorites"),
             ("Histórico de leitura", "history"),
             ("Temas bíblicos", "topics"),
@@ -133,6 +157,7 @@ class ExtendedFeatures:
             ("Estatísticas pessoais", "statistics"),
             ("Modo culto", "worship"),
             ("Backup e restauração", "backup"),
+            ("Ideias, sugestões e suporte", "ideas"),
         )
         for label, page_id in entries:
             item = QListWidgetItem(label)
@@ -245,6 +270,166 @@ class ExtendedFeatures:
         self.refresh_online_devotionals()
         if not silent:
             self.host._warn("Devocionais indisponíveis", message)
+
+    # Rádio Gospel ----------------------------------------------------
+    def _build_radio(self):
+        """Cria um player acessível para os louvores publicados no site."""
+        section = QGroupBox("Rádio Gospel")
+        layout = QVBoxLayout(section)
+        self.radio_status = QLabel(
+            "Escolha um louvor. A lista fica guardada, mas a reprodução precisa de internet."
+        )
+        self.radio_status.setWordWrap(True)
+        self.radio_status.setAccessibleName("Estado da Rádio Gospel")
+        layout.addWidget(self.radio_status)
+        refresh = AccessibleButton("&Atualizar lista de louvores")
+        refresh.clicked.connect(lambda: self.check_radio(True))
+        layout.addWidget(refresh)
+        self.radio_list = ActivatableList()
+        self.radio_list.setAccessibleName("Louvores da Rádio Gospel")
+        self.radio_list.setAccessibleDescription(
+            "Cima e baixo navegam. Espaço ou Enter começa a tocar o louvor escolhido."
+        )
+        self.radio_list.selectionRequested.connect(self._play_radio_item)
+        layout.addWidget(self.radio_list, 1)
+        controls = QHBoxLayout()
+        self.radio_pause_button = AccessibleButton("&Pausar ou continuar")
+        self.radio_pause_button.clicked.connect(self.toggle_radio_pause)
+        controls.addWidget(self.radio_pause_button)
+        stop = AccessibleButton("P&arar")
+        stop.clicked.connect(self.stop_radio)
+        controls.addWidget(stop)
+        previous = AccessibleButton("&Anterior")
+        previous.clicked.connect(lambda: self.change_radio_track(-1))
+        controls.addWidget(previous)
+        following = AccessibleButton("Pró&ximo")
+        following.clicked.connect(lambda: self.change_radio_track(1))
+        controls.addWidget(following)
+        layout.addLayout(controls)
+        volume_row = QHBoxLayout()
+        volume_row.addWidget(QLabel("&Volume:"))
+        self.radio_volume = QComboBox()
+        self.radio_volume.setAccessibleName("Volume da Rádio Gospel")
+        for percent in (25, 50, 75, 100):
+            self.radio_volume.addItem(f"{percent} por cento", percent)
+        self.radio_volume.setCurrentIndex(2)
+        self.radio_volume.currentIndexChanged.connect(
+            lambda _index: self.radio_audio.setVolume(float(self.radio_volume.currentData() or 75) / 100)
+        )
+        volume_row.addWidget(self.radio_volume)
+        layout.addLayout(volume_row)
+        self._register("radio_gospel", "Rádio Gospel", section, self.radio_list)
+        self.refresh_radio()
+
+    def refresh_radio(self):
+        """Atualiza a lista visível usando o catálogo validado mais recente."""
+        self.radio_list.clear()
+        for track in self.radio_tracks:
+            item = QListWidgetItem(track.label)
+            item.setData(Qt.UserRole, track.identifier)
+            self.radio_list.addItem(item)
+        if self.radio_tracks:
+            row = self.radio_index if 0 <= self.radio_index < len(self.radio_tracks) else 0
+            self.radio_list.setCurrentRow(row)
+            if self.radio_index < 0:
+                self.radio_status.setText(
+                    f"{len(self.radio_tracks)} louvores disponíveis. Escolha um para começar."
+                )
+        else:
+            self.radio_list.addItem("Nenhum louvor foi carregado. Use Atualizar lista de louvores.")
+            self.radio_list.setCurrentRow(0)
+            self.radio_status.setText("Ainda não há uma lista local da Rádio Gospel.")
+
+    def check_radio(self, manual: bool = False):
+        """Busca o catálogo do site em segundo plano e preserva a cópia anterior em falhas."""
+        if self.radio_busy:
+            if manual:
+                self.host._announce_for(self.radio_list, "A atualização da rádio já está em andamento.")
+            return
+        self.radio_busy = True
+        if manual:
+            self.radio_status.setText("Atualizando a lista da Rádio Gospel, aguarde.")
+
+        def worker():
+            try:
+                self.radio_signals.finished.emit(self.radio_service.fetch(), manual)
+            except RadioFeedError as error:
+                self.radio_signals.failed.emit(str(error), manual)
+
+        threading.Thread(target=worker, daemon=True, name="gospel-radio-feed").start()
+
+    def _radio_fetch_finished(self, tracks, manual: bool):
+        self.radio_busy = False
+        self.radio_tracks = tracks
+        self.refresh_radio()
+        if manual:
+            self.host._announce_for(self.radio_list, "Lista da Rádio Gospel atualizada.")
+
+    def _radio_fetch_failed(self, message: str, manual: bool):
+        self.radio_busy = False
+        self.refresh_radio()
+        if manual:
+            self.host._warn("Rádio Gospel indisponível", message)
+
+    def _play_radio_item(self, item):
+        identifier = str(item.data(Qt.UserRole) or "")
+        index = next(
+            (position for position, track in enumerate(self.radio_tracks) if track.identifier == identifier), -1
+        )
+        if index >= 0:
+            self.play_radio(index)
+
+    def play_radio(self, index: int):
+        """Inicia a faixa e deixa a troca seguinte preparada para o fim da reprodução."""
+        if not self.radio_tracks:
+            self.host._warn("Rádio Gospel", "Não há louvores disponíveis para tocar agora.")
+            return
+        self.radio_index = index % len(self.radio_tracks)
+        track = self.radio_tracks[self.radio_index]
+        self.radio_list.setCurrentRow(self.radio_index)
+        self.radio_status.setText(f"Carregando: {track.label}.")
+        self.radio_player.setSource(QUrl(track.audio_url))
+        self.radio_player.play()
+
+    def toggle_radio_pause(self):
+        """Alterna pausa e reprodução sem perder o louvor atual."""
+        if self.radio_index < 0:
+            row = self.radio_list.currentRow()
+            if 0 <= row < len(self.radio_tracks):
+                self.play_radio(row)
+            return
+        if self.radio_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.radio_player.pause()
+            self.radio_status.setText(f"Pausado: {self.radio_tracks[self.radio_index].label}.")
+        else:
+            self.radio_player.play()
+            self.radio_status.setText(f"Tocando: {self.radio_tracks[self.radio_index].label}.")
+
+    def stop_radio(self):
+        self.radio_player.stop()
+        if self.radio_index >= 0:
+            self.radio_status.setText(f"Parado: {self.radio_tracks[self.radio_index].label}.")
+
+    def change_radio_track(self, direction: int):
+        if not self.radio_tracks:
+            self.host._warn("Rádio Gospel", "Não há louvores disponíveis para tocar agora.")
+            return
+        start = self.radio_index if self.radio_index >= 0 else self.radio_list.currentRow()
+        self.play_radio((max(0, start) + direction) % len(self.radio_tracks))
+
+    def _radio_media_status_changed(self, status):
+        if status == QMediaPlayer.MediaStatus.EndOfMedia and self.radio_tracks:
+            self.change_radio_track(1)
+        elif status == QMediaPlayer.MediaStatus.BufferedMedia and self.radio_index >= 0:
+            self.radio_status.setText(f"Tocando: {self.radio_tracks[self.radio_index].label}.")
+
+    def _radio_playback_failed(self, *_args):
+        if self.radio_index >= 0:
+            self.radio_status.setText("Não foi possível tocar este louvor.")
+            self.host._warn(
+                "Falha na Rádio Gospel",
+                "Não foi possível tocar o louvor. Confira sua conexão e tente novamente.",
+            )
 
     # Início -----------------------------------------------------------
     def _build_home(self):
@@ -1148,9 +1333,11 @@ class ExtendedFeatures:
             "hymnal": self.refresh_hymnal, "quiz": self.refresh_quiz,
             "quiz_status": self.refresh_quiz_status, "statistics": self.refresh_statistics,
             "online_devotionals": self.refresh_online_devotionals,
+            "radio_gospel": self.refresh_radio,
         }
         if page_id in refreshers: refreshers[page_id]()
         if page_id == "online_devotionals": self.check_online_devotionals(False, True)
+        if page_id == "radio_gospel": self.check_radio(False)
         if page_id == "worship": self.worship_edit.selectAll()
 
     def _text_prompt(self, title: str, label: str):

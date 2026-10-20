@@ -30,6 +30,9 @@ if ($LASTEXITCODE -ne 0 -or $buildVersions.Trim() -ne '6.8.3|6.21.0') {
     --onefile `
     --windowed `
     --name BibliaAcessivel `
+    --add-data "$projectRoot\data\biblia.db;data" `
+    --add-data "$projectRoot\data\harpa_crista.json;data" `
+    --add-data "$projectRoot\data\quiz_questions.tsv;data" `
     --distpath $projectRoot `
     --workpath $workPath `
     --specpath $specPath `
