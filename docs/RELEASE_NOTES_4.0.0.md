@@ -17,4 +17,3 @@
 - Gravação atômica do cache: uma falha não substitui a última cópia válida.
 - A consulta acontece fora da interface e nunca bloqueia a leitura bíblica.
 - Posição, notas, favoritos, quiz, planos, chave de IA e demais dados pessoais são preservados na atualização.
-

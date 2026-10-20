@@ -18,4 +18,3 @@
 - Rascunhos, registros incompletos e identificadores duplicados não são exibidos.
 - Falhas de rede não impedem a leitura da Bíblia nem apagam o histórico em cache.
 - Atualização preserva posição, notas, marcadores, quiz e chave da IA.
-
