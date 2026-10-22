@@ -168,7 +168,9 @@ class UpdateService:
 
     def check(self, current_version: str) -> ReleaseInfo | None:
         """Consulta releases publicadas e devolve a atualização estável mais nova."""
-        url = f"https://api.github.com/repos/{self.repository}/releases?per_page=20"
+        # O número explícito da primeira página evita respostas vazias servidas
+        # por alguns nós de cache da API quando existe apenas ``per_page``.
+        url = f"https://api.github.com/repos/{self.repository}/releases?per_page=20&page=1"
         LOGGER.info("Verificando atualizações: versão=%s url=%s", current_version, url)
         try:
             with self._request(url) as response:

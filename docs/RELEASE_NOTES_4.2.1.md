@@ -7,5 +7,6 @@ Esta atualização corrige a navegação da seção Livros no computador.
 - Seta direita mostra o Novo Testamento.
 - A troca anuncia o testamento selecionado, a quantidade de livros e o próximo passo.
 - A caixa de combinação de Traduções e os demais recursos da versão 4.2.0 foram preservados.
+- A consulta automática de atualizações ficou mais resistente a respostas temporariamente vazias do GitHub.
 
 O Android permanece na versão 4.2.0, pois sua escolha explícita de testamento é adequada à navegação por toque.

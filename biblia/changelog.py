@@ -7,4 +7,6 @@ No Windows, a seção Livros volta a abrir diretamente na lista, sem uma etapa a
 Use seta esquerda para mostrar o Antigo Testamento e seta direita para mostrar o Novo Testamento. O aplicativo anuncia o testamento selecionado, a quantidade de livros e orienta a escolha do livro.
 
 A caixa de combinação de Traduções e todos os demais recursos da versão 4.2.0 foram mantidos.
+
+A consulta automática de atualizações também ficou mais resistente a respostas temporariamente vazias do GitHub.
 """
