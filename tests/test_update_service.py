@@ -114,6 +114,19 @@ class UpdateServiceTests(unittest.TestCase):
             with self.assertRaisesRegex(UpdateError, "Não foi possível verificar"):
                 service.check("2.0.0")
 
+    def test_check_accepts_latest_release_object(self):
+        """Aceita o objeto único devolvido pelo endpoint estável mais recente."""
+        service = UpdateService()
+        release = {
+            "tag_name": "v2.1.0",
+            "draft": False,
+            "prerelease": False,
+            "assets": [asset("BibliaAcessivel-Windows.zip"), asset("BibliaAcessivel-Windows.zip.sha256")],
+        }
+        service._request = lambda url: FakeResponse(json.dumps(release).encode())
+        result = service.check("2.0.0")
+        self.assertEqual("2.1.0", result.version)
+
     def test_rejects_asset_outside_github(self):
         """Não aceita URL arbitrária mesmo quando ela aparece num payload bem formado."""
         payload = [{

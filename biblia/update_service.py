@@ -168,13 +168,15 @@ class UpdateService:
 
     def check(self, current_version: str) -> ReleaseInfo | None:
         """Consulta releases publicadas e devolve a atualização estável mais nova."""
-        # O número explícito da primeira página evita respostas vazias servidas
-        # por alguns nós de cache da API quando existe apenas ``per_page``.
-        url = f"https://api.github.com/repos/{self.repository}/releases?per_page=20&page=1"
+        # O canal Windows marca sua publicação estável como ``latest``. Esse
+        # endpoint evita respostas vazias observadas na listagem paginada.
+        url = f"https://api.github.com/repos/{self.repository}/releases/latest"
         LOGGER.info("Verificando atualizações: versão=%s url=%s", current_version, url)
         try:
             with self._request(url) as response:
                 payload = json.loads(response.read().decode("utf-8"))
+            if isinstance(payload, dict):
+                payload = [payload]
             if not isinstance(payload, list):
                 raise UpdateError("A resposta do serviço de atualização é inválida.")
             result = parse_release_payload(payload, current_version)
