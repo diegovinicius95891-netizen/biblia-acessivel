@@ -6,7 +6,7 @@ Este documento explica a responsabilidade de cada arquivo e os fluxos principais
 
 O aplicativo não usa `QTabWidget` nem guias. Um `QStackedWidget` mantém uma tela principal enxuta e telas internas acessíveis. Na tela principal, o foco percorre:
 
-1. Livros, com caixa de combinação de testamento e lista filtrada.
+1. Livros, com lista filtrada e troca de testamento pelas setas esquerda e direita.
 2. Capítulos.
 3. Versículos.
 4. Mais opções.

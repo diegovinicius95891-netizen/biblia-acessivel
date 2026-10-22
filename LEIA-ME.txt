@@ -11,7 +11,7 @@ NAVEGAÇÃO PRINCIPAL
 Tab e Shift+Tab percorrem Livros, Capítulos, Versículos e Mais opções.
 Setas cima e baixo navegam dentro da seção atual.
 Nos Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo Testamento.
-Também existe uma caixa de combinação Seção da Bíblia. Ela anuncia o testamento escolhido, a quantidade de livros e o próximo passo.
+Ao trocar, o aplicativo anuncia o testamento selecionado, a quantidade de livros e o próximo passo.
 Espaço ou Enter ativa o item atual. A tecla Aplicações ou Shift+F10 abre as ações do item.
 O texto bíblico é mostrado diretamente na seção Versículos; não existe uma tela de leitura duplicada.
 

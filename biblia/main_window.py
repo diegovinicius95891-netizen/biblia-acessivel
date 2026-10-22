@@ -285,7 +285,7 @@ class MainWindow(QMainWindow):
         self._load_translations_and_restore()
         from .update_ui import UpdateController
         self.update_controller = UpdateController(self, self.app_data_dir, self.install_dir)
-        self.testament_combo.setFocus()
+        self.book_list.setFocus()
         self.statusBar().showMessage(
             "Pronto. Tab muda de seção; setas navegam dentro da seção. F1 abre a ajuda."
         )
@@ -337,15 +337,6 @@ class MainWindow(QMainWindow):
 
         books_group = QGroupBox("Seção &Livros")
         books_layout = QVBoxLayout(books_group)
-        books_layout.addWidget(QLabel("Selecione a seção: Antigo ou Novo Testamento."))
-        self.testament_combo = QComboBox()
-        self.testament_combo.setAccessibleName("Seção da Bíblia")
-        self.testament_combo.setAccessibleDescription(
-            "Escolha Antigo Testamento ou Novo Testamento e depois escolha um livro."
-        )
-        self.testament_combo.addItems(("Antigo Testamento", "Novo Testamento"))
-        self.testament_combo.currentIndexChanged.connect(self._testament_combo_changed)
-        books_layout.addWidget(self.testament_combo)
         self.testament_label = QLabel("Antigo Testamento")
         self.testament_label.setAccessibleName("Testamento exibido")
         books_layout.addWidget(self.testament_label)
@@ -366,7 +357,7 @@ class MainWindow(QMainWindow):
         self.book_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.book_list.customContextMenuRequested.connect(self.show_book_menu_at)
         books_layout.addWidget(self.book_list)
-        books_group.setFocusProxy(self.testament_combo)
+        books_group.setFocusProxy(self.book_list)
         selection_row.addWidget(books_group, 1)
 
         chapters_group = QGroupBox("Seção &Capítulos")
@@ -443,7 +434,6 @@ class MainWindow(QMainWindow):
         more_group.setFocusProxy(self.more_options)
         layout.addWidget(more_group, 1)
 
-        QWidget.setTabOrder(self.testament_combo, self.book_list)
         QWidget.setTabOrder(self.book_list, self.chapter_list)
         QWidget.setTabOrder(self.chapter_list, self.verse_list)
         QWidget.setTabOrder(self.verse_list, self.more_options)
@@ -736,8 +726,8 @@ class MainWindow(QMainWindow):
             "BÍBLIA ACESSÍVEL\n\n"
             "NAVEGAÇÃO POR SEÇÕES\n"
             "Na tela principal, Tab e Shift+Tab percorrem Livros, Capítulos, Versículos e Mais opções. "
-            "O texto bíblico fica diretamente em Versículos. Cima e baixo navegam dentro da seção atual. Em Livros, a caixa Seção da Bíblia "
-            "escolhe Antigo ou Novo Testamento e anuncia quantos livros estão disponíveis; esquerda e direita na lista também trocam. Enter em Livros leva aos capítulos; Enter em "
+            "O texto bíblico fica diretamente em Versículos. Cima e baixo navegam dentro da seção atual. "
+            "Em Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo, anunciando a seleção e a quantidade de livros. Enter em Livros leva aos capítulos; Enter em "
             "Capítulos abre os versículos. Mais opções abre cada recurso numa tela limpa. Escape volta "
             "ao menu principal da Bíblia.\n\n"
             "INTELIGÊNCIA ARTIFICIAL\n"
@@ -887,9 +877,6 @@ class MainWindow(QMainWindow):
         all_books = self.db.books(self.current_translation_id())
         book_row = next((book for book in all_books if book["book_code"] == saved_book), all_books[0])
         self.testament = self.OLD_TESTAMENT if int(book_row["book_number"]) <= 39 else self.NEW_TESTAMENT
-        self.testament_combo.blockSignals(True)
-        self.testament_combo.setCurrentIndex(0 if self.testament == self.OLD_TESTAMENT else 1)
-        self.testament_combo.blockSignals(False)
         self._populate_books(preferred_code=book_row["book_code"], preferred_chapter=saved_chapter)
         self.open_selected_chapter(focus_verse=saved_verse, focus_reading=False)
         self._populate_search_books()
@@ -932,7 +919,6 @@ class MainWindow(QMainWindow):
     def _update_tab_order(self):
         """Garante a rota principal de quatro seções e rotas locais nas telas internas."""
         chain: list[QWidget] = [
-            self.testament_combo,
             self.book_list,
             self.chapter_list,
             self.verse_list,
@@ -1001,18 +987,6 @@ class MainWindow(QMainWindow):
                 )
                 return
 
-    def _testament_combo_changed(self, index: int):
-        """Filtra livros pela seção escolhida e fornece feedback completo."""
-        if self._loading or index < 0:
-            return
-        self.testament = self.OLD_TESTAMENT if index == 0 else self.NEW_TESTAMENT
-        self.settings.setValue("position/testament", self.testament)
-        self._populate_books()
-        name = "Antigo Testamento" if index == 0 else "Novo Testamento"
-        message = f"{name} selecionado. {self.book_list.count()} livros. Escolha o livro."
-        self.testament_label.setText(message)
-        self._announce_for(self.testament_combo, message)
-
     def refresh_comparison(self):
         """Mostra o versículo atual primeiro na origem e depois no destino."""
         key = self._current_verse_key()
@@ -1055,12 +1029,12 @@ class MainWindow(QMainWindow):
         requested = self.OLD_TESTAMENT if direction < 0 else self.NEW_TESTAMENT
         if requested == self.testament:
             name = "Antigo Testamento" if requested == self.OLD_TESTAMENT else "Novo Testamento"
-            self.statusBar().showMessage(f"A seção Livros já está no {name}.")
+            self._announce_for(
+                self.book_list,
+                f"{name} já está selecionado. {self.book_list.count()} livros. Escolha o livro.",
+            )
             return
         self.testament = requested
-        self.testament_combo.blockSignals(True)
-        self.testament_combo.setCurrentIndex(0 if requested == self.OLD_TESTAMENT else 1)
-        self.testament_combo.blockSignals(False)
         self.settings.setValue("position/testament", requested)
         self._populate_books()
         self.book_list.setFocus()
