@@ -2,12 +2,12 @@
 
 Repositório público de distribuição da Bíblia Acessível.
 
-Versão atual: **4.0.1**
+Versão atual: **4.1.0**
 
 ## Downloads oficiais
 
-- Windows: https://github.com/diegovinicius95891-netizen/biblia-acessivel/releases/download/v4.0.1/BibliaAcessivel-Windows.zip
-- Android: https://github.com/diegovinicius95891-netizen/biblia-acessivel/releases/download/android-v4.0.1/BibliaAcessivel-Android.apk
+- Windows: https://github.com/diegovinicius95891-netizen/biblia-acessivel/releases/download/v4.1.0/BibliaAcessivel-Windows.zip
+- Android: https://github.com/diegovinicius95891-netizen/biblia-acessivel/releases/download/android-v4.1.0/BibliaAcessivel-Android.apk
 
 ## Site e devocionais
 
