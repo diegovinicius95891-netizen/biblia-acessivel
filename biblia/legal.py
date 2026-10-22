@@ -46,12 +46,26 @@ João Ferreira de Almeida faleceu em 1691, portanto o prazo patrimonial previsto
 Fonte estruturada: https://github.com/seven1m/open-bibles/blob/master/por-almeida.usfx.xml
 Referência histórica: https://www.gutenberg.org/ebooks/62383
 
-3. World English Bible
+3. Bíblia Livre
+
+A edição de fevereiro de 2018 é distribuída sob a licença Creative Commons Atribuição 3.0 Brasil. A licença permite copiar, redistribuir e adaptar, inclusive comercialmente, desde que os autores sejam creditados. O aplicativo conserva o texto sem adaptações.
+Atribuição: Bíblia Livre (BLIVRE), Copyright © Diego Santos, Mario Sérgio e Marco Teles.
+Fonte: https://github.com/blivre/BibliaLivre
+Licença: https://creativecommons.org/licenses/by/3.0/br/
+
+4. Biblica Open Nova Bíblia Viva
+
+Biblica® Open Nova Bíblia Viva™. Copyright © 2007, 2010 by Biblica, Inc. A edição completa é oferecida sob a licença Creative Commons Atribuição-CompartilhaIgual 4.0 Internacional. O aplicativo mantém o texto sem alterações, preserva o título e os avisos de autoria e atribuição e observa a regra de compartilhamento pela mesma licença.
+Fonte: https://ebible.org/bible/details.php?id=poronbv
+Licença: https://creativecommons.org/licenses/by-sa/4.0/
+Informações: https://open.bible/
+
+5. World English Bible
 
 Os responsáveis dedicaram o texto ao domínio público. O nome World English Bible é uma marca e é utilizado no aplicativo somente para identificar uma cópia fiel, sem alteração do conteúdo.
 Fonte e declaração: https://worldenglish.bible/
 
-4. Harpa Cristã
+6. Harpa Cristã
 
 O aplicativo inclui somente as letras em texto, sem áudios, fonogramas, cifras, partituras ou arranjos. A seção existe para leitura acessível, estudo e louvor pessoal num aplicativo gratuito e voltado especialmente a pessoas cegas. A justificativa considera o artigo 46, inciso I, alínea d, da Lei nº 9.610/1998, além da declaração pública da fonte consultada de que as letras e melodias tradicionais estão em domínio público. A apresentação própria de terceiros não foi copiada.
 
@@ -63,5 +77,5 @@ Mesmo em obras de domínio público, permanecem a atribuição e a integridade p
 
 RESUMO
 
-As três edições bíblicas completas e o catálogo de hinos foram incluídos com origem identificada. As três Bíblias possuem declaração de domínio público. A Open Translation Bible em português foi retirada porque a fonte oficial permanece sem o texto de 1 Reis 19; o aplicativo não mistura traduções para preencher lacunas. A Harpa é oferecida somente em texto para acesso e estudo, com a fonte e a justificativa acima. A legislação de acessibilidade não elimina as condições próprias de cada obra.
+As cinco edições bíblicas completas e o catálogo de hinos foram incluídos com origem identificada. Três Bíblias possuem declaração de domínio público; a Bíblia Livre e a Biblica Open Nova Bíblia Viva possuem licenças Creative Commons que autorizam a redistribuição com atribuição. A NTLH não foi incluída porque é uma tradução moderna protegida e o projeto não possui autorização formal da Sociedade Bíblica do Brasil. A Open Translation Bible em português também continua fora do pacote porque sua fonte oficial permanece sem o texto de 1 Reis 19; o aplicativo não mistura traduções para preencher lacunas. A Harpa é oferecida somente em texto para acesso e estudo, com a fonte e a justificativa acima. A legislação de acessibilidade não elimina as condições próprias de cada obra.
 """

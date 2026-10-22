@@ -13,6 +13,21 @@ Arquivo estruturado: https://github.com/seven1m/open-bibles/blob/master/por-alme
 O catálogo Open Bibles identifica o arquivo como Public Domain. João Ferreira de Almeida faleceu em 1691.  
 Referência histórica adicional: https://www.gutenberg.org/ebooks/62383
 
+## Bíblia Livre
+
+Fonte: https://github.com/blivre/BibliaLivre
+Edição: fevereiro de 2018.
+Licença: Creative Commons Atribuição 3.0 Brasil — https://creativecommons.org/licenses/by/3.0/br/
+
+Atribuição: Bíblia Livre (BLIVRE), Copyright © Diego Santos, Mario Sérgio e Marco Teles. O texto é redistribuído sem adaptações.
+
+## Biblica Open Nova Bíblia Viva
+
+Fonte: https://ebible.org/bible/details.php?id=poronbv
+Licença: Creative Commons Atribuição-CompartilhaIgual 4.0 Internacional — https://creativecommons.org/licenses/by-sa/4.0/
+
+Biblica® Open Nova Bíblia Viva™. Copyright © 2007, 2010 by Biblica, Inc. “Biblica” e “Biblica Open Nova Bíblia Viva” são marcas usadas somente para identificar fielmente esta edição. O texto é redistribuído sem alterações. Informações adicionais: https://open.bible/ e https://www.biblica.com/.
+
 ## World English Bible
 
 Fonte: https://worldenglish.bible/  

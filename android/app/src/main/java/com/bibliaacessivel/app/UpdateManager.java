@@ -24,13 +24,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.0.1\n\n" +
-            "Nova seção Rádio Gospel com os louvores publicados no site de Diego e controles para tocar, pausar, continuar, parar, voltar e avançar.\n\n" +
-            "Nova opção Ideias, sugestões e suporte, que abre o e-mail já endereçado para diego@audiogames.com.br.\n\n" +
-            "A verificação automática de atualizações permanece ativada por padrão e pode ser desligada nas Configurações.\n\n" +
-            "A busca de novos devocionais agora funciona periodicamente com o aplicativo fechado, usando o menor intervalo permitido pelo Android.\n\n" +
-            "A permissão para mostrar avisos na barra de notificações é solicitada novamente nesta versão. Também há um atalho direto para as configurações de notificações do Android.\n\n" +
-            "Mensagens de falha foram simplificadas e não exibem nomes internos ou instruções técnicas.\n\n" +
+            "Novidades da versão Android 4.1.0\n\n" +
+            "Duas traduções completas foram adicionadas: Bíblia Livre e Biblica Open Nova Bíblia Viva. Agora são cinco opções auditadas livro por livro, capítulo por capítulo e referência por referência.\n\n" +
+            "A antiga Área de leitura foi removida. O texto fica diretamente em Versículos, e Continuar de onde parou abre o capítulo completo na última posição.\n\n" +
+            "O Modo culto continua mostrando a referência e a passagem imediatamente.\n\n" +
+            "As licenças e atribuições das novas traduções foram incluídas. A NTLH não entrou porque não há autorização formal para redistribuí-la.\n\n" +
             "A atualização preserva posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;

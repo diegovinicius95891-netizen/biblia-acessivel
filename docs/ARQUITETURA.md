@@ -9,8 +9,7 @@ O aplicativo não usa `QTabWidget` nem guias. Um `QStackedWidget` mantém uma te
 1. Livros.
 2. Capítulos.
 3. Versículos.
-4. Área de leitura do versículo atual.
-5. Mais opções.
+4. Mais opções.
 
 Mais opções contém as páginas pessoais e de estudo. Espaço ou Enter abre somente o recurso escolhido; Escape restaura a tela principal e o foco em Mais opções. Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de listas. Na seção Livros, esquerda seleciona o Antigo Testamento e direita seleciona o Novo.
 

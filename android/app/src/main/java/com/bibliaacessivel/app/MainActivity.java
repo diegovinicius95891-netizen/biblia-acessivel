@@ -164,13 +164,12 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(paragraph(currentReference() +
                 ". Com o TalkBack, deslize para a direita ou para a esquerda para conhecer as opções e toque duas vezes para abrir."));
         root.addView(actionButton("Continuar de onde parou — " + currentReference(),
-                "Continuar a leitura em " + currentReference(), this::showReading));
+                "Abrir o capítulo e continuar em " + currentReference(), this::showVerses));
         root.addView(actionButton("Livros", "Abrir seção Livros", this::showBooks));
         root.addView(actionButton("Capítulos", "Abrir capítulos de " + selectedBook.name,
                 this::showChapters));
         root.addView(actionButton("Versículos", "Abrir versículos de " + currentChapterReference(),
                 this::showVerses));
-        root.addView(actionButton("Área de leitura", "Ler o texto selecionado", this::showReading));
         root.addView(actionButton("Mais opções", "Abrir traduções, pesquisa, notas e configurações",
                 this::showMoreOptions));
         setContentView(root);
@@ -278,28 +277,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         setContentView(root);
         list.setSelection(verseIndex(verses, selectedVerse == null ? "1" : selectedVerse.number));
         list.requestFocus();
-    }
-
-    /** Exibe somente a referência e o texto selecionados, com troca de capítulo. */
-    private void showReading() {
-        LinearLayout root = screen("Área de leitura", this::showMainMenu);
-        TextView reference = heading(currentReference());
-        root.addView(reference);
-        TextView text = paragraph(selectedVerse == null ? "Nenhum texto disponível." : selectedVerse.text);
-        text.setTextIsSelectable(true);
-        text.setContentDescription(currentReference() + ". " + text.getText());
-        root.addView(text, fill());
-        root.addView(actionButton("Repetir versículo", "Repetir " + currentReference(),
-                () -> speakOrAnnounce(text, selectedVerse.toString())));
-        LinearLayout navigation = horizontalRow();
-        navigation.addView(actionButton("Capítulo anterior", "Voltar um capítulo",
-                () -> changeChapter(-1)), weighted());
-        navigation.addView(actionButton("Próximo capítulo", "Avançar um capítulo",
-                () -> changeChapter(1)), weighted());
-        root.addView(navigation);
-        root.addView(actionButton("Aplicações", "Abrir ações do versículo", this::showVerseActions));
-        setContentView(root);
-        text.requestFocus();
     }
 
     /** Reúne recursos secundários numa lista nativa navegável. */
@@ -428,7 +405,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         input.setImeOptions(EditorInfo.IME_ACTION_GO);
         root.addView(input);
         Button go = actionButton("Ir para referência", "Abrir a referência digitada", () -> {
-            if (loadReference(input.getText().toString())) showReading();
+            if (loadReference(input.getText().toString())) showVerses();
         });
         input.setOnEditorActionListener((view, actionId, event) -> {
             go.performClick();
@@ -836,8 +813,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Explica comandos essenciais, gestos e privacidade. */
     private void showHelp() {
         showTextScreen("Ajuda", "NAVEGAÇÃO\n\nNa tela principal, Continuar de onde parou abre " +
-                "imediatamente a última leitura. Use também Livros, Capítulos, Versículos, Área de leitura " +
-                "ou Mais opções. Com o TalkBack ligado, deslize para a direita " +
+                "o capítulo completo já posicionado no último versículo. Use também Livros, Capítulos, Versículos " +
+                "ou Mais opções. O texto bíblico é lido diretamente na lista de Versículos. Com o TalkBack ligado, deslize para a direita " +
                 "para ouvir a próxima opção ou para a esquerda para ouvir a opção anterior. Toque duas vezes " +
                 "para abrir. O gesto Voltar do Android retorna à tela anterior. Ao ativar um versículo, " +
                 "o menu de ações abre sem precisar segurar.\n\nESTUDOS COM IA\n\nMais opções, Estudos " +
@@ -1416,24 +1393,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             toast("Referência inválida.");
             return false;
         }
-    }
-
-    /** Troca capítulos somente dentro do livro atual. */
-    private void changeChapter(int direction) {
-        int target = selectedChapter + direction;
-        int maximum = bible.chapterCount(translationId, selectedBook.code);
-        if (target < 1) {
-            toast("Início do livro. Não há capítulos anteriores.");
-            return;
-        }
-        if (target > maximum) {
-            toast("Fim do livro. Não há capítulos seguintes.");
-            return;
-        }
-        selectedChapter = target;
-        selectVerse("1");
-        savePosition();
-        showReading();
     }
 
     /** Avança a partir do fim da lista e abre os versículos do novo capítulo. */

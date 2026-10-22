@@ -379,7 +379,7 @@ class MainWindow(QMainWindow):
         verses_group = QGroupBox("Seção &Versículos")
         verses_layout = QVBoxLayout(verses_group)
         self.chapter_heading = QLabel("Escolha um livro e um capítulo")
-        self.chapter_heading.setAccessibleName("Título da leitura atual")
+        self.chapter_heading.setAccessibleName("Referência do capítulo atual")
         heading_font = self.chapter_heading.font()
         heading_font.setBold(True)
         heading_font.setPointSize(heading_font.pointSize() + 2)
@@ -402,16 +402,6 @@ class MainWindow(QMainWindow):
         verses_group.setFocusProxy(self.verse_list)
         selection_row.addWidget(verses_group, 2)
         layout.addLayout(selection_row, 2)
-
-        reading_group = QGroupBox("Seção Área de &leitura")
-        reading_layout = QVBoxLayout(reading_group)
-        self.reading_area = ReadingTextList("Área de leitura do versículo selecionado")
-        self.reading_area.setAccessibleDescription(
-            "Mostra somente a referência e o texto selecionado na seção Versículos."
-        )
-        reading_layout.addWidget(self.reading_area)
-        reading_group.setFocusProxy(self.reading_area)
-        layout.addWidget(reading_group, 1)
 
         more_group = QGroupBox("Seção &Mais opções")
         more_layout = QVBoxLayout(more_group)
@@ -443,8 +433,7 @@ class MainWindow(QMainWindow):
 
         QWidget.setTabOrder(self.book_list, self.chapter_list)
         QWidget.setTabOrder(self.chapter_list, self.verse_list)
-        QWidget.setTabOrder(self.verse_list, self.reading_area)
-        QWidget.setTabOrder(self.reading_area, self.more_options)
+        QWidget.setTabOrder(self.verse_list, self.more_options)
         return section
 
     def _build_translation_section(self):
@@ -686,8 +675,8 @@ class MainWindow(QMainWindow):
         self.help_text.set_text(
             "BÍBLIA ACESSÍVEL\n\n"
             "NAVEGAÇÃO POR SEÇÕES\n"
-            "Na tela principal, Tab e Shift+Tab percorrem Livros, Capítulos, Versículos, Área de leitura "
-            "e Mais opções. Cima e baixo navegam dentro da seção atual. Em Livros, esquerda mostra o "
+            "Na tela principal, Tab e Shift+Tab percorrem Livros, Capítulos, Versículos e Mais opções. "
+            "O texto bíblico fica diretamente em Versículos. Cima e baixo navegam dentro da seção atual. Em Livros, esquerda mostra o "
             "Antigo Testamento e direita mostra o Novo. Enter em Livros leva aos capítulos; Enter em "
             "Capítulos abre os versículos. Mais opções abre cada recurso numa tela limpa. Escape volta "
             "ao menu principal da Bíblia.\n\n"
@@ -867,12 +856,11 @@ class MainWindow(QMainWindow):
         self.search_book.setCurrentIndex(max(0, index))
 
     def _update_tab_order(self):
-        """Garante a rota principal de cinco seções e rotas locais nas telas internas."""
+        """Garante a rota principal de quatro seções e rotas locais nas telas internas."""
         chain: list[QWidget] = [
             self.book_list,
             self.chapter_list,
             self.verse_list,
-            self.reading_area,
             self.more_options,
         ]
         for current, following in zip(chain, chain[1:]):
@@ -1055,27 +1043,20 @@ class MainWindow(QMainWindow):
                 str(current.data(Qt.UserRole + 1)) if current else None,
             )
         else:
-            self.reading_area.set_text(
-                "Capítulo indisponível nesta fonte. Escolha outra tradução em Mais opções."
-            )
             self.statusBar().showMessage(
                 f"Capítulo indisponível na fonte: {self.active_book_name}, capítulo {self.active_chapter}."
             )
 
     def _verse_changed(self, current, _previous=None):
-        """Salva o número atual, atualiza a leitura e anuncia marcador."""
+        """Salva o número atual e anuncia sua referência na própria lista."""
         if self._loading or not current:
             return
         if current.data(Qt.UserRole + 2) == "ending":
-            self.reading_area.set_text(current.data(Qt.UserRole))
             self.statusBar().showMessage(current.data(Qt.UserRole))
             return
         if current.data(Qt.UserRole + 1) is None:
             return
         verse = str(current.data(Qt.UserRole + 1))
-        self.reading_area.set_text(
-            f"{self.active_book_name} {self.active_chapter}:{verse}\n\n{current.data(Qt.UserRole)}"
-        )
         self.settings.setValue("position/verse", verse)
         marked = self.user_data.is_bookmarked(
             self.current_translation_id(), self.active_book_code, self.active_chapter, verse

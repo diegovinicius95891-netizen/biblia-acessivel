@@ -4,8 +4,9 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 
 ## Recursos incluídos
 
-- Bíblia offline com as três traduções completas do aplicativo desktop.
-- Tela principal com Continuar de onde parou, Livros, Capítulos, Versículos, Área de leitura e Mais opções.
+- Bíblia offline com as cinco traduções completas do aplicativo desktop.
+- Tela principal com Continuar de onde parou, Livros, Capítulos, Versículos e Mais opções.
+- Continuar de onde parou abre o capítulo completo já posicionado no último versículo; o texto fica diretamente em Versículos.
 - Com o TalkBack, deslizar para a direita ou esquerda percorre as opções e o toque duplo abre a opção anunciada.
 - Ao fim dos versículos, há uma opção para abrir o próximo capítulo; no último capítulo, o fim do livro é anunciado.
 - Antigo e Novo Testamento, continuidade da última posição e pesquisa offline.

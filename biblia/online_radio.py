@@ -89,7 +89,7 @@ class OnlineRadioService:
         self.cache_path = cache_path
 
     def fetch(self) -> list[GospelTrack]:
-        request = Request(RADIO_FEED_URL, headers={"User-Agent": "BibliaAcessivel-Windows/4.0.1"})
+        request = Request(RADIO_FEED_URL, headers={"User-Agent": "BibliaAcessivel-Windows/4.1.0"})
         try:
             with urlopen(request, timeout=20) as response:
                 final = urlparse(response.geturl())

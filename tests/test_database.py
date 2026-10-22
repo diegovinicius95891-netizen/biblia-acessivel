@@ -11,7 +11,7 @@ DB_PATH = Path(__file__).resolve().parents[1] / "data" / "biblia.db"
 
 
 class DatabaseTests(unittest.TestCase):
-    """Valida que as três edições completas podem ser navegadas e pesquisadas."""
+    """Valida que as cinco edições completas podem ser navegadas e pesquisadas."""
 
     def setUp(self):
         """Abre uma conexão independente antes de cada cenário."""
@@ -24,7 +24,7 @@ class DatabaseTests(unittest.TestCase):
     def test_all_translations_have_66_books(self):
         """Garante o cânon protestante completo em todas as edições."""
         self.assertEqual(
-            ["bpm", "almeida", "web"],
+            ["bpm", "almeida", "blivre", "onbv", "web"],
             [item["id"] for item in self.db.translations()],
         )
         for translation in self.db.translations():
@@ -33,7 +33,7 @@ class DatabaseTests(unittest.TestCase):
 
     def test_reference_data_exists(self):
         """Confirma uma referência conhecida em todas as traduções."""
-        for translation_id in ("bpm", "almeida", "web"):
+        for translation_id in ("bpm", "almeida", "blivre", "onbv", "web"):
             rows = self.db.chapter(translation_id, "JHN", 3)
             self.assertTrue(any(row["verse"] == "16" for row in rows))
 
@@ -89,7 +89,10 @@ class DatabaseTests(unittest.TestCase):
             """).fetchall())
         finally:
             connection.close()
-        self.assertEqual({"bpm": 1189, "almeida": 1189, "web": 1189}, totals)
+        self.assertEqual(
+            {"bpm": 1189, "almeida": 1189, "blivre": 1189, "onbv": 1189, "web": 1189},
+            totals,
+        )
 
     def test_chapter_boundary_references_are_unique(self):
         """Cobre diretamente a falha que duplicava o fim do capítulo seguinte."""

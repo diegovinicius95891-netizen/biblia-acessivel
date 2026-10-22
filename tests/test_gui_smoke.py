@@ -52,7 +52,7 @@ class GuiSmokeTests(unittest.TestCase):
         return window
 
     def test_clean_main_screen_navigation_and_secondary_pages(self):
-        """Valida as cinco seções principais e telas internas acionadas por Mais opções."""
+        """Valida as quatro seções principais e telas internas acionadas por Mais opções."""
         window = self.make_window()
         self.assertFalse(hasattr(window, "tabs"))
         self.assertIs(window.page_stack, window.centralWidget())
@@ -64,7 +64,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertIn("Devocionais novos do site", labels)
         self.assertIn("Rádio Gospel", labels)
         self.assertIn("Ideias, sugestões e suporte", labels)
-        self.assertEqual(3, window.translation_list.count())
+        self.assertEqual(5, window.translation_list.count())
         self.assertEqual(39, window.book_list.count())
 
         window.book_list.setFocus()
@@ -80,7 +80,8 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertEqual(3, window.active_chapter)
         self.assertTrue(window.verse_list.currentItem().text().startswith("16. "))
         self.assertNotIn("Versículo", window.verse_list.currentItem().text())
-        self.assertIn("João 3:16", window.reading_area.item(0).text())
+        self.assertIn("João 3:16", window.statusBar().currentMessage())
+        self.assertFalse(hasattr(window, "reading_area"))
         self.assertEqual("Fim do capítulo.", window.verse_list.item(window.verse_list.count() - 1).text())
 
         window.verse_list.setFocus()
@@ -98,8 +99,10 @@ class GuiSmokeTests(unittest.TestCase):
             for index in range(window.legal_text.count())
         )
         self.assertIn("LEGISLAÇÃO BRASILEIRA", legal_content)
-        self.assertIn("três edições bíblicas completas", legal_content)
-        self.assertIn("Open Translation Bible em português foi retirada", legal_content)
+        self.assertIn("cinco edições bíblicas completas", legal_content)
+        self.assertIn("Biblica Open Nova Bíblia Viva", legal_content)
+        self.assertIn("Open Translation Bible em português", legal_content)
+        self.assertIn("NTLH não foi incluída", legal_content)
         self.assertGreater(window.help_text.count(), 1)
         window.more_options.setCurrentRow(7)
         QTest.keyClick(window.more_options, Qt.Key_Space)

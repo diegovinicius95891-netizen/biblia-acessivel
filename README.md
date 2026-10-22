@@ -1,6 +1,6 @@
 # Bíblia Acessível
 
-Versão atual: **4.0.1** para Windows e Android.
+Versão atual: **4.1.0** para Windows e Android.
 
 Em Mais opções, **Devocionais novos do site** consulta diariamente os textos publicados em
 `audiogames.com.br/diego/devocionais`, mantém o histórico para leitura offline e avisa somente
@@ -18,10 +18,12 @@ Dê duplo clique em `BibliaAcessivel.exe`, localizado na pasta principal. O exec
 
 O diretório `data`, contendo `biblia.db`, `harpa_crista.json` e `quiz_questions.tsv`, deve permanecer ao lado do executável. Dados pessoais ficam em `%APPDATA%\BibliaAcessivel\user_data.db`. Na primeira execução da versão 2, uma base antiga encontrada ao lado do programa é copiada com segurança para esse local e preservada.
 
-O banco distribuído contém três textos completos identificados separadamente:
+O banco distribuído contém cinco textos completos identificados separadamente:
 
 - Bíblia Portuguesa Mundial — domínio público conforme eBible.org.
 - João Ferreira de Almeida — domínio público; arquivo estruturado do Open Bibles.
+- Bíblia Livre — licença Creative Commons Atribuição 3.0 Brasil.
+- Biblica Open Nova Bíblia Viva — licença Creative Commons Atribuição-CompartilhaIgual 4.0 Internacional.
 - World English Bible — domínio público.
 
 As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e a explicação jurídica ficam disponíveis na seção **Licenças e leis** do próprio aplicativo.
@@ -30,13 +32,13 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 
 - Controles com nomes e descrições acessíveis.
 - Navegação por seções: Tab e Shift+Tab mudam de seção; cima e baixo navegam dentro dela.
-- A tela principal mostra somente Livros, Capítulos, Versículos, Área de leitura e Mais opções.
+- A tela principal mostra somente Livros, Capítulos, Versículos e Mais opções.
 - Mais opções reúne os recursos pessoais e de estudo em telas internas limpas; Escape volta à Bíblia.
 - A tela Traduções usa itens com estado de caixa de seleção; Espaço ou Enter marca uma única edição.
 - A seção Livros mostra apenas o testamento atual; esquerda seleciona o Antigo e direita seleciona o Novo.
 - Enter em Livros leva aos capítulos; Enter em Capítulos abre a seção Versículos.
 - Lista de leitura adequada para navegação linha a linha com NVDA, JAWS ou Narrador.
-- Na seção Versículos, esquerda volta um capítulo e direita avança um capítulo do mesmo livro. A Área de leitura mostra somente a referência e o texto selecionado.
+- Na seção Versículos, o texto bíblico fica diretamente na lista; esquerda volta um capítulo e direita avança um capítulo do mesmo livro.
 - Depois do último item aparece “Fim do capítulo” ou “Fim do livro. Não há capítulos seguintes”.
 - Ajuda e Leis abrem em telas próprias como listas de parágrafos; cima/baixo lê o conteúdo sem repetir o nome da seção.
 - Tecla Aplicações ou Shift+F10 abre “Menu do livro”, “Menu do capítulo” ou “Menu do versículo”. A ação de IA correspondente recebe o foco inicial; cima/baixo navegam e Espaço ou Enter executa. As demais ações do versículo continuam disponíveis.
@@ -70,7 +72,7 @@ O aplicativo salva automaticamente tradução, testamento, livro, capítulo e it
 
 Dados de oração, notas e devocionais permanecem somente no SQLite local e nunca são enviados para a IA. A chave do Gemini não entra no backup JSON, porque a cópia protegida por DPAPI só pode ser aberta pela mesma conta do Windows.
 
-A tela **Licenças e leis** apresenta um único texto simples, somente leitura, com a legislação, a justificativa geral, as três fontes e suas condições de utilização. Não há seletores ou conteúdo HTML nessa área.
+A tela **Licenças e leis** apresenta um único texto simples, somente leitura, com a legislação, a justificativa geral, as cinco fontes e suas condições de utilização. Não há seletores ou conteúdo HTML nessa área.
 
 ## Configurações e IA opcional
 
@@ -90,7 +92,7 @@ Consulte [docs/ARQUITETURA.md](docs/ARQUITETURA.md) para a explicação de todos
 
 ## Recriar o banco
 
-O script `scripts/build_database.py` baixa as três fontes oficiais, normaliza os versículos e só substitui o banco depois de validar livros, capítulos, referências e textos. A Open Translation Bible não é distribuída porque a própria fonte oficial permanece sem o texto de 1 Reis 19.
+O script `scripts/build_database.py` baixa as cinco fontes oficiais, normaliza os versículos e só substitui o banco depois de validar 66 livros, 1.189 capítulos, referências duplicadas, lacunas numéricas e textos vazios em cada tradução. A NTLH não é distribuída sem autorização formal da Sociedade Bíblica do Brasil. A Open Translation Bible também permanece fora do pacote porque sua fonte oficial não possui o texto de 1 Reis 19.
 
 ```powershell
 python scripts/build_database.py

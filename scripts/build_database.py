@@ -71,6 +71,8 @@ EXPECTED_CHAPTERS = {
 EXPECTED_NUMERIC_GAPS = {
     "bpm": {("LUK", 17, 36), ("ACT", 8, 37), ("ACT", 15, 34), ("ACT", 24, 7)},
     "almeida": set(),
+    "blivre": set(),
+    "onbv": set(),
     "web": {("LUK", 17, 36), ("ACT", 8, 37), ("ACT", 15, 34), ("ACT", 24, 7)},
 }
 
@@ -127,7 +129,29 @@ TRANSLATIONS = [
         ),
     },
     {
-        "id": "web", "name": "World English Bible", "language": "English", "display_order": 3,
+        "id": "blivre", "name": "Bíblia Livre", "language": "Português (Brasil)", "display_order": 3,
+        "license": "Creative Commons Atribuição 3.0 Brasil", "source": "Projeto Bíblia Livre — edição de fevereiro de 2018",
+        "source_url": "https://github.com/blivre/BibliaLivre",
+        "legal_html": legal_html(
+            "Bíblia Livre", "Creative Commons Atribuição 3.0 Brasil (CC BY 3.0 BR)",
+            "Projeto Bíblia Livre — edição de fevereiro de 2018", "https://github.com/blivre/BibliaLivre",
+            "O projeto autoriza copiar, distribuir, transmitir e adaptar o texto, inclusive para fins comerciais, desde que a autoria seja atribuída. O aplicativo mantém o texto sem adaptações e apresenta os créditos exigidos.",
+            '<p>Atribuição: Bíblia Livre (BLIVRE), Copyright © Diego Santos, Mario Sérgio e Marco Teles. Licença: <a href="https://creativecommons.org/licenses/by/3.0/br/">CC BY 3.0 Brasil</a>.</p>',
+        ),
+    },
+    {
+        "id": "onbv", "name": "Biblica Open Nova Bíblia Viva", "language": "Português (Brasil)", "display_order": 4,
+        "license": "Creative Commons Atribuição-CompartilhaIgual 4.0 Internacional", "source": "Biblica / eBible.org — poronbv",
+        "source_url": "https://ebible.org/bible/details.php?id=poronbv",
+        "legal_html": legal_html(
+            "Biblica Open Nova Bíblia Viva", "Creative Commons Atribuição-CompartilhaIgual 4.0 Internacional (CC BY-SA 4.0)",
+            "Biblica / eBible.org — poronbv", "https://ebible.org/bible/details.php?id=poronbv",
+            "A Biblica disponibiliza esta edição completa sob licença aberta. O aplicativo redistribui o texto sem alterações, preserva o título, o aviso de direitos autorais e a atribuição, e mantém os materiais derivados sob termos compatíveis.",
+            '<p>Biblica® Open Nova Bíblia Viva™. Copyright © 2007, 2010 by Biblica, Inc. Licença: <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Saiba mais em <a href="https://open.bible/">open.bible</a>.</p>',
+        ),
+    },
+    {
+        "id": "web", "name": "World English Bible", "language": "English", "display_order": 5,
         "license": "Public Domain", "source": "eBible.org — engwebp",
         "source_url": "https://worldenglish.bible/",
         "legal_html": legal_html(
@@ -309,7 +333,7 @@ def validate_database(connection: sqlite3.Connection):
 
 
 def build():
-    """Cria e audita três edições completas antes da troca atômica do banco."""
+    """Cria e audita cinco edições completas antes da troca atômica do banco."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     pending_path = DB_PATH.with_suffix(".db.new")
     if pending_path.exists():
@@ -341,6 +365,10 @@ def build():
     insert_rows(connection, "bpm", parse_usfm_zip("https://ebible.org/Scriptures/porbrbsl_usfm.zip"))
     print("Importando João Ferreira de Almeida…")
     insert_rows(connection, "almeida", parse_usfx(download("https://raw.githubusercontent.com/seven1m/open-bibles/master/por-almeida.usfx.xml")))
+    print("Importando Bíblia Livre…")
+    insert_rows(connection, "blivre", parse_usfm_zip("https://ebible.org/Scriptures/porbr2018_usfm.zip"))
+    print("Importando Biblica Open Nova Bíblia Viva…")
+    insert_rows(connection, "onbv", parse_usfm_zip("https://ebible.org/Scriptures/poronbv_usfm.zip"))
     print("Importando World English Bible…")
     insert_rows(connection, "web", parse_usfm_zip("https://ebible.org/Scriptures/engwebp_usfm.zip", english=True))
     connection.commit()
@@ -355,7 +383,7 @@ def build():
 
 
 def main():
-    """Constrói o banco usando somente as três fontes completas verificadas."""
+    """Constrói o banco usando somente as cinco fontes completas verificadas."""
     build()
 
 
