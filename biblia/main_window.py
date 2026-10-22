@@ -285,7 +285,7 @@ class MainWindow(QMainWindow):
         self._load_translations_and_restore()
         from .update_ui import UpdateController
         self.update_controller = UpdateController(self, self.app_data_dir, self.install_dir)
-        self.book_list.setFocus()
+        self.testament_combo.setFocus()
         self.statusBar().showMessage(
             "Pronto. Tab muda de seção; setas navegam dentro da seção. F1 abre a ajuda."
         )
@@ -301,6 +301,7 @@ class MainWindow(QMainWindow):
         self.main_page_index = self.page_stack.addWidget(self.sections_widget)
 
         self.translation_section = self._build_translation_section()
+        self.comparison_section = self._build_comparison_section()
         self.reference_section = self._build_reference_section()
         self.search_section = self._build_search_section()
         self.devotional_section = self._build_devotional_section()
@@ -309,7 +310,8 @@ class MainWindow(QMainWindow):
         self.legal_section = self._build_legal_section()
         self.help_section = self._build_help_section()
 
-        self._add_secondary_page("translations", "Traduções", self.translation_section, self.translation_list)
+        self._add_secondary_page("translations", "Traduções", self.translation_section, self.translation_combo)
+        self._add_secondary_page("comparison", "Comparar traduções", self.comparison_section, self.comparison_source)
         self._add_secondary_page("reference", "Ir para uma referência", self.reference_section, self.reference_edit)
         self._add_secondary_page("search", "Pesquisa", self.search_section, self.search_edit)
         self._add_secondary_page("devotional", "Escrever devocional", self.devotional_section, self.devotional_reference)
@@ -335,6 +337,15 @@ class MainWindow(QMainWindow):
 
         books_group = QGroupBox("Seção &Livros")
         books_layout = QVBoxLayout(books_group)
+        books_layout.addWidget(QLabel("Selecione a seção: Antigo ou Novo Testamento."))
+        self.testament_combo = QComboBox()
+        self.testament_combo.setAccessibleName("Seção da Bíblia")
+        self.testament_combo.setAccessibleDescription(
+            "Escolha Antigo Testamento ou Novo Testamento e depois escolha um livro."
+        )
+        self.testament_combo.addItems(("Antigo Testamento", "Novo Testamento"))
+        self.testament_combo.currentIndexChanged.connect(self._testament_combo_changed)
+        books_layout.addWidget(self.testament_combo)
         self.testament_label = QLabel("Antigo Testamento")
         self.testament_label.setAccessibleName("Testamento exibido")
         books_layout.addWidget(self.testament_label)
@@ -355,7 +366,7 @@ class MainWindow(QMainWindow):
         self.book_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.book_list.customContextMenuRequested.connect(self.show_book_menu_at)
         books_layout.addWidget(self.book_list)
-        books_group.setFocusProxy(self.book_list)
+        books_group.setFocusProxy(self.testament_combo)
         selection_row.addWidget(books_group, 1)
 
         chapters_group = QGroupBox("Seção &Capítulos")
@@ -413,6 +424,7 @@ class MainWindow(QMainWindow):
         )
         options = (
             ("Traduções", "translations"),
+            ("Comparar traduções", "comparison"),
             ("Ir para uma referência", "reference"),
             ("Pesquisar na Bíblia", "search"),
             ("Fazer devocional", "devotional"),
@@ -431,25 +443,67 @@ class MainWindow(QMainWindow):
         more_group.setFocusProxy(self.more_options)
         layout.addWidget(more_group, 1)
 
+        QWidget.setTabOrder(self.testament_combo, self.book_list)
         QWidget.setTabOrder(self.book_list, self.chapter_list)
         QWidget.setTabOrder(self.chapter_list, self.verse_list)
         QWidget.setTabOrder(self.verse_list, self.more_options)
         return section
 
     def _build_translation_section(self):
-        """Cria a tela de escolha exclusiva da tradução bíblica."""
+        """Cria a tela com uma caixa de combinação para a tradução padrão."""
         section = QGroupBox("Traduções")
         layout = QVBoxLayout(section)
-        layout.addWidget(QLabel("Cima/baixo navegam; Espaço ou Enter marca a tradução."))
-        self.translation_list = TranslationList()
-        self.translation_list.setAccessibleName("Traduções, caixas de seleção")
-        self.translation_list.setAccessibleDescription(
-            "Use cima e baixo para navegar. Pressione Espaço ou Enter para marcar uma tradução."
+        layout.addWidget(QLabel("Escolha a tradução na caixa de combinação e pressione Enter."))
+        self.translation_combo = QComboBox()
+        self.translation_combo.setAccessibleName("Caixa de combinação de traduções bíblicas")
+        self.translation_combo.setAccessibleDescription(
+            "Cima e baixo escolhem a tradução. Pressione Enter para aplicá-la como padrão."
         )
-        self.translation_list.chooseRequested.connect(self.select_current_translation)
-        self.translation_list.itemClicked.connect(lambda _item: self.select_current_translation())
-        layout.addWidget(self.translation_list)
-        section.setFocusProxy(self.translation_list)
+        self.translation_combo.activated.connect(self.select_translation_combo)
+        layout.addWidget(self.translation_combo)
+        self.translation_feedback = QLabel("Nenhuma tradução carregada.")
+        self.translation_feedback.setAccessibleName("Estado da tradução padrão")
+        self.translation_feedback.setWordWrap(True)
+        layout.addWidget(self.translation_feedback)
+        # A lista mantém compatibilidade interna com favoritos, pesquisa e
+        # restauração de posição, mas não é apresentada nem recebe foco.
+        self.translation_list = TranslationList()
+        self.translation_list.hide()
+        self.translation_list.setFocusPolicy(Qt.NoFocus)
+        section.setFocusProxy(self.translation_combo)
+        return section
+
+    def _build_comparison_section(self):
+        """Cria comparação acessível com origem e destino intercambiáveis."""
+        section = QGroupBox("Comparar traduções")
+        layout = QVBoxLayout(section)
+        layout.addWidget(QLabel(
+            "Escolha a tradução de origem e a tradução para comparar. A referência atual será usada."
+        ))
+        form = QFormLayout()
+        self.comparison_source = QComboBox()
+        self.comparison_source.setAccessibleName("Tradução de origem")
+        self.comparison_target = QComboBox()
+        self.comparison_target.setAccessibleName("Tradução para comparar")
+        form.addRow("Tradução de &origem", self.comparison_source)
+        form.addRow("Tradução para &comparar", self.comparison_target)
+        layout.addLayout(form)
+        compare_button = AccessibleButton("&Comparar versículo")
+        compare_button.clicked.connect(self.refresh_comparison)
+        layout.addWidget(compare_button)
+        swap_button = AccessibleButton("&Trocar origem e destino")
+        swap_button.clicked.connect(self.swap_comparison_translations)
+        layout.addWidget(swap_button)
+        source_group = QGroupBox("Seção tradução de origem")
+        source_layout = QVBoxLayout(source_group)
+        self.comparison_source_text = ReadingTextList("Versículo na tradução de origem")
+        source_layout.addWidget(self.comparison_source_text)
+        layout.addWidget(source_group, 1)
+        target_group = QGroupBox("Seção tradução para comparar")
+        target_layout = QVBoxLayout(target_group)
+        self.comparison_target_text = ReadingTextList("Versículo na tradução para comparar")
+        target_layout.addWidget(self.comparison_target_text)
+        layout.addWidget(target_group, 1)
         return section
 
     def _build_reference_section(self):
@@ -504,6 +558,12 @@ class MainWindow(QMainWindow):
             self.prepare_devotional()
         elif page_id == "settings":
             self._refresh_settings_options()
+        elif page_id == "comparison":
+            current = self.comparison_source.findData(self.current_translation_id())
+            if current >= 0:
+                self.comparison_source.setCurrentIndex(current)
+            if self.comparison_target.currentIndex() == current and self.comparison_target.count() > 1:
+                self.comparison_target.setCurrentIndex((current + 1) % self.comparison_target.count())
         elif hasattr(self, "extended"):
             self.extended.prepare_page(page_id)
         index, focus_widget = self.secondary_pages[page_id]
@@ -676,8 +736,8 @@ class MainWindow(QMainWindow):
             "BÍBLIA ACESSÍVEL\n\n"
             "NAVEGAÇÃO POR SEÇÕES\n"
             "Na tela principal, Tab e Shift+Tab percorrem Livros, Capítulos, Versículos e Mais opções. "
-            "O texto bíblico fica diretamente em Versículos. Cima e baixo navegam dentro da seção atual. Em Livros, esquerda mostra o "
-            "Antigo Testamento e direita mostra o Novo. Enter em Livros leva aos capítulos; Enter em "
+            "O texto bíblico fica diretamente em Versículos. Cima e baixo navegam dentro da seção atual. Em Livros, a caixa Seção da Bíblia "
+            "escolhe Antigo ou Novo Testamento e anuncia quantos livros estão disponíveis; esquerda e direita na lista também trocam. Enter em Livros leva aos capítulos; Enter em "
             "Capítulos abre os versículos. Mais opções abre cada recurso numa tela limpa. Escape volta "
             "ao menu principal da Bíblia.\n\n"
             "INTELIGÊNCIA ARTIFICIAL\n"
@@ -694,7 +754,8 @@ class MainWindow(QMainWindow):
             "RECURSOS LOCAIS\n"
             "Mais opções também contém planos de leitura, favoritos com categorias, histórico, temas, "
             "informações sobre livros, personagens, memorização, Harpa Cristã com 640 hinos, quiz com "
-            "298 perguntas, Status do quiz, estatísticas, Modo culto, Rádio Gospel e backup. A Rádio "
+            "298 perguntas, Status do quiz, comparação de traduções, estatísticas, Modo culto, Rádio Gospel e backup. "
+            "Cada pergunta conta uma vez; somente Recomeçar quiz do zero libera todas novamente. A Rádio "
             "Gospel toca pela internet os louvores publicados no site e oferece controles acessíveis. "
             "Ideias, sugestões e suporte abre um e-mail para diego@audiogames.com.br. "
             "A busca Automática encontra palavras ou temas relacionados sem serviço pago.\n\n"
@@ -799,6 +860,9 @@ class MainWindow(QMainWindow):
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Checked if translation["id"] == saved_translation else Qt.Unchecked)
             self.translation_list.addItem(item)
+            self.translation_combo.addItem(translation["name"], translation["id"])
+            self.comparison_source.addItem(translation["name"], translation["id"])
+            self.comparison_target.addItem(translation["name"], translation["id"])
         for translation in translations:
             self.search_translation.addItem(translation["name"], translation["id"])
         checked_row = next(
@@ -806,8 +870,15 @@ class MainWindow(QMainWindow):
             0,
         )
         self.translation_list.setCurrentRow(checked_row)
+        self.translation_combo.setCurrentIndex(checked_row)
+        self.comparison_source.setCurrentIndex(checked_row)
+        if self.comparison_target.count() > 1:
+            self.comparison_target.setCurrentIndex((checked_row + 1) % self.comparison_target.count())
         if not self._checked_translation_item():
             self.translation_list.item(0).setCheckState(Qt.Checked)
+        self.translation_feedback.setText(
+            f"Tradução padrão selecionada: {self.translation_combo.currentText()}."
+        )
         self._loading = False
 
         saved_book = self.settings.value("position/book", "GEN")
@@ -816,6 +887,9 @@ class MainWindow(QMainWindow):
         all_books = self.db.books(self.current_translation_id())
         book_row = next((book for book in all_books if book["book_code"] == saved_book), all_books[0])
         self.testament = self.OLD_TESTAMENT if int(book_row["book_number"]) <= 39 else self.NEW_TESTAMENT
+        self.testament_combo.blockSignals(True)
+        self.testament_combo.setCurrentIndex(0 if self.testament == self.OLD_TESTAMENT else 1)
+        self.testament_combo.blockSignals(False)
         self._populate_books(preferred_code=book_row["book_code"], preferred_chapter=saved_chapter)
         self.open_selected_chapter(focus_verse=saved_verse, focus_reading=False)
         self._populate_search_books()
@@ -858,6 +932,7 @@ class MainWindow(QMainWindow):
     def _update_tab_order(self):
         """Garante a rota principal de quatro seções e rotas locais nas telas internas."""
         chain: list[QWidget] = [
+            self.testament_combo,
             self.book_list,
             self.chapter_list,
             self.verse_list,
@@ -902,9 +977,78 @@ class MainWindow(QMainWindow):
         self._loading = False
         self.settings.setValue("position/translation", item.data(Qt.UserRole))
         self.settings.setValue("translation", item.data(Qt.UserRole))
+        combo_index = self.translation_combo.findData(item.data(Qt.UserRole))
+        if combo_index >= 0:
+            self.translation_combo.setCurrentIndex(combo_index)
+        self.translation_feedback.setText(f"Tradução padrão selecionada: {item.text()}.")
         self._populate_books(preferred_code=old_book, preferred_chapter=int(old_chapter))
         self.open_selected_chapter(focus_reading=False)
         self.statusBar().showMessage(f"Tradução marcada: {item.text()}.")
+
+    def select_translation_combo(self, index: int):
+        """Aplica a escolha visível da caixa e anuncia a nova tradução padrão."""
+        if self._loading or index < 0:
+            return
+        translation_id = self.translation_combo.itemData(index)
+        for row in range(self.translation_list.count()):
+            item = self.translation_list.item(row)
+            if item.data(Qt.UserRole) == translation_id:
+                self.translation_list.setCurrentItem(item)
+                self.select_current_translation()
+                self._announce_for(
+                    self.translation_combo,
+                    f"Tradução padrão selecionada: {self.translation_combo.currentText()}.",
+                )
+                return
+
+    def _testament_combo_changed(self, index: int):
+        """Filtra livros pela seção escolhida e fornece feedback completo."""
+        if self._loading or index < 0:
+            return
+        self.testament = self.OLD_TESTAMENT if index == 0 else self.NEW_TESTAMENT
+        self.settings.setValue("position/testament", self.testament)
+        self._populate_books()
+        name = "Antigo Testamento" if index == 0 else "Novo Testamento"
+        message = f"{name} selecionado. {self.book_list.count()} livros. Escolha o livro."
+        self.testament_label.setText(message)
+        self._announce_for(self.testament_combo, message)
+
+    def refresh_comparison(self):
+        """Mostra o versículo atual primeiro na origem e depois no destino."""
+        key = self._current_verse_key()
+        if not key:
+            self._warn("Nenhum texto selecionado", "Abra um capítulo e selecione um versículo primeiro.")
+            return
+        verse = key[3]
+        reference = f"{self.active_book_name} {self.active_chapter}:{verse}"
+
+        def text_for(combo):
+            rows = self.db.passage(
+                combo.currentData(), self.active_book_code, self.active_chapter, verse, verse
+            )
+            return rows[0]["text"] if rows else "Texto indisponível nesta tradução."
+
+        source_name = self.comparison_source.currentText()
+        target_name = self.comparison_target.currentText()
+        self.comparison_source_text.set_text(
+            f"Tradução de origem: {source_name}\n{reference}\n{text_for(self.comparison_source)}"
+        )
+        self.comparison_target_text.set_text(
+            f"Tradução para comparar: {target_name}\n{reference}\n{text_for(self.comparison_target)}"
+        )
+        self.comparison_source_text.setFocus()
+        self._announce_for(
+            self.comparison_source_text,
+            f"Comparação carregada. Primeiro, {source_name}. Depois, {target_name}.",
+        )
+
+    def swap_comparison_translations(self):
+        """Inverte origem e destino sem alterar a tradução padrão."""
+        source = self.comparison_source.currentIndex()
+        target = self.comparison_target.currentIndex()
+        self.comparison_source.setCurrentIndex(target)
+        self.comparison_target.setCurrentIndex(source)
+        self.refresh_comparison()
 
     def switch_testament(self, direction: int):
         """Mostra apenas Antigo à esquerda ou Novo à direita."""
@@ -914,11 +1058,16 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"A seção Livros já está no {name}.")
             return
         self.testament = requested
+        self.testament_combo.blockSignals(True)
+        self.testament_combo.setCurrentIndex(0 if requested == self.OLD_TESTAMENT else 1)
+        self.testament_combo.blockSignals(False)
         self.settings.setValue("position/testament", requested)
         self._populate_books()
         self.book_list.setFocus()
         name = "Antigo Testamento" if requested == self.OLD_TESTAMENT else "Novo Testamento"
-        self.statusBar().showMessage(f"{name}: {self.book_list.count()} livros exibidos.")
+        message = f"{name} selecionado. {self.book_list.count()} livros. Escolha o livro."
+        self.testament_label.setText(message)
+        self._announce_for(self.book_list, message)
 
     def _populate_books(self, preferred_code=None, preferred_chapter=1):
         """Preenche somente os 39 ou 27 livros do testamento ativo."""
@@ -939,8 +1088,9 @@ class MainWindow(QMainWindow):
                 selected_row = index
         self.book_list.setCurrentRow(selected_row)
         self.testament_label.setText(
-            "Antigo Testamento — 39 livros" if self.testament == self.OLD_TESTAMENT
-            else "Novo Testamento — 27 livros"
+            "Antigo Testamento selecionado. 39 livros. Escolha o livro."
+            if self.testament == self.OLD_TESTAMENT
+            else "Novo Testamento selecionado. 27 livros. Escolha o livro."
         )
         self._loading = False
         self._populate_chapters(preferred_chapter)

@@ -6,12 +6,14 @@ Este documento explica a responsabilidade de cada arquivo e os fluxos principais
 
 O aplicativo não usa `QTabWidget` nem guias. Um `QStackedWidget` mantém uma tela principal enxuta e telas internas acessíveis. Na tela principal, o foco percorre:
 
-1. Livros.
+1. Livros, com caixa de combinação de testamento e lista filtrada.
 2. Capítulos.
 3. Versículos.
 4. Mais opções.
 
 Mais opções contém as páginas pessoais e de estudo. Espaço ou Enter abre somente o recurso escolhido; Escape restaura a tela principal e o foco em Mais opções. Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de listas. Na seção Livros, esquerda seleciona o Antigo Testamento e direita seleciona o Novo.
+
+A escolha de tradução usa caixa de combinação. Comparar traduções mantém origem e destino independentes e apresenta os dois textos em seções acessíveis distintas.
 
 ## Arquivos de execução
 

@@ -24,11 +24,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.1.0\n\n" +
-            "Duas traduções completas foram adicionadas: Bíblia Livre e Biblica Open Nova Bíblia Viva. Agora são cinco opções auditadas livro por livro, capítulo por capítulo e referência por referência.\n\n" +
-            "A antiga Área de leitura foi removida. O texto fica diretamente em Versículos, e Continuar de onde parou abre o capítulo completo na última posição.\n\n" +
-            "O Modo culto continua mostrando a referência e a passagem imediatamente.\n\n" +
-            "As licenças e atribuições das novas traduções foram incluídas. A NTLH não entrou porque não há autorização formal para redistribuí-la.\n\n" +
+            "Novidades da versão Android 4.2.0\n\n" +
+            "O banco bíblico interno agora é atualizado e validado junto com o APK. Isso corrige celulares atualizados que ainda mostravam somente as traduções antigas.\n\n" +
+            "Traduções e testamentos ganharam caixas de combinação acessíveis com feedback claro.\n\n" +
+            "A nova opção Comparar traduções permite escolher origem e destino, ler as duas seções e inverter a comparação.\n\n" +
+            "Cada pergunta do quiz continua contando uma única vez. Recomeçar quiz do zero é a única ação que libera as perguntas novamente e exige confirmação.\n\n" +
+            "O APK de produção agora recebe ofuscação, redução de código e recursos e verificação do certificado oficial na abertura.\n\n" +
             "A atualização preserva posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;

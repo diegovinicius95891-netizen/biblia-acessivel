@@ -57,14 +57,16 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertFalse(hasattr(window, "tabs"))
         self.assertIs(window.page_stack, window.centralWidget())
         self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
-        self.assertEqual(27, window.more_options.count())
+        self.assertEqual(28, window.more_options.count())
         labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
         self.assertIn("Harpa Cristã", labels)
         self.assertIn("Status do quiz", labels)
         self.assertIn("Devocionais novos do site", labels)
         self.assertIn("Rádio Gospel", labels)
         self.assertIn("Ideias, sugestões e suporte", labels)
+        self.assertIn("Comparar traduções", labels)
         self.assertEqual(5, window.translation_list.count())
+        self.assertEqual(5, window.translation_combo.count())
         self.assertEqual(39, window.book_list.count())
 
         window.book_list.setFocus()
@@ -83,6 +85,20 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertIn("João 3:16", window.statusBar().currentMessage())
         self.assertFalse(hasattr(window, "reading_area"))
         self.assertEqual("Fim do capítulo.", window.verse_list.item(window.verse_list.count() - 1).text())
+
+        window.open_more_option("comparison")
+        window.refresh_comparison()
+        source = " ".join(
+            window.comparison_source_text.item(index).text()
+            for index in range(window.comparison_source_text.count())
+        )
+        target = " ".join(
+            window.comparison_target_text.item(index).text()
+            for index in range(window.comparison_target_text.count())
+        )
+        self.assertIn("João 3:16", source)
+        self.assertIn("João 3:16", target)
+        window._handle_escape()
 
         window.verse_list.setFocus()
         QTest.keyClick(window.verse_list, Qt.Key_Right)

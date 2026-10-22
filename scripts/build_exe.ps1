@@ -29,6 +29,10 @@ if ($LASTEXITCODE -ne 0 -or $buildVersions.Trim() -ne '6.8.3|6.21.0') {
     --clean `
     --onefile `
     --windowed `
+    --optimize 2 `
+    --exclude-module unittest `
+    --exclude-module pydoc `
+    --exclude-module tkinter `
     --name BibliaAcessivel `
     --add-data "$projectRoot\data\biblia.db;data" `
     --add-data "$projectRoot\data\harpa_crista.json;data" `

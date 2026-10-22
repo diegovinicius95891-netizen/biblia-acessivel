@@ -11,6 +11,7 @@ NAVEGAÇÃO PRINCIPAL
 Tab e Shift+Tab percorrem Livros, Capítulos, Versículos e Mais opções.
 Setas cima e baixo navegam dentro da seção atual.
 Nos Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo Testamento.
+Também existe uma caixa de combinação Seção da Bíblia. Ela anuncia o testamento escolhido, a quantidade de livros e o próximo passo.
 Espaço ou Enter ativa o item atual. A tecla Aplicações ou Shift+F10 abre as ações do item.
 O texto bíblico é mostrado diretamente na seção Versículos; não existe uma tela de leitura duplicada.
 
@@ -23,6 +24,8 @@ Se encontrar um banco antigo, ele migra as notas e cria uma cópia de segurança
 RECURSOS PESSOAIS E DE ESTUDO
 
 Mais opções contém busca inteligente, 17 planos de leitura, Diário de oração, Meu momento com Deus, devocionais do site, favoritos com categorias, histórico, temas, informações dos livros, personagens, memorização, Harpa Cristã com 640 hinos, Rádio Gospel, quiz com 298 perguntas, Status do quiz, estatísticas, Modo culto, ideias e suporte e backup.
+Comparar traduções permite escolher origem e destino, ler as duas seções e inverter as traduções. Traduções usa uma caixa de combinação para definir a edição padrão.
+Cada pergunta do quiz conta somente uma vez. Em Status do quiz, Recomeçar quiz do zero apaga os resultados, mediante confirmação, e libera as perguntas novamente.
 Todas essas áreas funcionam pelo teclado. Espaço ou Enter abre o item destacado e Escape volta à Bíblia.
 No Modo culto, digite a referência e pressione Enter: a passagem aparece e recebe foco imediatamente, sem abrir uma ação Ler versículo.
 

@@ -143,6 +143,10 @@ class UserDataTests(unittest.TestCase):
                 {"quiz_total": 1, "quiz_acertos": 0, "quiz_erros": 1},
                 database.quiz_statistics(),
             )
+            database.reset_quiz()
+            self.assertEqual(0, database.quiz_statistics()["quiz_total"])
+            self.assertTrue(database.record_quiz_attempt("q1", "fácil", "Jesus", True))
+            self.assertEqual(1, database.quiz_statistics()["quiz_acertos"])
             database.close()
 
     def test_quiz_migration_removes_old_duplicate_answers(self):

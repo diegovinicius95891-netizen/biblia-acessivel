@@ -25,11 +25,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -94,6 +96,13 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!AppIntegrity.hasExpectedSignature(this)) {
+            LinearLayout root = rootLayout();
+            root.addView(heading("Não foi possível confirmar esta instalação"));
+            root.addView(paragraph("A autenticidade do aplicativo não pôde ser confirmada. Baixe novamente pelo link oficial."));
+            setContentView(root);
+            return;
+        }
         preferences = getSharedPreferences("settings", MODE_PRIVATE);
         userData = new UserDatabase(this);
         secureStore = new SecureStore(this);
@@ -180,27 +189,37 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void showBooks() {
         boolean newTestament = selectedBook.number > 39;
         LinearLayout root = screen("Livros", this::showMainMenu);
-        LinearLayout toggles = horizontalRow();
-        toggles.addView(actionButton("Antigo Testamento", "Mostrar 39 livros do Antigo Testamento",
-                () -> populateBookScreen(false)), weighted());
-        toggles.addView(actionButton("Novo Testamento", "Mostrar 27 livros do Novo Testamento",
-                () -> populateBookScreen(true)), weighted());
-        root.addView(toggles);
+        root.addView(paragraph("Selecione a seção: Antigo ou Novo Testamento."));
+        Spinner testament = new Spinner(this);
+        testament.setContentDescription("Seção da Bíblia: Antigo ou Novo Testamento");
+        testament.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"Antigo Testamento", "Novo Testamento"}));
+        testament.setSelection(newTestament ? 1 : 0);
+        root.addView(testament);
+        TextView feedback = paragraph("");
+        root.addView(feedback);
+        testament.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                int count = position == 1 ? 27 : 39;
+                String name = position == 1 ? "Novo Testamento" : "Antigo Testamento";
+                feedback.setText(name + " selecionado. " + count + " livros. Ative Escolher livro.");
+                feedback.announceForAccessibility(feedback.getText());
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        root.addView(actionButton("Escolher livro", "Abrir os livros do testamento selecionado",
+                () -> populateBookScreen(testament.getSelectedItemPosition() == 1)));
         setContentView(root);
-        populateBookScreen(newTestament);
+        testament.requestFocus();
     }
 
     /** Recria a lista de livros sem alterar o padrão de foco da tela. */
     private void populateBookScreen(boolean newTestament) {
         LinearLayout root = screen("Livros — " +
-                (newTestament ? "Novo Testamento" : "Antigo Testamento"), this::showMainMenu);
-        LinearLayout toggles = horizontalRow();
-        toggles.addView(actionButton("Antigo", "Mostrar Antigo Testamento",
-                () -> populateBookScreen(false)), weighted());
-        toggles.addView(actionButton("Novo", "Mostrar Novo Testamento",
-                () -> populateBookScreen(true)), weighted());
-        root.addView(toggles);
+                (newTestament ? "Novo Testamento" : "Antigo Testamento"), this::showBooks);
         List<Models.Book> books = bible.books(translationId, newTestament);
+        root.addView(paragraph((newTestament ? "Novo Testamento" : "Antigo Testamento") +
+                " selecionado. " + books.size() + " livros. Escolha o livro com cima e baixo e ative para abrir."));
         ListView list = listView(books);
         list.setContentDescription("Livros do " + (newTestament ? "Novo" : "Antigo") + " Testamento");
         list.setOnItemClickListener((parent, view, position, id) -> {
@@ -216,6 +235,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             return true;
         });
         root.addView(list, fill());
+        root.addView(actionButton("Trocar testamento", "Escolher Antigo ou Novo Testamento", this::showBooks));
         root.addView(paragraph("Toque duas vezes para abrir capítulos. Toque e segure para Aplicações."));
         setContentView(root);
         int index = Math.max(0, books.indexOf(selectedBook));
@@ -283,7 +303,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void showMoreOptions() {
         LinearLayout root = screen("Mais opções", this::showMainMenu);
         String[] options = {
-                "Traduções", "Ir para uma referência", "Pesquisar na Bíblia", "Estudos — Teólogo de IA",
+                "Traduções", "Comparar traduções", "Ir para uma referência", "Pesquisar na Bíblia", "Estudos — Teólogo de IA",
                 "Fazer devocional", "Devocionais novos do site", "Rádio Gospel", "Anotações por dia",
                 "Harpa Cristã", "Quiz bíblico", "Status do quiz", "Modo culto", "Atualizações",
                 "Configurações", "Ideias, sugestões e suporte", "Licenças, leis e justificativa", "Ajuda"
@@ -293,21 +313,22 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         list.setOnItemClickListener((parent, view, position, id) -> {
             switch (position) {
                 case 0: showTranslations(); break;
-                case 1: showReference(); break;
-                case 2: showSearch(); break;
-                case 3: showStudies(); break;
-                case 4: showDevotional(); break;
-                case 5: showOnlineDevotionals(); break;
-                case 6: showGospelRadio(); break;
-                case 7: showNotes(); break;
-                case 8: showHymnal(); break;
-                case 9: showQuiz(); break;
-                case 10: showQuizStatus(); break;
-                case 11: showWorshipMode(); break;
-                case 12: showUpdates(); break;
-                case 13: showSettings(); break;
-                case 14: openIdeasEmail(); break;
-                case 15: showLegal(); break;
+                case 1: showComparison(); break;
+                case 2: showReference(); break;
+                case 3: showSearch(); break;
+                case 4: showStudies(); break;
+                case 5: showDevotional(); break;
+                case 6: showOnlineDevotionals(); break;
+                case 7: showGospelRadio(); break;
+                case 8: showNotes(); break;
+                case 9: showHymnal(); break;
+                case 10: showQuiz(); break;
+                case 11: showQuizStatus(); break;
+                case 12: showWorshipMode(); break;
+                case 13: showUpdates(); break;
+                case 14: showSettings(); break;
+                case 15: openIdeasEmail(); break;
+                case 16: showLegal(); break;
                 default: showHelp();
             }
         });
@@ -377,11 +398,26 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void showTranslations() {
         LinearLayout root = screen("Traduções", this::showMoreOptions);
         List<Models.Translation> translations = bible.translations();
-        ListView list = listView(translations);
-        list.setContentDescription("Traduções bíblicas");
-        list.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-        list.setOnItemClickListener((parent, view, position, id) -> {
-            Models.Translation chosen = translations.get(position);
+        root.addView(paragraph("Escolha a tradução na caixa de combinação e ative Aplicar tradução."));
+        Spinner choices = new Spinner(this);
+        choices.setContentDescription("Caixa de combinação de traduções bíblicas");
+        choices.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, translations));
+        int selected = 0;
+        for (int index = 0; index < translations.size(); index++) {
+            if (translations.get(index).id.equals(translationId)) selected = index;
+        }
+        choices.setSelection(selected);
+        root.addView(choices);
+        TextView feedback = paragraph("Tradução atual: " + translations.get(selected).name + ".");
+        root.addView(feedback);
+        choices.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                feedback.setText("Tradução escolhida: " + translations.get(position).name + ". Ative Aplicar tradução.");
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        root.addView(actionButton("Aplicar tradução", "Usar a tradução escolhida como padrão", () -> {
+            Models.Translation chosen = translations.get(choices.getSelectedItemPosition());
             String oldCode = selectedBook.code;
             translationId = chosen.id;
             selectedBook = bible.findBook(translationId, oldCode);
@@ -391,10 +427,69 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             selectVerse(selectedVerse == null ? "1" : selectedVerse.number);
             savePosition();
             Toast.makeText(this, "Tradução selecionada: " + chosen.name, Toast.LENGTH_LONG).show();
-        });
-        root.addView(list, fill());
+            feedback.setText("Tradução padrão selecionada: " + chosen.name + ".");
+            feedback.announceForAccessibility(feedback.getText());
+        }));
         setContentView(root);
-        list.requestFocus();
+        choices.requestFocus();
+    }
+
+    /** Escolhe origem e destino e compara o versículo atual em seções separadas. */
+    private void showComparison() {
+        LinearLayout root = screen("Comparar traduções", this::showMoreOptions);
+        List<Models.Translation> translations = bible.translations();
+        root.addView(paragraph("Referência atual: " + currentReference() + ". Escolha a tradução de origem e a tradução para comparar."));
+        Spinner source = new Spinner(this);
+        source.setContentDescription("Tradução de origem");
+        source.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, translations));
+        Spinner target = new Spinner(this);
+        target.setContentDescription("Tradução para comparar");
+        target.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, translations));
+        int sourceIndex = 0;
+        for (int index = 0; index < translations.size(); index++) {
+            if (translations.get(index).id.equals(translationId)) sourceIndex = index;
+        }
+        source.setSelection(sourceIndex);
+        target.setSelection(translations.size() > 1 ? (sourceIndex + 1) % translations.size() : sourceIndex);
+        root.addView(paragraph("Tradução de origem"));
+        root.addView(source);
+        root.addView(paragraph("Tradução para comparar"));
+        root.addView(target);
+        root.addView(actionButton("Comparar versículo", "Mostrar as duas traduções de " + currentReference(), () ->
+                showComparisonResult(translations.get(source.getSelectedItemPosition()),
+                        translations.get(target.getSelectedItemPosition()))));
+        setContentView(root);
+        source.requestFocus();
+    }
+
+    /** Mostra primeiro a origem e depois o destino, permitindo inverter as duas. */
+    private void showComparisonResult(Models.Translation source, Models.Translation target) {
+        LinearLayout root = screen("Comparação de " + currentReference(), this::showComparison);
+        String sourceText = verseText(source.id, selectedVerse.number);
+        String targetText = verseText(target.id, selectedVerse.number);
+        root.addView(heading("Tradução de origem — " + source.name));
+        TextView sourceView = paragraph(currentReference() + ". " + sourceText);
+        sourceView.setFocusable(true);
+        sourceView.setContentDescription("Tradução de origem, " + source.name + ". " +
+                currentReference() + ". " + sourceText);
+        root.addView(sourceView);
+        root.addView(heading("Tradução para comparar — " + target.name));
+        TextView targetView = paragraph(currentReference() + ". " + targetText);
+        targetView.setFocusable(true);
+        targetView.setContentDescription("Tradução para comparar, " + target.name + ". " +
+                currentReference() + ". " + targetText);
+        root.addView(targetView);
+        root.addView(actionButton("Trocar origem e destino", "Inverter as duas traduções",
+                () -> showComparisonResult(target, source)));
+        root.addView(actionButton("Escolher outras traduções", "Voltar às caixas de combinação", this::showComparison));
+        setContentView(root);
+        sourceView.requestFocus();
+    }
+
+    private String verseText(String chosenTranslation, String verseNumber) {
+        List<Models.Verse> verses = bible.passage(chosenTranslation, selectedBook.code,
+                selectedChapter, verseNumber, verseNumber);
+        return verses.isEmpty() ? "Texto indisponível nesta tradução." : verses.get(0).text;
     }
 
     /** Navega para uma referência digitada em português. */
@@ -824,7 +919,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "Ouvir ou repetir no menu do versículo usa a " +
                 "voz escolhida. Se a voz estiver desligada, o TalkBack anuncia novamente o texto.\n\n" +
                 "HARPA, QUIZ E MODO CULTO\n\nA Harpa Cristã possui 640 hinos pesquisáveis e funciona " +
-                "offline. O quiz possui 298 perguntas e registra acertos e erros em Status do quiz. No Modo " +
+                "offline. O quiz possui 298 perguntas e cada uma conta somente uma vez. Recomeçar quiz do zero, " +
+                "em Status do quiz, é a única forma de liberar tudo novamente. Traduções e testamentos usam caixas de combinação com feedback. " +
+                "Comparar traduções separa origem e destino e permite inverter as duas. No Modo " +
                 "culto, digite uma passagem e confirme: o texto aparece imediatamente, sem precisar tocar " +
                 "em Ler versículo. A Rádio Gospel toca pela internet os louvores publicados no site. " +
                 "Ideias, sugestões e suporte abre um e-mail para Diego.\n\nATUALIZAÇÕES\n\nA versão Android consulta somente releases android-v " +
@@ -991,6 +1088,15 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         ListView list = listView(lines);
         list.setContentDescription("Acertos e erros do quiz bíblico");
         root.addView(list, fill());
+        root.addView(actionButton("Recomeçar quiz do zero",
+                "Apagar todos os acertos e erros e liberar novamente as perguntas", () ->
+                new AlertDialog.Builder(this).setTitle("Recomeçar quiz do zero")
+                        .setMessage("Apagar todos os resultados do quiz? Depois disso, cada pergunta poderá ser respondida novamente uma vez.")
+                        .setPositiveButton("Apagar e recomeçar", (dialog, which) -> {
+                            userData.resetQuiz();
+                            Toast.makeText(this, "Quiz restaurado. Todas as perguntas foram liberadas.", Toast.LENGTH_LONG).show();
+                            showQuizStatus();
+                        }).setNegativeButton("Cancelar", null).show()));
         setContentView(root);
         list.requestFocus();
     }

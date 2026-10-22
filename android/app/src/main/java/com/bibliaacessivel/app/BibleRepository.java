@@ -1,6 +1,7 @@
 package com.bibliaacessivel.app;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -8,6 +9,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,22 +19,84 @@ import java.util.Locale;
 
 /** Copia e consulta o banco bíblico offline distribuído dentro do APK. */
 final class BibleRepository implements AutoCloseable {
+    private static final String ASSET_VERSION_KEY = "installed_bible_asset_version";
     private final SQLiteDatabase database;
 
     BibleRepository(Context context) throws IOException {
         File target = new File(context.getNoBackupFilesDir(), "biblia.db");
-        if (!target.exists()) {
+        SharedPreferences state = context.getSharedPreferences("bible_assets", Context.MODE_PRIVATE);
+        boolean needsRefresh = !target.exists() ||
+                state.getInt(ASSET_VERSION_KEY, 0) != BuildConfig.VERSION_CODE;
+        if (needsRefresh) {
+            installBundledDatabase(context, target);
+            state.edit().putInt(ASSET_VERSION_KEY, BuildConfig.VERSION_CODE).apply();
+        }
+        database = SQLiteDatabase.openDatabase(target.getAbsolutePath(), null,
+                SQLiteDatabase.OPEN_READONLY);
+    }
+
+    /** Atualiza a cópia bíblica de forma atômica sem tocar no banco de dados pessoais. */
+    private static void installBundledDatabase(Context context, File target) throws IOException {
+        File pending = new File(target.getParentFile(), "biblia.db.new");
+        if (pending.exists() && !pending.delete()) {
+            throw new IOException("Não foi possível preparar a atualização dos textos bíblicos.");
+        }
+        try {
             try (InputStream input = context.getAssets().open("biblia.db");
-                 FileOutputStream output = new FileOutputStream(target)) {
+                 FileOutputStream output = new FileOutputStream(pending)) {
                 byte[] buffer = new byte[64 * 1024];
                 int count;
                 while ((count = input.read(buffer)) >= 0) {
                     output.write(buffer, 0, count);
                 }
+                output.getFD().sync();
             }
+            validateBundledDatabase(pending);
+            try {
+                Files.move(pending.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException unsupported) {
+                Files.move(pending.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            if (pending.exists()) pending.delete();
         }
-        database = SQLiteDatabase.openDatabase(target.getAbsolutePath(), null,
-                SQLiteDatabase.OPEN_READONLY);
+    }
+
+    /** Recusa um asset antigo ou incompleto antes que ele substitua a Bíblia funcional. */
+    private static void validateBundledDatabase(File file) throws IOException {
+        SQLiteDatabase candidate = null;
+        try {
+            candidate = SQLiteDatabase.openDatabase(file.getAbsolutePath(), null,
+                    SQLiteDatabase.OPEN_READONLY);
+            int translations;
+            int completeTranslations;
+            int chapters;
+            try (Cursor cursor = candidate.rawQuery("SELECT COUNT(*) FROM translations", null)) {
+                cursor.moveToFirst();
+                translations = cursor.getInt(0);
+            }
+            try (Cursor cursor = candidate.rawQuery(
+                    "SELECT COUNT(*) FROM (SELECT translation_id FROM verses " +
+                            "GROUP BY translation_id HAVING COUNT(DISTINCT book_code)=66)", null)) {
+                cursor.moveToFirst();
+                completeTranslations = cursor.getInt(0);
+            }
+            try (Cursor cursor = candidate.rawQuery(
+                    "SELECT COUNT(*) FROM (SELECT DISTINCT translation_id,book_code,chapter FROM verses)",
+                    null)) {
+                cursor.moveToFirst();
+                chapters = cursor.getInt(0);
+            }
+            if (translations < 5 || completeTranslations != translations ||
+                    chapters != translations * 1189) {
+                throw new IOException("A atualização dos textos bíblicos não passou na verificação.");
+            }
+        } catch (RuntimeException error) {
+            throw new IOException("A atualização dos textos bíblicos não pôde ser validada.", error);
+        } finally {
+            if (candidate != null) candidate.close();
+        }
     }
 
     List<Models.Translation> translations() {

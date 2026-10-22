@@ -14,8 +14,8 @@ android {
         applicationId 'com.bibliaacessivel.app'
         minSdk 26
         targetSdk 35
-        versionCode 11
-        versionName '4.1.0'
+        versionCode 12
+        versionName '4.2.0'
     }
 
     compileOptions {
@@ -42,7 +42,10 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
-            minifyEnabled false
+            debuggable false
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 

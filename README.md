@@ -1,6 +1,6 @@
 # Bíblia Acessível
 
-Versão atual: **4.1.0** para Windows e Android.
+Versão atual: **4.2.0** para Windows e Android.
 
 Em Mais opções, **Devocionais novos do site** consulta diariamente os textos publicados em
 `audiogames.com.br/diego/devocionais`, mantém o histórico para leitura offline e avisa somente
@@ -34,8 +34,8 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 - Navegação por seções: Tab e Shift+Tab mudam de seção; cima e baixo navegam dentro dela.
 - A tela principal mostra somente Livros, Capítulos, Versículos e Mais opções.
 - Mais opções reúne os recursos pessoais e de estudo em telas internas limpas; Escape volta à Bíblia.
-- A tela Traduções usa itens com estado de caixa de seleção; Espaço ou Enter marca uma única edição.
-- A seção Livros mostra apenas o testamento atual; esquerda seleciona o Antigo e direita seleciona o Novo.
+- A tela Traduções usa uma caixa de combinação acessível para escolher a edição padrão.
+- A seção Livros oferece uma caixa de combinação entre Antigo e Novo Testamento, anuncia a quantidade de livros e mantém esquerda/direita como atalho na lista.
 - Enter em Livros leva aos capítulos; Enter em Capítulos abre a seção Versículos.
 - Lista de leitura adequada para navegação linha a linha com NVDA, JAWS ou Narrador.
 - Na seção Versículos, o texto bíblico fica diretamente na lista; esquerda volta um capítulo e direita avança um capítulo do mesmo livro.
@@ -67,6 +67,8 @@ O aplicativo salva automaticamente tradução, testamento, livro, capítulo e it
 - Ideias, sugestões e suporte abre o e-mail já endereçado para `diego@audiogames.com.br`.
 - Memorização em três níveis e 298 perguntas de quiz sobre conteúdo, ordem e estrutura da Bíblia.
 - Status do quiz com perguntas respondidas, acertos, erros, aproveitamento e detalhamento por dificuldade.
+- Cada pergunta do quiz conta somente na primeira resposta. Recomeçar quiz do zero, com confirmação, é a única forma de liberar todas novamente.
+- Comparação de traduções com caixas de origem e destino, duas seções de resultado e comando para inverter as edições.
 - Modo culto com foco direto no campo: Enter exibe a passagem sem abrir “Ler versículo”; o texto recebe foco e há comandos para copiar, trocar de capítulo ou digitar outra referência.
 - Backup JSON versionado e validado para favoritos, notas, planos, orações, devocionais, histórico e configurações não secretas.
 
@@ -99,6 +101,10 @@ python scripts/build_database.py
 ```
 
 O processo de construção exige internet. Depois disso, somente o recurso opcional de IA precisa de conexão.
+
+## Proteções dos pacotes
+
+O Android de produção usa R8 para ofuscar, reduzir e otimizar o código e os recursos, recusa uma assinatura diferente do certificado oficial e valida o banco bíblico antes de atualizar sua cópia offline. O Windows remove docstrings, asserções e módulos de desenvolvimento do executável congelado. Os dois atualizadores continuam exigindo o nome correto do pacote e SHA-256 publicado. Essas camadas dificultam alteração e engenharia reversa, mas nenhum programa instalado no aparelho pode ser considerado impossível de analisar.
 
 ## Recriar o executável
 

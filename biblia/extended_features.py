@@ -1135,9 +1135,15 @@ class ExtendedFeatures:
 
     def _build_quiz_status(self):
         """Cria a seção dedicada a acertos, erros e aproveitamento."""
-        section, _layout, self.quiz_status_list = self._list_section(
+        section, layout, self.quiz_status_list = self._list_section(
             "Status do quiz", "Resultados acumulados somente neste computador."
         )
+        reset = AccessibleButton("&Recomeçar quiz do zero")
+        reset.setAccessibleDescription(
+            "Apaga todos os acertos e erros e libera novamente todas as perguntas."
+        )
+        reset.clicked.connect(self.reset_quiz)
+        layout.addWidget(reset)
         self._register("quiz_status", "Status do quiz", section, self.quiz_status_list)
 
     def refresh_quiz_status(self):
@@ -1158,6 +1164,20 @@ class ExtendedFeatures:
                 f"Dificuldade {row['difficulty']}: {correct} acertos e {attempts - correct} erros."
             ))
         self.quiz_status_list.setCurrentRow(0)
+
+    def reset_quiz(self):
+        """Confirma a limpeza total antes de permitir uma nova rodada."""
+        if not self._confirm(
+            "Recomeçar quiz do zero",
+            "Apagar todos os resultados do quiz? Depois disso, cada pergunta poderá ser respondida novamente uma vez.",
+        ):
+            return
+        self.data.reset_quiz()
+        self.refresh_quiz_status()
+        self.host._announce_for(
+            self.quiz_status_list,
+            "Quiz restaurado. Todas as perguntas foram liberadas.",
+        )
 
     # Estatísticas, culto e backup ------------------------------------
     def _build_statistics(self):

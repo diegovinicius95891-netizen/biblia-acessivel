@@ -10,6 +10,8 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 - Com o TalkBack, deslizar para a direita ou esquerda percorre as opções e o toque duplo abre a opção anunciada.
 - Ao fim dos versículos, há uma opção para abrir o próximo capítulo; no último capítulo, o fim do livro é anunciado.
 - Antigo e Novo Testamento, continuidade da última posição e pesquisa offline.
+- Caixa de combinação para a tradução padrão e outra para escolher Antigo ou Novo Testamento, com feedback pelo TalkBack.
+- Comparação do versículo atual com origem, destino e comando para inverter as duas traduções.
 - Um toque no versículo abre suas ações; com TalkBack, use o toque duplo normal, sem gesto de segurar.
 - Aplicações do livro, capítulo e versículo, mantendo a ação de IA em primeiro lugar.
 - Seção Estudos com resumos de capítulo e livro, Teólogo de IA, categorias prontas e pergunta livre editável usando a chave Gemini do usuário.
@@ -22,10 +24,13 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 - Leis, licenças, justificativa de uso e ajuda dentro do aplicativo.
 - Harpa Cristã com 640 hinos e pesquisa offline por número, título ou trecho.
 - Quiz bíblico com 298 perguntas de estudo e Status do quiz com acertos, erros e aproveitamento.
+- Cada pergunta conta somente uma vez; o botão confirmado Recomeçar quiz do zero é a única forma de liberar todas novamente.
 - Modo culto: confirme João 3:16, Romanos 8 ou Salmos 23:1-6 e a passagem aparece e recebe foco imediatamente.
 - Atualizador Android próprio, com consulta diária opcional, download cancelável, SHA-256 e backup antes da instalação.
 
 O backup automático do aplicativo está desativado. Notas, marcadores e chave de API permanecem no armazenamento privado do aplicativo e não fazem parte do APK.
+
+O APK de produção é reduzido e ofuscado pelo R8, verifica o certificado oficial ao abrir e atualiza o banco bíblico por troca atômica somente depois de validar traduções, livros e capítulos. Isso corrige instalações antigas que mantinham uma cópia desatualizada do banco.
 
 ## Atualizações separadas
 

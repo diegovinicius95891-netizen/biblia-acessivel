@@ -140,6 +140,11 @@ final class UserDatabase extends SQLiteOpenHelper {
         }
     }
 
+    /** Apaga somente os resultados do quiz para permitir um novo começo consciente. */
+    void resetQuiz() {
+        getWritableDatabase().delete("quiz_attempts", null, null);
+    }
+
     /** Cria uma cópia consistente antes da instalação e mantém as cinco mais recentes. */
     void backupBeforeUpdate(String version) throws Exception {
         SQLiteDatabase database = getReadableDatabase();

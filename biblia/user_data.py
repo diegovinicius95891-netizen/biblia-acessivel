@@ -644,6 +644,11 @@ class UserDataDatabase:
         ).fetchall()
         return [dict(row) for row in rows]
 
+    def reset_quiz(self):
+        """Apaga somente os resultados para liberar novamente cada pergunta."""
+        self.connection.execute("DELETE FROM quiz_attempts")
+        self.connection.commit()
+
     def export_payload(self) -> dict:
         """Produz dados pessoais serializáveis em um formato versionado."""
         tables = (
