@@ -24,10 +24,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.3.1\n\n" +
-            "O Modo culto agora entende somente o nome do livro, ordinais falados, números, símbolos ordinais, algarismos romanos e expressões como Segunda carta de Pedro.\n\n" +
-            "Ao pesquisar apenas Pedro, ou dizer um ordinal que não existe, o aplicativo mostra numa lista acessível os livros de Pedro realmente disponíveis.\n\n" +
-            "Referências sem pontuação, como Segunda Pedro 2 5 15, abrem o capítulo 2 do versículo 5 ao 15. O aplicativo também informa claramente quando o intervalo passa do último versículo.\n\n" +
+            "Novidades da versão Android 4.3.2\n\n" +
+            "A busca inteligente do Modo culto agora cobre todas as famílias numeradas: Samuel, Reis, Crônicas, Coríntios, Tessalonicenses, Timóteo, Pedro e João.\n\n" +
+            "Ela entende formas como Segundo Samuel, primeiro livro de Samuel, Segunda carta aos Coríntios, II Timóteo e números com símbolo ordinal.\n\n" +
+            "Ao pesquisar João sem número, o aplicativo oferece o Evangelho e as três cartas. Dizer Evangelho de João seleciona somente o Evangelho.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;

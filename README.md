@@ -1,6 +1,6 @@
 # Bíblia Acessível
 
-Versão atual: **4.3.1 para Windows e Android**.
+Versões atuais: **4.3.1 para Windows** e **4.3.2 para Android**.
 
 Em Mais opções, **Devocionais novos do site** consulta diariamente os textos publicados em
 `audiogames.com.br/diego/devocionais`, mantém o histórico para leitura offline e avisa somente
@@ -70,7 +70,7 @@ O aplicativo salva automaticamente tradução, testamento, livro, capítulo e it
 - Status do quiz com perguntas respondidas, acertos, erros, aproveitamento e detalhamento por dificuldade.
 - Cada pergunta do quiz conta somente na primeira resposta. Recomeçar quiz do zero, com confirmação, é a única forma de liberar todas novamente.
 - Comparação de traduções com caixas de origem e destino, duas seções de resultado e comando para inverter as edições.
-- Modo culto com busca inteligente: no Android, aceita texto ou voz, nomes isolados, ordinais como Segunda Pedro, 2ª Pedro ou II Pedro e intervalos como Segunda Pedro 2 5 15. Quando há mais de um livro possível, mostra uma lista acessível para escolha.
+- Modo culto com busca inteligente: no Android, aceita texto ou voz, nomes isolados, ordinais e intervalos. Samuel, Reis, Crônicas, Coríntios, Tessalonicenses, Timóteo, Pedro e João oferecem todos os livros possíveis em uma lista acessível.
 - No Android, a tela inicial oferece continuar o capítulo atual ou trocar de livro. Ao escolher capítulo, é possível selecionar o versículo inicial; capítulo anterior e próximo ficam no começo da leitura e também podem ser acionados por gesto horizontal de dois dedos.
 - Backup JSON versionado e validado para favoritos, notas, planos, orações, devocionais, histórico e configurações não secretas.
 

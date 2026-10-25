@@ -132,20 +132,33 @@ final class BibleRepository implements AutoCloseable {
 
     /** Localiza nomes, códigos, ordinais falados e famílias ambíguas como "Pedro". */
     List<Models.Book> matchingBooks(String translationId, String query) {
+        List<Models.Book> available = new ArrayList<>();
+        for (boolean nt : new boolean[]{false, true}) available.addAll(books(translationId, nt));
+        return matchBookCandidates(available, query);
+    }
+
+    /** Regra pura compartilhada pelos testes para escolher entre todas as famílias numeradas. */
+    static List<Models.Book> matchBookCandidates(List<Models.Book> available, String query) {
         String wanted = normalizeBookQuery(query);
         List<Models.Book> exact = new ArrayList<>();
         List<Models.Book> partial = new ArrayList<>();
         List<Models.Book> family = new ArrayList<>();
         String wantedFamily = numberedBookFamily(wanted);
-        for (boolean nt : new boolean[]{false, true}) {
-            for (Models.Book book : books(translationId, nt)) {
-                String name = normalizeBookQuery(book.name);
-                if (name.equals(wanted) || normalize(book.code).equals(wanted)) exact.add(book);
-                else if (!wanted.isEmpty() && (name.endsWith(wanted) || name.contains(wanted))) partial.add(book);
-                if (!wantedFamily.isEmpty() && numberedBookFamily(name).equals(wantedFamily)) family.add(book);
-            }
+        boolean numberedQuery = wanted.matches("^[123].+");
+        boolean gospelQuery = isGospelQuery(query);
+        for (Models.Book book : available) {
+            String name = normalizeBookQuery(book.name);
+            if (name.equals(wanted) || normalize(book.code).equals(wanted)) exact.add(book);
+            else if (!wanted.isEmpty() && (name.endsWith(wanted) || name.contains(wanted))) partial.add(book);
+            if (!wantedFamily.isEmpty() && numberedBookFamily(name).equals(wantedFamily)) family.add(book);
         }
-        if (!exact.isEmpty()) return exact;
+        // "João" pode ser o Evangelho ou uma das três cartas. A palavra
+        // "Evangelho" preserva a escolha exata; sem ela, todas são oferecidas.
+        if (!exact.isEmpty()) {
+            if (!numberedQuery && !gospelQuery && family.size() > 1) return family;
+            return exact;
+        }
+        if (family.size() > 1) return family;
         if (!partial.isEmpty()) return partial;
         // Se a pessoa disser um ordinal inexistente, como "terceira Pedro",
         // oferece os livros reais da mesma família em vez de encerrar a busca.
@@ -156,15 +169,24 @@ final class BibleRepository implements AutoCloseable {
     static String normalizeBookQuery(String value) {
         String text = Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).trim();
-        text = text.replaceFirst("^i{3}(?:\\s+|[.])", "3 ")
+        text = text.replaceFirst("^(?:o\\s+)?evangelho\\s+(?:de|do|da)\\s+", "")
+                .replaceFirst("^i{3}(?:\\s+|[.])", "3 ")
                 .replaceFirst("^i{2}(?:\\s+|[.])", "2 ")
                 .replaceFirst("^i(?:\\s+|[.])", "1 ")
                 .replaceFirst("^(primeira|primeiro|uma|um)\\s+", "1 ")
                 .replaceFirst("^(segunda|segundo|duas|dois)\\s+", "2 ")
                 .replaceFirst("^(terceira|terceiro|tres)\\s+", "3 ")
                 .replaceFirst("^([123])\\s*[ªº°.]\\s*", "$1 ")
-                .replaceFirst("^([123]\\s+)?(?:a\\s+)?(?:carta|epistola|livro)\\s+(?:de|do|da)\\s+", "$1");
+                .replaceFirst("^([123]\\s+)?(?:a\\s+)?(?:carta|epistola|livro)\\s+(?:(?:aos?|as|de|do|da|dos|das)\\s+)?", "$1")
+                .replaceFirst("^([123])\\s+(?:aos?|as|de|do|da|dos|das)\\s+", "$1 ");
         return normalize(text);
+    }
+
+    /** Distingue a escolha explícita do Evangelho da busca genérica por João. */
+    static boolean isGospelQuery(String value) {
+        String text = Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).trim();
+        return text.matches("^(?:o\\s+)?evangelho\\s+(?:de|do|da)\\s+.+");
     }
 
     /** Remove somente o número inicial para comparar 1, 2 e 3 do mesmo livro. */
