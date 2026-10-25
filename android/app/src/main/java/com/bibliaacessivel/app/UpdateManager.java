@@ -24,11 +24,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.3.0\n\n" +
-            "A entrada ficou mais limpa: continuar o capítulo atual, trocar de livro ou abrir Mais opções. A posição exata continua salva.\n\n" +
-            "Ao escolher um capítulo, agora é possível começar no primeiro versículo ou escolher exatamente onde iniciar.\n\n" +
-            "A leitura ganhou Capítulo anterior e Próximo capítulo no início da tela, além do gesto opcional de dois dedos, com anúncio do destino pelo TalkBack.\n\n" +
-            "O Modo culto aparece nas telas de livros, capítulos e versículos. Sua pesquisa aceita texto ou voz, entende referências sem pontuação e pergunta entre Primeira e Segunda Pedro, por exemplo, quando houver ambiguidade.\n\n" +
+            "Novidades da versão Android 4.3.1\n\n" +
+            "O Modo culto agora entende somente o nome do livro, ordinais falados, números, símbolos ordinais, algarismos romanos e expressões como Segunda carta de Pedro.\n\n" +
+            "Ao pesquisar apenas Pedro, ou dizer um ordinal que não existe, o aplicativo mostra numa lista acessível os livros de Pedro realmente disponíveis.\n\n" +
+            "Referências sem pontuação, como Segunda Pedro 2 5 15, abrem o capítulo 2 do versículo 5 ao 15. O aplicativo também informa claramente quando o intervalo passa do último versículo.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;

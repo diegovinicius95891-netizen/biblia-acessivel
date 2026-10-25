@@ -11,4 +11,19 @@ public final class BibleRepositoryTest {
         assertEquals("1corintios", BibleRepository.normalize("1 Coríntios"));
         assertEquals("genesis", BibleRepository.normalize("GÊNESIS"));
     }
+
+    @Test public void spokenOrdinalsAndLetterNamesUseTheSameBookKey() {
+        assertEquals("2pedro", BibleRepository.normalizeBookQuery("segunda Pedro"));
+        assertEquals("2pedro", BibleRepository.normalizeBookQuery("segundo Pedro"));
+        assertEquals("2pedro", BibleRepository.normalizeBookQuery("2ª Pedro"));
+        assertEquals("2pedro", BibleRepository.normalizeBookQuery("II Pedro"));
+        assertEquals("2pedro", BibleRepository.normalizeBookQuery("segunda carta de Pedro"));
+    }
+
+    @Test public void numberedBookFamilyAllowsAnAccessibleFallback() {
+        assertEquals("pedro", BibleRepository.numberedBookFamily(
+                BibleRepository.normalizeBookQuery("terceira Pedro")));
+        assertEquals("pedro", BibleRepository.numberedBookFamily(
+                BibleRepository.normalizeBookQuery("1 Pedro")));
+    }
 }

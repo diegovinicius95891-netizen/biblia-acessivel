@@ -38,6 +38,23 @@ public final class BibleReferenceTest {
         assertEquals("15", reference.endVerse);
     }
 
+    @Test public void acceptsOnlyBookAndStartsAtChapterOne() {
+        for (String book : new String[]{"Pedro", "segunda Pedro", "2 Pedro", "terceira Pedro"}) {
+            BibleReference reference = BibleReference.parse(book);
+            assertEquals(book, reference.book);
+            assertEquals(1, reference.chapter);
+            assertNull(reference.startVerse);
+        }
+    }
+
+    @Test public void acceptsOrdinalSymbolAndLongRange() {
+        BibleReference reference = BibleReference.parse("2ª Pedro 2 25 50");
+        assertEquals("2ª Pedro", reference.book);
+        assertEquals(2, reference.chapter);
+        assertEquals("25", reference.startVerse);
+        assertEquals("50", reference.endVerse);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void rejectsReversedRange() {
         BibleReference.parse("João 3:20-16");

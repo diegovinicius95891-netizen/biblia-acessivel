@@ -1135,7 +1135,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     private void showWorshipMode(Runnable returnAction) {
         LinearLayout root = screen("Modo culto", returnAction);
-        root.addView(paragraph("Pesquise por texto ou por voz. Você pode usar pontuação ou falar naturalmente, por exemplo: Pedro 2 5 15."));
+        root.addView(paragraph("Pesquise por texto ou por voz. Diga somente Pedro para escolher o livro, " +
+                "ou uma passagem como Segunda Pedro 2 5 15 para abrir do versículo 5 ao 15."));
         worshipInput = editText("Pesquisar passagem por texto", false);
         worshipInput.setSingleLine(true);
         worshipInput.setImeOptions(EditorInfo.IME_ACTION_GO);
@@ -1184,15 +1185,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             List<Models.Book> matches = bible.matchingBooks(translationId, reference.book);
             if (matches.isEmpty()) throw new IllegalArgumentException("Livro não encontrado.");
             if (matches.size() > 1) {
-                String[] choices = new String[matches.size()];
-                for (int index = 0; index < matches.size(); index++) choices[index] = matches.get(index).name;
-                new AlertDialog.Builder(this).setTitle("Qual livro você quer?")
-                        .setMessage("A busca por “" + reference.book + "” pode indicar mais de um livro.")
-                        .setItems(choices, (dialog, which) -> {
-                            Models.Book chosen = matches.get(which);
-                            worshipInput.setText(formatWorshipReference(chosen, reference));
-                            openWorshipPassageForBook(reference, chosen);
-                        }).show();
+                showWorshipBookChoices(reference, matches);
                 return;
             }
             openWorshipPassageForBook(reference, matches.get(0));
@@ -1202,11 +1195,48 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         }
     }
 
+    /** Mostra cada livro possível em uma lista focada e anunciada pelo TalkBack. */
+    private void showWorshipBookChoices(BibleReference reference, List<Models.Book> matches) {
+        String[] choices = new String[matches.size()];
+        for (int index = 0; index < matches.size(); index++) choices[index] = matches.get(index).name;
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Escolha o livro. " + matches.size() + " opções")
+                .setMessage("A busca por “" + reference.book + "” pode indicar mais de um livro.")
+                .setItems(choices, (choiceDialog, which) -> {
+                    Models.Book chosen = matches.get(which);
+                    worshipInput.setText(formatWorshipReference(chosen, reference));
+                    openWorshipPassageForBook(reference, chosen);
+                })
+                .setNegativeButton("Cancelar", null)
+                .create();
+        dialog.setOnShowListener(ignored -> {
+            ListView options = dialog.getListView();
+            if (options != null) {
+                options.setContentDescription("Livros encontrados para " + reference.book);
+                options.requestFocus();
+                options.announceForAccessibility(
+                        matches.size() + " livros encontrados. Deslize e toque duas vezes para escolher.");
+            }
+        });
+        dialog.show();
+    }
+
     /** Valida capítulo e intervalo depois que o livro exato foi escolhido. */
     private void openWorshipPassageForBook(BibleReference reference, Models.Book book) {
         try {
             if (reference.chapter > bible.chapterCount(translationId, book.code)) {
                 throw new IllegalArgumentException(book.name + " não possui o capítulo " + reference.chapter + ".");
+            }
+            List<Models.Verse> wholeChapter = bible.chapter(translationId, book.code, reference.chapter);
+            int lastVerse = wholeChapter.isEmpty() ? 0 :
+                    BibleReference.number(wholeChapter.get(wholeChapter.size() - 1).number);
+            if (reference.startVerse != null && BibleReference.number(reference.startVerse) > lastVerse) {
+                throw new IllegalArgumentException(book.name + " " + reference.chapter +
+                        " termina no versículo " + lastVerse + ".");
+            }
+            if (reference.endVerse != null && BibleReference.number(reference.endVerse) > lastVerse) {
+                throw new IllegalArgumentException(book.name + " " + reference.chapter +
+                        " termina no versículo " + lastVerse + ". Diminua o fim do intervalo.");
             }
             List<Models.Verse> verses = bible.passage(
                     translationId, book.code, reference.chapter, reference.startVerse, reference.endVerse);

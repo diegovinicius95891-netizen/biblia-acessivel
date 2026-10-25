@@ -11,6 +11,9 @@ final class BibleReference {
     private static final Pattern SPOKEN_PATTERN = Pattern.compile(
             "^\\s*(.+?)\\s+(\\d+)(?:\\s+(\\d+[a-z]?)(?:\\s*[-–]?\\s*(\\d+[a-z]?))?)?\\s*$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern BOOK_ONLY_PATTERN = Pattern.compile(
+            "^\\s*(?:(?:[123](?:[ªº°.]?)|i{1,3})\\s*)?[\\p{L}][\\p{L}\\s.'’-]*\\s*$",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
     final String book;
     final int chapter;
@@ -24,7 +27,7 @@ final class BibleReference {
         this.endVerse = endVerse;
     }
 
-    /** Aceita pontuação tradicional e formas faladas como "Pedro 2 5 15". */
+    /** Aceita pontuação, fala natural e somente o livro, que começa no capítulo 1. */
     static BibleReference parse(String value) {
         String cleaned = value == null ? "" : value.trim();
         cleaned = cleaned.replaceAll("(?i)\\b(cap[ií]tulo|cap)\\b", " ")
@@ -33,8 +36,11 @@ final class BibleReference {
                 .replace(',', ':').replaceAll("\\s+", " ").trim();
         Matcher match = (cleaned.contains(":") ? COLON_PATTERN : SPOKEN_PATTERN).matcher(cleaned);
         if (!match.matches()) {
+            if (BOOK_ONLY_PATTERN.matcher(cleaned).matches()) {
+                return new BibleReference(cleaned, 1, null, null);
+            }
             throw new IllegalArgumentException(
-                    "Diga ou digite algo como João 3:16, Romanos 8, Pedro 2 5 ou Pedro 2 5 15.");
+                    "Diga ou digite algo como João, João 3:16, Romanos 8 ou Segunda Pedro 2 5 15.");
         }
         int chapter = Integer.parseInt(match.group(2));
         if (chapter < 1) throw new IllegalArgumentException("O capítulo deve ser maior que zero.");

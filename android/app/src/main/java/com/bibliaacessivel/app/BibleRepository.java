@@ -130,29 +130,46 @@ final class BibleRepository implements AutoCloseable {
         return matches.size() == 1 ? matches.get(0) : null;
     }
 
-    /** Localiza nomes completos, códigos e consultas ambíguas como "Pedro". */
+    /** Localiza nomes, códigos, ordinais falados e famílias ambíguas como "Pedro". */
     List<Models.Book> matchingBooks(String translationId, String query) {
-        String wanted = normalizeOrdinals(query);
+        String wanted = normalizeBookQuery(query);
         List<Models.Book> exact = new ArrayList<>();
         List<Models.Book> partial = new ArrayList<>();
+        List<Models.Book> family = new ArrayList<>();
+        String wantedFamily = numberedBookFamily(wanted);
         for (boolean nt : new boolean[]{false, true}) {
             for (Models.Book book : books(translationId, nt)) {
-                String name = normalizeOrdinals(book.name);
+                String name = normalizeBookQuery(book.name);
                 if (name.equals(wanted) || normalize(book.code).equals(wanted)) exact.add(book);
                 else if (!wanted.isEmpty() && (name.endsWith(wanted) || name.contains(wanted))) partial.add(book);
+                if (!wantedFamily.isEmpty() && numberedBookFamily(name).equals(wantedFamily)) family.add(book);
             }
         }
-        return exact.isEmpty() ? partial : exact;
+        if (!exact.isEmpty()) return exact;
+        if (!partial.isEmpty()) return partial;
+        // Se a pessoa disser um ordinal inexistente, como "terceira Pedro",
+        // oferece os livros reais da mesma família em vez de encerrar a busca.
+        return family;
     }
 
-    /** Converte ordinais falados para o mesmo formato dos livros numerados. */
-    private static String normalizeOrdinals(String value) {
+    /** Converte ordinais e expressões de voz para o formato dos livros numerados. */
+    static String normalizeBookQuery(String value) {
         String text = Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).trim();
-        text = text.replaceFirst("^(primeira|primeiro)\\s+", "1 ")
-                .replaceFirst("^(segunda|segundo)\\s+", "2 ")
-                .replaceFirst("^(terceira|terceiro)\\s+", "3 ");
+        text = text.replaceFirst("^i{3}(?:\\s+|[.])", "3 ")
+                .replaceFirst("^i{2}(?:\\s+|[.])", "2 ")
+                .replaceFirst("^i(?:\\s+|[.])", "1 ")
+                .replaceFirst("^(primeira|primeiro|uma|um)\\s+", "1 ")
+                .replaceFirst("^(segunda|segundo|duas|dois)\\s+", "2 ")
+                .replaceFirst("^(terceira|terceiro|tres)\\s+", "3 ")
+                .replaceFirst("^([123])\\s*[ªº°.]\\s*", "$1 ")
+                .replaceFirst("^([123]\\s+)?(?:a\\s+)?(?:carta|epistola|livro)\\s+(?:de|do|da)\\s+", "$1");
         return normalize(text);
+    }
+
+    /** Remove somente o número inicial para comparar 1, 2 e 3 do mesmo livro. */
+    static String numberedBookFamily(String normalizedName) {
+        return normalizedName == null ? "" : normalizedName.replaceFirst("^[123]", "");
     }
 
     int chapterCount(String translationId, String bookCode) {
