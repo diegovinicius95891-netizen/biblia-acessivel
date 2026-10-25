@@ -13,6 +13,8 @@ O aplicativo não usa `QTabWidget` nem guias. Um `QStackedWidget` mantém um men
 
 Cada uma das quatro áreas abre como tela exclusiva. Alt+1 a Alt+4 abrem diretamente Livros, Capítulos, Versículos e Mais opções. Escape restaura o menu inicial. Setas cima/baixo navegam dentro de listas. Na seção Livros, esquerda seleciona o Antigo Testamento e direita seleciona o Novo.
 
+As transições restauram o foco duas vezes: imediatamente e no próximo ciclo da interface. O anúncio acessível ocorre depois da página estar visível. Na tela Versículos, botões explícitos duplicam os comandos de capítulo das setas e há uma ação de retorno ao menu principal.
+
 A escolha de tradução usa caixa de combinação. Comparar traduções mantém origem e destino independentes e apresenta os dois textos em seções acessíveis distintas.
 
 ## Arquivos de execução

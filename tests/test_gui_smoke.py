@@ -72,7 +72,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(window.secondary_pages["reader_chapters"][0], window.page_stack.currentIndex())
         window._handle_escape()
-        self.assertEqual(28, window.more_options.count())
+        self.assertEqual(29, window.more_options.count())
         labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
         self.assertIn("Harpa Cristã", labels)
         self.assertIn("Status do quiz", labels)
@@ -80,6 +80,10 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertIn("Rádio Gospel", labels)
         self.assertIn("Ideias, sugestões e suporte", labels)
         self.assertIn("Comparar traduções", labels)
+        self.assertIn("Sair do aplicativo", labels)
+        self.assertEqual("Capítulo anterior", window.previous_chapter_button.text().replace("&", ""))
+        self.assertEqual("Próximo capítulo", window.next_chapter_button.text().replace("&", ""))
+        self.assertIn("Voltar", window.verses_back_button.text().replace("&", ""))
         self.assertEqual(5, window.translation_list.count())
         self.assertEqual(5, window.translation_combo.count())
         self.assertEqual(39, window.book_list.count())
@@ -116,9 +120,21 @@ class GuiSmokeTests(unittest.TestCase):
         window._handle_escape()
 
         window.verse_list.setFocus()
-        QTest.keyClick(window.verse_list, Qt.Key_Right)
+        with patch.object(window, "_announce_for") as announce:
+            QTest.keyClick(window.verse_list, Qt.Key_Right)
+            QTest.qWait(120)
+        self.assertTrue(any(
+            "próximo capítulo" in str(call.args[1]).lower()
+            for call in announce.call_args_list
+        ))
         self.assertEqual(4, window.active_chapter)
-        QTest.keyClick(window.verse_list, Qt.Key_Left)
+        with patch.object(window, "_announce_for") as announce:
+            QTest.keyClick(window.verse_list, Qt.Key_Left)
+            QTest.qWait(120)
+        self.assertTrue(any(
+            "voltou um capítulo" in str(call.args[1]).lower()
+            for call in announce.call_args_list
+        ))
         self.assertEqual(3, window.active_chapter)
 
         window.search_edit.setText("bom pastor")

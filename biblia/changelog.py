@@ -1,12 +1,12 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.3.0
+CURRENT_CHANGELOG = """Novidades da versão 4.3.1
 
-O Windows agora abre em um menu simples com quatro telas separadas: Livros, Capítulos, Versículos e Mais opções. Alt+1, Alt+2, Alt+3 e Alt+4 abrem diretamente cada área.
+Mais opções agora contém Sair do aplicativo, com confirmação antes de fechar.
 
-Dentro de Livros, as setas esquerda e direita continuam alternando entre Antigo e Novo Testamento. Enter abre a tela de capítulos e Enter no capítulo abre a tela de versículos.
+A tela Versículos ganhou botões de Capítulo anterior, Próximo capítulo e Voltar ao menu principal. As setas esquerda e direita continuam funcionando.
 
-O Modo culto interpreta referências com ou sem pontuação, como João 3:16, Pedro 2 5 e Pedro 2 5 15. Quando o nome puder indicar mais de um livro, o aplicativo pergunta qual deles deve ser usado.
+Depois de trocar o capítulo, o leitor de tela anuncia claramente se você avançou ou voltou e informa o novo livro e capítulo.
 
-Todos os recursos, posições, anotações, favoritos, quiz e configurações anteriores foram preservados.
+O foco das listas e telas foi reforçado depois de cada transição para evitar momentos em que a interface parecia inacessível.
 """

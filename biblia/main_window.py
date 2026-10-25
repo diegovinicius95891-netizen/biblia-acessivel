@@ -14,7 +14,7 @@ from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QSettings, Qt, QUrl, QUrlQuery, Signal
+from PySide6.QtCore import QObject, QSettings, QTimer, Qt, QUrl, QUrlQuery, Signal
 from PySide6.QtGui import (
     QAccessible,
     QAccessibleAnnouncementEvent,
@@ -408,6 +408,26 @@ class MainWindow(QMainWindow):
         heading_font.setPointSize(heading_font.pointSize() + 2)
         self.chapter_heading.setFont(heading_font)
         verses_layout.addWidget(self.chapter_heading)
+        chapter_controls = QHBoxLayout()
+        self.previous_chapter_button = AccessibleButton("Capítulo &anterior")
+        self.previous_chapter_button.setAccessibleDescription(
+            "Voltar um capítulo dentro do livro atual."
+        )
+        self.previous_chapter_button.clicked.connect(self.previous_chapter)
+        chapter_controls.addWidget(self.previous_chapter_button)
+        self.next_chapter_button = AccessibleButton("&Próximo capítulo")
+        self.next_chapter_button.setAccessibleDescription(
+            "Avançar um capítulo dentro do livro atual."
+        )
+        self.next_chapter_button.clicked.connect(self.next_chapter)
+        chapter_controls.addWidget(self.next_chapter_button)
+        self.verses_back_button = AccessibleButton("&Voltar ao menu principal")
+        self.verses_back_button.setAccessibleDescription(
+            "Fechar a tela de Versículos e voltar às quatro opções principais."
+        )
+        self.verses_back_button.clicked.connect(self.show_main_page)
+        chapter_controls.addWidget(self.verses_back_button)
+        verses_layout.addLayout(chapter_controls)
         self.verse_list = VerseList()
         self.verse_list.setAccessibleName("Seção Versículos")
         self.verse_list.setAccessibleDescription(
@@ -443,6 +463,7 @@ class MainWindow(QMainWindow):
             ("Configurações", "settings"),
             ("Licenças, leis e justificativa de uso", "legal"),
             ("Ajuda e atalhos", "help"),
+            ("Sair do aplicativo", "exit"),
         )
         for label, page_id in options:
             item = QListWidgetItem(label)
@@ -461,7 +482,6 @@ class MainWindow(QMainWindow):
             return
         index, focus_widget = self.secondary_pages[page_id]
         self.page_stack.setCurrentIndex(index)
-        focus_widget.setFocus()
         if isinstance(focus_widget, QListWidget) and focus_widget.count():
             focus_widget.setCurrentRow(max(0, focus_widget.currentRow()))
         title = {
@@ -471,9 +491,15 @@ class MainWindow(QMainWindow):
             "reader_more": "Mais opções",
         }[page_id]
         if page_id == "reader_verses" and self.verse_list.currentItem():
-            self._verse_changed(self.verse_list.currentItem())
+            current = self.verse_list.currentItem()
+            verse = current.data(Qt.UserRole + 1)
+            message = (
+                f"Tela Versículos. {self.active_book_name} {self.active_chapter}"
+                + (f":{verse}." if verse is not None else ".")
+            )
         else:
-            self.statusBar().showMessage(f"Tela {title}. Pressione Escape para voltar ao menu principal.")
+            message = f"Tela {title}. Pressione Escape para voltar ao menu principal."
+        self._restore_accessible_focus(focus_widget, message)
 
     def _build_translation_section(self):
         """Cria a tela com uma caixa de combinação para a tradução padrão."""
@@ -566,6 +592,9 @@ class MainWindow(QMainWindow):
     def open_more_option(self, item_or_id):
         """Abre a opção destacada como única tela visível do aplicativo."""
         page_id = item_or_id.data(Qt.UserRole) if isinstance(item_or_id, QListWidgetItem) else item_or_id
+        if page_id == "exit":
+            self.request_exit()
+            return
         if page_id == "ideas":
             query = QUrlQuery()
             query.addQueryItem("subject", "Ideia ou problema na Bíblia Acessível")
@@ -594,16 +623,52 @@ class MainWindow(QMainWindow):
             self.extended.prepare_page(page_id)
         index, focus_widget = self.secondary_pages[page_id]
         self.page_stack.setCurrentIndex(index)
-        focus_widget.setFocus()
         if isinstance(focus_widget, QListWidget) and focus_widget.count():
             focus_widget.setCurrentRow(max(0, focus_widget.currentRow()))
-        self.statusBar().showMessage("Nova tela aberta. Pressione Escape para voltar à Bíblia.")
+        self._restore_accessible_focus(
+            focus_widget,
+            "Nova tela aberta. Pressione Escape para voltar à Bíblia.",
+        )
 
     def show_main_page(self):
         """Fecha a tela interna e devolve o foco ao menu das quatro áreas."""
         self.page_stack.setCurrentIndex(self.main_page_index)
-        self.reader_menu.setFocus()
-        self.statusBar().showMessage("Menu principal da Bíblia.")
+        self._restore_accessible_focus(
+            self.reader_menu,
+            "Menu principal da Bíblia. Livros, Capítulos, Versículos e Mais opções.",
+        )
+
+    def request_exit(self):
+        """Confirma o fechamento a partir da opção acessível de Mais opções."""
+        answer = QMessageBox.question(
+            self,
+            "Sair da Bíblia Acessível",
+            "Deseja realmente fechar o aplicativo?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if answer == QMessageBox.Yes:
+            self.close()
+        else:
+            self._restore_accessible_focus(self.more_options, "Saída cancelada. Mais opções.")
+
+    def _restore_accessible_focus(self, widget: QWidget, message: str = ""):
+        """Restaura foco depois da troca de página e anuncia quando a tela já está pronta."""
+        def focus_now():
+            widget.setFocus(Qt.OtherFocusReason)
+            if isinstance(widget, QListWidget) and widget.count() and widget.currentRow() < 0:
+                widget.setCurrentRow(0)
+
+        # O foco imediato atende teclado e testes; a repetição no próximo ciclo
+        # cobre leitores de tela que só percebem o controle após a página pintar.
+        focus_now()
+        QTimer.singleShot(0, focus_now)
+        if message:
+            self.statusBar().showMessage(message)
+            QTimer.singleShot(
+                80,
+                lambda: self._announce_for(widget, message) if widget.isVisible() else None,
+            )
 
     def _build_search_section(self):
         """Cria pesquisa por palavra, frase, tema e livro, com histórico local."""
@@ -1259,23 +1324,43 @@ class MainWindow(QMainWindow):
         self.open_selected_chapter(focus_verse=verse, focus_reading=focus_reading)
 
     def previous_chapter(self):
-        """Vai ao capítulo anterior do mesmo livro ou anuncia o limite."""
+        """Volta um capítulo e fornece feedback explícito depois que a tela estabiliza."""
         if not self.active_book_code:
             return
         if self.active_chapter > 1:
-            self._show_location(self.active_book_code, self.active_chapter - 1)
+            target = self.active_chapter - 1
+            self._show_location(self.active_book_code, target, focus_reading=False)
+            index, _focus = self.secondary_pages["reader_verses"]
+            self.page_stack.setCurrentIndex(index)
+            self._restore_accessible_focus(
+                self.verse_list,
+                f"Você voltou um capítulo. Agora em {self.active_book_name}, capítulo {target}.",
+            )
         else:
-            self._announce("Início do livro. Não há capítulos anteriores.")
+            self._restore_accessible_focus(
+                self.verse_list,
+                "Início do livro. Não há capítulos anteriores.",
+            )
 
     def next_chapter(self):
-        """Vai ao capítulo seguinte do mesmo livro ou anuncia o fim do livro."""
+        """Avança um capítulo e fornece feedback explícito depois que a tela estabiliza."""
         if not self.active_book_code:
             return
         maximum = self.db.chapter_count(self.current_translation_id(), self.active_book_code)
         if self.active_chapter < maximum:
-            self._show_location(self.active_book_code, self.active_chapter + 1)
+            target = self.active_chapter + 1
+            self._show_location(self.active_book_code, target, focus_reading=False)
+            index, _focus = self.secondary_pages["reader_verses"]
+            self.page_stack.setCurrentIndex(index)
+            self._restore_accessible_focus(
+                self.verse_list,
+                f"Você foi para o próximo capítulo. Agora em {self.active_book_name}, capítulo {target}.",
+            )
         else:
-            self._announce("Fim do livro. Não há capítulos seguintes.")
+            self._restore_accessible_focus(
+                self.verse_list,
+                "Fim do livro. Não há capítulos seguintes.",
+            )
 
     def change_chapter_from_reading(self, direction: int):
         """Conecta esquerda/direita da Leitura à navegação entre capítulos."""
@@ -1283,7 +1368,6 @@ class MainWindow(QMainWindow):
             self.previous_chapter()
         else:
             self.next_chapter()
-        self.verse_list.setFocus()
 
     # Menu Aplicações ---------------------------------------------------
     def show_book_menu_at(self, position):

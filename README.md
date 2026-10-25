@@ -1,6 +1,6 @@
 # Bíblia Acessível
 
-Versão atual: **4.3.0 para Windows e Android**.
+Versões atuais: **4.3.1 para Windows** e **4.3.0 para Android**.
 
 Em Mais opções, **Devocionais novos do site** consulta diariamente os textos publicados em
 `audiogames.com.br/diego/devocionais`, mantém o histórico para leitura offline e avisa somente
@@ -33,6 +33,7 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 - Controles com nomes e descrições acessíveis.
 - No Windows, a abertura mostra um menu com Livros, Capítulos, Versículos e Mais opções; cada item abre sozinho em uma nova tela.
 - Alt+1 abre Livros, Alt+2 abre Capítulos, Alt+3 abre Versículos e Alt+4 abre Mais opções. Cima e baixo navegam nas listas e Escape volta.
+- Versículos oferece botões de capítulo anterior, próximo capítulo e voltar. Toda troca anuncia a direção e o novo capítulo; Mais opções também oferece Sair do aplicativo.
 - Mais opções reúne os recursos pessoais e de estudo em telas internas limpas; Escape volta à Bíblia.
 - A tela Traduções usa uma caixa de combinação acessível para escolher a edição padrão.
 - No Windows, a seção Livros abre diretamente na lista: esquerda mostra o Antigo Testamento e direita mostra o Novo, com anúncio da seleção e da quantidade de livros. No Android, a escolha de testamento permanece explícita para facilitar o uso pelo toque.

@@ -29,6 +29,8 @@ Comparar traduções permite escolher origem e destino, ler as duas seções e i
 Cada pergunta do quiz conta somente uma vez. Em Status do quiz, Recomeçar quiz do zero apaga os resultados, mediante confirmação, e libera as perguntas novamente.
 Todas essas áreas funcionam pelo teclado. Espaço ou Enter abre o item destacado e Escape volta à Bíblia.
 No Modo culto, digite João 3:16, Pedro 2 5 ou Pedro 2 5 15 e pressione Enter. Se o nome puder indicar mais de um livro, escolha a opção desejada.
+Na tela Versículos, use Capítulo anterior, Próximo capítulo ou Voltar ao menu principal. Esquerda e direita continuam trocando capítulos e o leitor de tela anuncia o destino.
+Mais opções contém Sair do aplicativo e pede confirmação antes de fechar.
 
 ATALHOS
 
