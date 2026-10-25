@@ -1,6 +1,6 @@
 # Bíblia Acessível
 
-Versões atuais: **4.2.1 para Windows** e **4.2.0 para Android**.
+Versão atual: **4.3.0 para Windows e Android**.
 
 Em Mais opções, **Devocionais novos do site** consulta diariamente os textos publicados em
 `audiogames.com.br/diego/devocionais`, mantém o histórico para leitura offline e avisa somente
@@ -31,8 +31,8 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 ## Acessibilidade
 
 - Controles com nomes e descrições acessíveis.
-- Navegação por seções: Tab e Shift+Tab mudam de seção; cima e baixo navegam dentro dela.
-- A tela principal mostra somente Livros, Capítulos, Versículos e Mais opções.
+- No Windows, a abertura mostra um menu com Livros, Capítulos, Versículos e Mais opções; cada item abre sozinho em uma nova tela.
+- Alt+1 abre Livros, Alt+2 abre Capítulos, Alt+3 abre Versículos e Alt+4 abre Mais opções. Cima e baixo navegam nas listas e Escape volta.
 - Mais opções reúne os recursos pessoais e de estudo em telas internas limpas; Escape volta à Bíblia.
 - A tela Traduções usa uma caixa de combinação acessível para escolher a edição padrão.
 - No Windows, a seção Livros abre diretamente na lista: esquerda mostra o Antigo Testamento e direita mostra o Novo, com anúncio da seleção e da quantidade de livros. No Android, a escolha de testamento permanece explícita para facilitar o uso pelo toque.
@@ -69,7 +69,8 @@ O aplicativo salva automaticamente tradução, testamento, livro, capítulo e it
 - Status do quiz com perguntas respondidas, acertos, erros, aproveitamento e detalhamento por dificuldade.
 - Cada pergunta do quiz conta somente na primeira resposta. Recomeçar quiz do zero, com confirmação, é a única forma de liberar todas novamente.
 - Comparação de traduções com caixas de origem e destino, duas seções de resultado e comando para inverter as edições.
-- Modo culto com foco direto no campo: Enter exibe a passagem sem abrir “Ler versículo”; o texto recebe foco e há comandos para copiar, trocar de capítulo ou digitar outra referência.
+- Modo culto com busca inteligente: aceita João 3:16, Pedro 2 5 ou Pedro 2 5 15 e pergunta qual livro usar quando o nome for ambíguo. No Android, também aceita pesquisa por voz.
+- No Android, a tela inicial oferece continuar o capítulo atual ou trocar de livro. Ao escolher capítulo, é possível selecionar o versículo inicial; capítulo anterior e próximo ficam no começo da leitura e também podem ser acionados por gesto horizontal de dois dedos.
 - Backup JSON versionado e validado para favoritos, notas, planos, orações, devocionais, histórico e configurações não secretas.
 
 Dados de oração, notas e devocionais permanecem somente no SQLite local e nunca são enviados para a IA. A chave do Gemini não entra no backup JSON, porque a cópia protegida por DPAPI só pode ser aberta pela mesma conta do Windows.

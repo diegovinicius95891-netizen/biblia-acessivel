@@ -1,5 +1,6 @@
 package com.bibliaacessivel.app;
 
+import android.annotation.SuppressLint;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -16,11 +17,13 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
 import android.provider.Settings;
+import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
 import android.text.Html;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
@@ -56,6 +59,8 @@ import java.util.function.Supplier;
 /** Atividade única com telas nativas, navegação previsível e sem guias. */
 public final class MainActivity extends Activity implements TextToSpeech.OnInitListener {
     private static final int CREATE_DEVOTIONAL = 7001;
+    private static final int WORSHIP_VOICE_SEARCH = 7002;
+    private static final int WORSHIP_AUDIO_PERMISSION = 7003;
     private static final String VOICE_OFF = "__off__";
     private static final String[] AI_MODELS = {
             "gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"
@@ -165,30 +170,39 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         setContentView(root);
     }
 
-    /** Cria a tela principal e destaca a retomada da última leitura salva. */
+    /** Cria uma entrada curta: continuar o capítulo, trocar o livro ou abrir recursos. */
     private void showMainMenu() {
         backAction = null;
         LinearLayout root = rootLayout();
         root.addView(heading("Bíblia Acessível"));
-        root.addView(paragraph(currentReference() +
-                ". Com o TalkBack, deslize para a direita ou para a esquerda para conhecer as opções e toque duas vezes para abrir."));
-        root.addView(actionButton("Continuar de onde parou — " + currentReference(),
-                "Abrir o capítulo e continuar em " + currentReference(), this::showVerses));
-        root.addView(actionButton("Livros", "Abrir seção Livros", this::showBooks));
-        root.addView(actionButton("Capítulos", "Abrir capítulos de " + selectedBook.name,
-                this::showChapters));
-        root.addView(actionButton("Versículos", "Abrir versículos de " + currentChapterReference(),
-                this::showVerses));
+        root.addView(paragraph("Seção Livros. Sua posição é " + currentReference() + "."));
+        root.addView(actionButton("Abrir capítulo " + selectedChapter + " de " + selectedBook.name,
+                "Continuar a leitura em " + currentReference(), this::showVerses));
+        root.addView(actionButton("Trocar de livro", "Escolher outro livro, capítulo e versículo",
+                this::confirmBookChoice));
         root.addView(actionButton("Mais opções", "Abrir traduções, pesquisa, notas e configurações",
                 this::showMoreOptions));
         setContentView(root);
         root.getChildAt(2).requestFocus();
     }
 
+    /** Confirma se a pessoa deseja trocar o livro ou retomar exatamente a posição salva. */
+    private void confirmBookChoice() {
+        new AlertDialog.Builder(this).setTitle("Seção Livros")
+                .setMessage("Você quer trocar de livro ou continuar no capítulo em que parou?")
+                .setItems(new String[]{
+                        "Continuar em " + currentReference(),
+                        "Trocar de livro"
+                }, (dialog, which) -> {
+                    if (which == 0) showVerses(); else showBooks();
+                }).show();
+    }
+
     /** Lista livros do testamento escolhido e oferece o menu de aplicações. */
     private void showBooks() {
         boolean newTestament = selectedBook.number > 39;
         LinearLayout root = screen("Livros", this::showMainMenu);
+        root.addView(actionButton("Modo culto", "Abrir pesquisa rápida do Modo culto", this::showWorshipModeFromReading));
         root.addView(paragraph("Selecione a seção: Antigo ou Novo Testamento."));
         Spinner testament = new Spinner(this);
         testament.setContentDescription("Seção da Bíblia: Antigo ou Novo Testamento");
@@ -217,6 +231,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void populateBookScreen(boolean newTestament) {
         LinearLayout root = screen("Livros — " +
                 (newTestament ? "Novo Testamento" : "Antigo Testamento"), this::showBooks);
+        root.addView(actionButton("Modo culto", "Abrir pesquisa rápida do Modo culto", this::showWorshipModeFromReading));
         List<Models.Book> books = bible.books(translationId, newTestament);
         root.addView(paragraph((newTestament ? "Novo Testamento" : "Antigo Testamento") +
                 " selecionado. " + books.size() + " livros. Escolha o livro com cima e baixo e ative para abrir."));
@@ -246,6 +261,15 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Mostra números de capítulo do livro atual. */
     private void showChapters() {
         LinearLayout root = screen("Capítulos de " + selectedBook.name, this::showMainMenu);
+        root.addView(actionButton("Modo culto", "Abrir pesquisa rápida do Modo culto", this::showWorshipModeFromReading));
+        root.addView(actionButton("Trocar Antigo ou Novo Testamento",
+                "Voltar à escolha entre Antigo e Novo Testamento", this::showBooks));
+        LinearLayout navigation = horizontalRow();
+        navigation.addView(actionButton("Capítulo anterior",
+                previousChapterDescription(), () -> changeReadingChapter(-1)), weighted());
+        navigation.addView(actionButton("Próximo capítulo",
+                nextChapterDescription(), () -> changeReadingChapter(1)), weighted());
+        root.addView(navigation);
         int total = bible.chapterCount(translationId, selectedBook.code);
         List<String> chapters = new ArrayList<>();
         for (int number = 1; number <= total; number++) chapters.add("Capítulo " + number);
@@ -255,7 +279,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             selectedChapter = position + 1;
             selectVerse("1");
             savePosition();
-            showVerses();
+            askHowToOpenChapter();
         });
         list.setOnItemLongClickListener((parent, view, position, id) -> {
             selectedChapter = position + 1;
@@ -272,28 +296,27 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Lista os textos do capítulo e abre suas ações com uma única ativação. */
     private void showVerses() {
         LinearLayout root = screen("Versículos de " + currentChapterReference(), this::showMainMenu);
+        root.addView(actionButton("Modo culto", "Abrir pesquisa rápida do Modo culto", this::showWorshipModeFromReading));
+        LinearLayout navigation = horizontalRow();
+        navigation.addView(actionButton("Capítulo anterior",
+                previousChapterDescription(), () -> changeReadingChapter(-1)), weighted());
+        navigation.addView(actionButton("Próximo capítulo",
+                nextChapterDescription(), () -> changeReadingChapter(1)), weighted());
+        root.addView(navigation);
         List<Models.Verse> verses = bible.chapter(translationId, selectedBook.code, selectedChapter);
         ListView list = listView(verses);
-        list.setContentDescription("Versículos de " + currentChapterReference());
+        list.setContentDescription("Versículos de " + currentChapterReference() +
+                ". Deslize com dois dedos para a esquerda para voltar o capítulo ou para a direita para avançar.");
+        attachChapterSwipe(list);
         list.setOnItemClickListener((parent, view, position, id) -> {
             selectedVerse = verses.get(position);
             savePosition();
             showVerseActions();
         });
         root.addView(list, fill());
-        int maximum = bible.chapterCount(translationId, selectedBook.code);
-        if (selectedChapter < maximum) {
-            root.addView(actionButton("Próximo capítulo",
-                    "Abrir o capítulo " + (selectedChapter + 1) + " de " + selectedBook.name,
-                    this::nextChapterFromVerses));
-        } else {
-            root.addView(actionButton("Fim do livro",
-                    "Fim do livro. Não há capítulos seguintes",
-                    () -> toast("Fim do livro. Não há capítulos seguintes.")));
-        }
         root.addView(actionButton("Aplicações do versículo atual",
                 "Abrir ações de " + currentReference(), this::showVerseActions));
-        root.addView(paragraph("Toque uma vez para abrir as ações. Com o TalkBack, toque duas vezes no versículo anunciado."));
+        root.addView(paragraph("Ative um versículo para abrir suas ações. Também há botões e gesto de dois dedos para trocar de capítulo."));
         setContentView(root);
         list.setSelection(verseIndex(verses, selectedVerse == null ? "1" : selectedVerse.number));
         list.requestFocus();
@@ -1103,15 +1126,26 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Cria a busca rápida do culto com o campo focado e o resultado na mesma tela. */
     private void showWorshipMode() {
-        LinearLayout root = screen("Modo culto", this::showMoreOptions);
-        root.addView(paragraph("Digite uma passagem e confirme. O texto aparecerá imediatamente."));
-        worshipInput = editText("Digite uma passagem, exemplo Habacuque 2:4", false);
+        showWorshipMode(this::showMoreOptions);
+    }
+
+    private void showWorshipModeFromReading() {
+        showWorshipMode(this::showVerses);
+    }
+
+    private void showWorshipMode(Runnable returnAction) {
+        LinearLayout root = screen("Modo culto", returnAction);
+        root.addView(paragraph("Pesquise por texto ou por voz. Você pode usar pontuação ou falar naturalmente, por exemplo: Pedro 2 5 15."));
+        worshipInput = editText("Pesquisar passagem por texto", false);
         worshipInput.setSingleLine(true);
         worshipInput.setImeOptions(EditorInfo.IME_ACTION_GO);
         root.addView(worshipInput);
-        Button open = actionButton("Mostrar passagem", "Mostrar imediatamente a passagem digitada",
+        Button open = actionButton("Pesquisar por texto", "Interpretar e mostrar a passagem digitada",
                 this::openWorshipPassage);
         root.addView(open);
+        root.addView(actionButton("Pesquisar por voz",
+                "Dizer o livro, capítulo e versículos usando o reconhecimento de voz do Android",
+                this::startWorshipVoiceSearch));
         worshipStatus = paragraph("Nenhuma passagem carregada.");
         worshipStatus.setContentDescription("Estado da passagem no Modo culto");
         root.addView(worshipStatus);
@@ -1147,9 +1181,32 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void openWorshipPassage() {
         try {
             BibleReference reference = BibleReference.parse(worshipInput.getText().toString());
-            Models.Book book = bible.findBook(translationId, reference.book);
-            if (book == null || reference.chapter > bible.chapterCount(translationId, book.code)) {
-                throw new IllegalArgumentException("Passagem não encontrada.");
+            List<Models.Book> matches = bible.matchingBooks(translationId, reference.book);
+            if (matches.isEmpty()) throw new IllegalArgumentException("Livro não encontrado.");
+            if (matches.size() > 1) {
+                String[] choices = new String[matches.size()];
+                for (int index = 0; index < matches.size(); index++) choices[index] = matches.get(index).name;
+                new AlertDialog.Builder(this).setTitle("Qual livro você quer?")
+                        .setMessage("A busca por “" + reference.book + "” pode indicar mais de um livro.")
+                        .setItems(choices, (dialog, which) -> {
+                            Models.Book chosen = matches.get(which);
+                            worshipInput.setText(formatWorshipReference(chosen, reference));
+                            openWorshipPassageForBook(reference, chosen);
+                        }).show();
+                return;
+            }
+            openWorshipPassageForBook(reference, matches.get(0));
+        } catch (IllegalArgumentException error) {
+            worshipInput.setError(error.getMessage());
+            worshipInput.requestFocus();
+        }
+    }
+
+    /** Valida capítulo e intervalo depois que o livro exato foi escolhido. */
+    private void openWorshipPassageForBook(BibleReference reference, Models.Book book) {
+        try {
+            if (reference.chapter > bible.chapterCount(translationId, book.code)) {
+                throw new IllegalArgumentException(book.name + " não possui o capítulo " + reference.chapter + ".");
             }
             List<Models.Verse> verses = bible.passage(
                     translationId, book.code, reference.chapter, reference.startVerse, reference.endVerse);
@@ -1163,9 +1220,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             worshipAdapter.clear();
             for (Models.Verse verse : verses) worshipAdapter.add(verse.toString());
             worshipAdapter.notifyDataSetChanged();
-            String normalized = book.name + " " + reference.chapter +
-                    (reference.startVerse == null ? "" : ":" + reference.startVerse +
-                            (reference.endVerse == null ? "" : "-" + reference.endVerse));
+            String normalized = formatWorshipReference(book, reference);
             worshipStatus.setText(getResources().getQuantityString(
                     R.plurals.worship_loaded, verses.size(), normalized, verses.size()));
             worshipList.setContentDescription(normalized + ", texto da passagem já exibido");
@@ -1176,6 +1231,29 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         } catch (IllegalArgumentException error) {
             worshipInput.setError(error.getMessage());
             worshipInput.requestFocus();
+        }
+    }
+
+    private String formatWorshipReference(Models.Book book, BibleReference reference) {
+        return book.name + " " + reference.chapter +
+                (reference.startVerse == null ? "" : ":" + reference.startVerse +
+                        (reference.endVerse == null ? "" : "-" + reference.endVerse));
+    }
+
+    /** Abre o reconhecedor nativo; o texto reconhecido ainda passa pela mesma validação. */
+    private void startWorshipVoiceSearch() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, WORSHIP_AUDIO_PERMISSION);
+            return;
+        }
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR");
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Diga uma passagem bíblica");
+        try {
+            startActivityForResult(intent, WORSHIP_VOICE_SEARCH);
+        } catch (Exception error) {
+            toast("O reconhecimento de voz não está disponível neste aparelho.");
         }
     }
 
@@ -1501,17 +1579,96 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         }
     }
 
-    /** Avança a partir do fim da lista e abre os versículos do novo capítulo. */
-    private void nextChapterFromVerses() {
+    /** Oferece início imediato ou escolha de um versículo antes de abrir a leitura. */
+    private void askHowToOpenChapter() {
+        new AlertDialog.Builder(this).setTitle(currentChapterReference())
+                .setMessage("Você quer começar no início ou escolher um versículo?")
+                .setItems(new String[]{"Começar no versículo 1", "Escolher versículo"},
+                        (dialog, which) -> {
+                            if (which == 0) {
+                                selectVerse("1");
+                                savePosition();
+                                showVerses();
+                            } else {
+                                showVersePicker();
+                            }
+                        }).show();
+    }
+
+    /** Lista os versículos do capítulo para que a leitura possa começar em qualquer ponto. */
+    private void showVersePicker() {
+        LinearLayout root = screen("Escolher versículo de " + currentChapterReference(), this::showChapters);
+        root.addView(actionButton("Modo culto", "Abrir pesquisa rápida do Modo culto", this::showWorshipModeFromReading));
+        List<Models.Verse> verses = bible.chapter(translationId, selectedBook.code, selectedChapter);
+        ListView list = listView(verses);
+        list.setContentDescription("Escolha o versículo inicial de " + currentChapterReference());
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            selectedVerse = verses.get(position);
+            savePosition();
+            showVerses();
+        });
+        root.addView(list, fill());
+        setContentView(root);
+        list.setSelection(verseIndex(verses, selectedVerse == null ? "1" : selectedVerse.number));
+        list.requestFocus();
+    }
+
+    private String previousChapterDescription() {
+        return selectedChapter > 1
+                ? "Abrir capítulo anterior, " + selectedBook.name + " " + (selectedChapter - 1)
+                : "Início do livro. Não há capítulo anterior";
+    }
+
+    private String nextChapterDescription() {
         int maximum = bible.chapterCount(translationId, selectedBook.code);
-        if (selectedChapter >= maximum) {
+        return selectedChapter < maximum
+                ? "Abrir próximo capítulo, " + selectedBook.name + " " + (selectedChapter + 1)
+                : "Fim do livro. Não há capítulos seguintes";
+    }
+
+    /** Troca o capítulo, preserva a posição e anuncia claramente o destino ao TalkBack. */
+    private void changeReadingChapter(int direction) {
+        int maximum = bible.chapterCount(translationId, selectedBook.code);
+        int target = selectedChapter + direction;
+        if (target < 1) {
+            toast("Início do livro. Não há capítulos anteriores.");
+            return;
+        }
+        if (target > maximum) {
             toast("Fim do livro. Não há capítulos seguintes.");
             return;
         }
-        selectedChapter++;
+        selectedChapter = target;
         selectVerse("1");
         savePosition();
         showVerses();
+        String message = (direction < 0 ? "Capítulo anterior. " : "Próximo capítulo. ") +
+                selectedBook.name + " capítulo " + selectedChapter + ".";
+        getWindow().getDecorView().announceForAccessibility(message);
+    }
+
+    /** Reconhece o gesto opcional de dois dedos sem remover os botões acessíveis. */
+    @SuppressLint("ClickableViewAccessibility")
+    private void attachChapterSwipe(View view) {
+        final float[] startX = {0f};
+        final boolean[] twoFingers = {false};
+        view.setOnTouchListener((target, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN && event.getPointerCount() == 2) {
+                startX[0] = (event.getX(0) + event.getX(1)) / 2f;
+                twoFingers[0] = true;
+            } else if (event.getActionMasked() == MotionEvent.ACTION_UP && twoFingers[0]) {
+                twoFingers[0] = false;
+                float distance = event.getX() - startX[0];
+                if (Math.abs(distance) >= dp(72)) {
+                    // Conforme o fluxo pedido: esquerda volta; direita avança.
+                    changeReadingChapter(distance < 0 ? -1 : 1);
+                    return true;
+                }
+            } else if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                twoFingers[0] = false;
+            }
+            return false;
+        });
     }
 
     /** Seleciona pelo início do número para também aceitar intervalos. */
@@ -1577,6 +1734,15 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Recebe o documento escolhido pelo usuário e grava o devocional. */
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == WORSHIP_VOICE_SEARCH && resultCode == RESULT_OK && data != null) {
+            ArrayList<String> results = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+            if (results != null && !results.isEmpty() && worshipInput != null) {
+                worshipInput.setText(results.get(0));
+                worshipInput.announceForAccessibility("Reconhecido: " + results.get(0) + ". Pesquisando passagem.");
+                openWorshipPassage();
+            }
+            return;
+        }
         if (requestCode == CREATE_DEVOTIONAL && resultCode == RESULT_OK && data != null
                 && data.getData() != null && pendingDevotional != null) {
             Uri uri = data.getData();
@@ -1586,6 +1752,18 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 toast("Devocional salvo.");
             } catch (Exception error) {
                 toast("Não foi possível salvar o devocional.");
+            }
+        }
+    }
+
+    /** Continua a pesquisa por voz assim que a permissão solicitada for concedida. */
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == WORSHIP_AUDIO_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startWorshipVoiceSearch();
+            } else {
+                toast("Sem permissão para o microfone. Você ainda pode pesquisar por texto.");
             }
         }
     }

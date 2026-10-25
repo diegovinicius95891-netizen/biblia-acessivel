@@ -22,6 +22,22 @@ public final class BibleReferenceTest {
         assertNull(reference.startVerse);
     }
 
+    @Test public void acceptsSpokenVerseWithoutPunctuation() {
+        BibleReference reference = BibleReference.parse("Pedro 2 5");
+        assertEquals("Pedro", reference.book);
+        assertEquals(2, reference.chapter);
+        assertEquals("5", reference.startVerse);
+        assertNull(reference.endVerse);
+    }
+
+    @Test public void acceptsSpokenRangeWithoutPunctuation() {
+        BibleReference reference = BibleReference.parse("segunda Pedro capítulo 2 versículo 5 até 15");
+        assertEquals("segunda Pedro", reference.book);
+        assertEquals(2, reference.chapter);
+        assertEquals("5", reference.startVerse);
+        assertEquals("15", reference.endVerse);
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void rejectsReversedRange() {
         BibleReference.parse("João 3:20-16");

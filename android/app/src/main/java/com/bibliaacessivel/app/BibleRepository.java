@@ -126,15 +126,33 @@ final class BibleRepository implements AutoCloseable {
     }
 
     Models.Book findBook(String translationId, String query) {
-        String wanted = normalize(query);
+        List<Models.Book> matches = matchingBooks(translationId, query);
+        return matches.size() == 1 ? matches.get(0) : null;
+    }
+
+    /** Localiza nomes completos, códigos e consultas ambíguas como "Pedro". */
+    List<Models.Book> matchingBooks(String translationId, String query) {
+        String wanted = normalizeOrdinals(query);
+        List<Models.Book> exact = new ArrayList<>();
+        List<Models.Book> partial = new ArrayList<>();
         for (boolean nt : new boolean[]{false, true}) {
             for (Models.Book book : books(translationId, nt)) {
-                if (normalize(book.name).equals(wanted) || normalize(book.code).equals(wanted)) {
-                    return book;
-                }
+                String name = normalizeOrdinals(book.name);
+                if (name.equals(wanted) || normalize(book.code).equals(wanted)) exact.add(book);
+                else if (!wanted.isEmpty() && (name.endsWith(wanted) || name.contains(wanted))) partial.add(book);
             }
         }
-        return null;
+        return exact.isEmpty() ? partial : exact;
+    }
+
+    /** Converte ordinais falados para o mesmo formato dos livros numerados. */
+    private static String normalizeOrdinals(String value) {
+        String text = Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).trim();
+        text = text.replaceFirst("^(primeira|primeiro)\\s+", "1 ")
+                .replaceFirst("^(segunda|segundo)\\s+", "2 ")
+                .replaceFirst("^(terceira|terceiro)\\s+", "3 ");
+        return normalize(text);
     }
 
     int chapterCount(String translationId, String bookCode) {

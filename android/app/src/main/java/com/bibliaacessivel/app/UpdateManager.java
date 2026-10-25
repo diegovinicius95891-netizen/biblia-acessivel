@@ -24,13 +24,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.2.0\n\n" +
-            "O banco bíblico interno agora é atualizado e validado junto com o APK. Isso corrige celulares atualizados que ainda mostravam somente as traduções antigas.\n\n" +
-            "Traduções e testamentos ganharam caixas de combinação acessíveis com feedback claro.\n\n" +
-            "A nova opção Comparar traduções permite escolher origem e destino, ler as duas seções e inverter a comparação.\n\n" +
-            "Cada pergunta do quiz continua contando uma única vez. Recomeçar quiz do zero é a única ação que libera as perguntas novamente e exige confirmação.\n\n" +
-            "O APK de produção agora recebe ofuscação, redução de código e recursos e verificação do certificado oficial na abertura.\n\n" +
-            "A atualização preserva posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
+            "Novidades da versão Android 4.3.0\n\n" +
+            "A entrada ficou mais limpa: continuar o capítulo atual, trocar de livro ou abrir Mais opções. A posição exata continua salva.\n\n" +
+            "Ao escolher um capítulo, agora é possível começar no primeiro versículo ou escolher exatamente onde iniciar.\n\n" +
+            "A leitura ganhou Capítulo anterior e Próximo capítulo no início da tela, além do gesto opcional de dois dedos, com anúncio do destino pelo TalkBack.\n\n" +
+            "O Modo culto aparece nas telas de livros, capítulos e versículos. Sua pesquisa aceita texto ou voz, entende referências sem pontuação e pergunta entre Primeira e Segunda Pedro, por exemplo, quando houver ambiguidade.\n\n" +
+            "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;
     private final UserDatabase userData;

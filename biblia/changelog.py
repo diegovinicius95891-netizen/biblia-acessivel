@@ -1,12 +1,12 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.2.1
+CURRENT_CHANGELOG = """Novidades da versão 4.3.0
 
-No Windows, a seção Livros volta a abrir diretamente na lista, sem uma etapa adicional para escolher o testamento.
+O Windows agora abre em um menu simples com quatro telas separadas: Livros, Capítulos, Versículos e Mais opções. Alt+1, Alt+2, Alt+3 e Alt+4 abrem diretamente cada área.
 
-Use seta esquerda para mostrar o Antigo Testamento e seta direita para mostrar o Novo Testamento. O aplicativo anuncia o testamento selecionado, a quantidade de livros e orienta a escolha do livro.
+Dentro de Livros, as setas esquerda e direita continuam alternando entre Antigo e Novo Testamento. Enter abre a tela de capítulos e Enter no capítulo abre a tela de versículos.
 
-A caixa de combinação de Traduções e todos os demais recursos da versão 4.2.0 foram mantidos.
+O Modo culto interpreta referências com ou sem pontuação, como João 3:16, Pedro 2 5 e Pedro 2 5 15. Quando o nome puder indicar mais de um livro, o aplicativo pergunta qual deles deve ser usado.
 
-A consulta automática de atualizações também ficou mais resistente a respostas temporariamente vazias do GitHub.
+Todos os recursos, posições, anotações, favoritos, quiz e configurações anteriores foram preservados.
 """

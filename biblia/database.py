@@ -128,6 +128,36 @@ class BibleDatabase:
         starts = [b for b in books if _normalize(b["book_name"]).startswith(normalized)]
         return starts[0] if len(starts) == 1 else None
 
+    def matching_books(self, translation_id: str, query: str):
+        """Devolve todas as opções plausíveis para consultas ambíguas do Modo culto."""
+        def canonical(value: str) -> str:
+            normalized = _normalize(value)
+            for prefixes, number in (
+                (("primeira", "primeiro"), "1"),
+                (("segunda", "segundo"), "2"),
+                (("terceira", "terceiro"), "3"),
+            ):
+                for prefix in prefixes:
+                    if normalized.startswith(prefix):
+                        return number + normalized[len(prefix):]
+            return normalized
+
+        wanted = canonical(query)
+        books = self.books(translation_id)
+        exact = [
+            book for book in books
+            if canonical(book["book_name"]) == wanted or _normalize(book["book_code"]) == wanted
+        ]
+        if exact:
+            return exact
+        return [
+            book for book in books
+            if wanted and (
+                canonical(book["book_name"]).endswith(wanted)
+                or wanted in canonical(book["book_name"])
+            )
+        ]
+
     def search(self, translation_id: str, query: str, limit: int = 500,
                book_code: str | None = None, phrase: bool = False):
         """Pesquisa palavras ou frase exata, opcionalmente dentro de um livro."""

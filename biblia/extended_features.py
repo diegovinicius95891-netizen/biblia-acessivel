@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from .dialogs import AccessibleButton, AccessibleResultDialog, AccessibleTextDialog, ActivatableList, ApplicationsDialog
+from .dialogs import AccessibleButton, AccessibleResultDialog, AccessibleTextDialog, ActivatableList, ApplicationsDialog, ChoiceDialog
 from .hymnal import load_hymnal, search_hymns
 from .online_devotionals import DevotionalFeedError, OnlineDevotionalService
 from .online_radio import OnlineRadioService, RadioFeedError
@@ -468,8 +468,7 @@ class ExtendedFeatures:
         if action == "daily_verse":
             self.show_daily_verse()
         elif action == "continue":
-            self.host.page_stack.setCurrentIndex(self.host.main_page_index)
-            self.host.verse_list.setFocus()
+            self.host.open_reader_section("reader_verses")
         else:
             self.host.open_more_option(action)
 
@@ -532,8 +531,7 @@ class ExtendedFeatures:
             return False
         book, parsed, _rows = resolved
         self.host._show_location(book["book_code"], parsed.chapter, parsed.verse_start)
-        self.host.page_stack.setCurrentIndex(self.host.main_page_index)
-        self.host.verse_list.setFocus()
+        self.host.open_reader_section("reader_verses")
         return True
 
     def _select_translation(self, translation_id: str):
@@ -1209,9 +1207,11 @@ class ExtendedFeatures:
     def _build_worship_mode(self):
         """Cria a tela rápida com busca, texto direto e retorno previsível."""
         section = QGroupBox("Modo culto"); layout = QVBoxLayout(section)
-        layout.addWidget(QLabel("Digite uma passagem e pressione Enter."))
+        layout.addWidget(QLabel(
+            "Digite uma passagem e pressione Enter. Aceita João 3:16, Pedro 2 5 e Pedro 2 5 15."
+        ))
         self.worship_edit = QLineEdit(); self.worship_edit.setAccessibleName("Digite uma passagem")
-        self.worship_edit.setPlaceholderText("Exemplo: Habacuque 2:4"); self.worship_edit.returnPressed.connect(self.open_worship_reference)
+        self.worship_edit.setPlaceholderText("Exemplo: Pedro 2 5 15"); self.worship_edit.returnPressed.connect(self.open_worship_reference)
         layout.addWidget(self.worship_edit)
         self.worship_heading = QLabel("Nenhuma passagem carregada.")
         self.worship_heading.setAccessibleName("Estado da passagem no modo culto")
@@ -1239,12 +1239,40 @@ class ExtendedFeatures:
         self._register("worship", "Modo culto", section, self.worship_edit)
 
     def open_worship_reference(self):
-        """Carrega imediatamente a passagem e deixa seu texto navegável."""
-        resolved = self.resolve_reference(self.worship_edit.text())
+        """Interpreta formatos naturais, esclarece livros ambíguos e mostra a passagem."""
         self.worship_result.clear()
-        if not resolved:
-            self.host._warn("Passagem não encontrada", "Confira a passagem digitada."); self.worship_edit.setFocus(); return
-        book, parsed, rows = resolved
+        try:
+            parsed = parse_reference(self.worship_edit.text())
+        except ValueError as error:
+            self.host._warn("Passagem não encontrada", str(error)); self.worship_edit.setFocus(); return
+        matches = self.db.matching_books(self.host.current_translation_id(), parsed.book_query)
+        if not matches:
+            fallback = self.db.resolve_book(self.host.current_translation_id(), parsed.book_query)
+            matches = [fallback] if fallback else []
+        if not matches:
+            self.host._warn("Livro não encontrado", "Confira o nome do livro digitado."); self.worship_edit.setFocus(); return
+        if len(matches) > 1:
+            code, accepted = ChoiceDialog.get_choice(
+                self.host,
+                "Qual livro você quer?",
+                tuple((book["book_name"], book["book_code"]) for book in matches),
+            )
+            if not accepted:
+                self.worship_edit.setFocus(); return
+            book = next(book for book in matches if book["book_code"] == code)
+        else:
+            book = matches[0]
+        maximum = self.db.chapter_count(self.host.current_translation_id(), book["book_code"])
+        if parsed.chapter > maximum:
+            self.host._warn("Capítulo não encontrado", f"{book['book_name']} possui {maximum} capítulos.")
+            self.worship_edit.setFocus(); return
+        rows = self.db.passage(
+            self.host.current_translation_id(), book["book_code"], parsed.chapter,
+            parsed.verse_start, parsed.verse_end,
+        )
+        if not rows:
+            self.host._warn("Passagem não encontrada", "Confira os números informados.")
+            self.worship_edit.setFocus(); return
         for row in rows: self.worship_result.addItem(QListWidgetItem(f"{row['verse']}. {row['text']}"))
         self._worship_book = book
         self._worship_chapter = parsed.chapter

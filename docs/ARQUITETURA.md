@@ -4,14 +4,14 @@ Este documento explica a responsabilidade de cada arquivo e os fluxos principais
 
 ## Organização da interface
 
-O aplicativo não usa `QTabWidget` nem guias. Um `QStackedWidget` mantém uma tela principal enxuta e telas internas acessíveis. Na tela principal, o foco percorre:
+O aplicativo não usa `QTabWidget` nem guias. Um `QStackedWidget` mantém um menu inicial e telas internas acessíveis. O menu inicial contém:
 
 1. Livros, com lista filtrada e troca de testamento pelas setas esquerda e direita.
 2. Capítulos.
 3. Versículos.
 4. Mais opções.
 
-Mais opções contém as páginas pessoais e de estudo. Espaço ou Enter abre somente o recurso escolhido; Escape restaura a tela principal e o foco em Mais opções. Tab e Shift+Tab percorrem os controles. Setas cima/baixo navegam dentro de listas. Na seção Livros, esquerda seleciona o Antigo Testamento e direita seleciona o Novo.
+Cada uma das quatro áreas abre como tela exclusiva. Alt+1 a Alt+4 abrem diretamente Livros, Capítulos, Versículos e Mais opções. Escape restaura o menu inicial. Setas cima/baixo navegam dentro de listas. Na seção Livros, esquerda seleciona o Antigo Testamento e direita seleciona o Novo.
 
 A escolha de tradução usa caixa de combinação. Comparar traduções mantém origem e destino independentes e apresenta os dois textos em seções acessíveis distintas.
 

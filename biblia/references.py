@@ -21,13 +21,25 @@ _REFERENCE = re.compile(
     r"(?::(?P<start>\d+[a-z]?)(?:\s*[-–]\s*(?P<end>\d+[a-z]?))?)?\s*$",
     re.IGNORECASE,
 )
+_SPOKEN_REFERENCE = re.compile(
+    r"^\s*(?P<book>.+?)\s+(?P<chapter>\d+)"
+    r"(?:\s+(?P<start>\d+[a-z]?)(?:\s*[-–]?\s*(?P<end>\d+[a-z]?))?)?\s*$",
+    re.IGNORECASE,
+)
 
 
 def parse_reference(text: str) -> ParsedReference:
-    """Aceita referências como ``Rm 8``, ``Jo 3:16`` e ``Sl 23:1-6``."""
-    match = _REFERENCE.match(text)
+    """Aceita pontuação tradicional e fala como ``Pedro 2 5 15``."""
+    cleaned = re.sub(r"\b(cap[ií]tulo|cap)\b", " ", text or "", flags=re.IGNORECASE)
+    cleaned = re.sub(r"\b(vers[ií]culos?|verso)\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"(?<=\d)\s+(?:a|ao|at[eé])\s+(?=\d)", " - ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+", " ", cleaned.replace(",", ":")).strip()
+    pattern = _REFERENCE if ":" in cleaned else _SPOKEN_REFERENCE
+    match = pattern.match(cleaned)
     if not match:
-        raise ValueError("Use um formato como João 3:16, Romanos 8 ou Salmos 23:1-6.")
+        raise ValueError(
+            "Use um formato como João 3:16, Romanos 8, Pedro 2 5 ou Pedro 2 5 15."
+        )
     values = match.groupdict()
     chapter = int(values["chapter"])
     if chapter < 1:

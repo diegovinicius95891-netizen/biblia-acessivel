@@ -285,9 +285,9 @@ class MainWindow(QMainWindow):
         self._load_translations_and_restore()
         from .update_ui import UpdateController
         self.update_controller = UpdateController(self, self.app_data_dir, self.install_dir)
-        self.book_list.setFocus()
+        self.reader_menu.setFocus()
         self.statusBar().showMessage(
-            "Pronto. Tab muda de seção; setas navegam dentro da seção. F1 abre a ajuda."
+            "Pronto. Escolha Livros, Capítulos, Versículos ou Mais opções. Alt+1 até Alt+4 abrem as telas."
         )
 
     # Interface ---------------------------------------------------------
@@ -299,6 +299,7 @@ class MainWindow(QMainWindow):
 
         self.sections_widget = self._build_reader_section()
         self.main_page_index = self.page_stack.addWidget(self.sections_widget)
+        self._build_reader_pages()
 
         self.translation_section = self._build_translation_section()
         self.comparison_section = self._build_comparison_section()
@@ -326,15 +327,35 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.page_stack)
 
     def _build_reader_section(self):
-        """Monta somente Livros, Capítulos, Versículos, Leitura e Mais opções."""
+        """Monta o menu inicial com quatro destinos, cada um em sua própria tela."""
         section = QWidget()
         layout = QVBoxLayout(section)
         self.start_summary = QLabel("Continuar leitura será carregado em instantes.")
         self.start_summary.setAccessibleName("Resumo inicial e continuar leitura")
         self.start_summary.setWordWrap(True)
         layout.addWidget(self.start_summary)
-        selection_row = QHBoxLayout()
+        layout.addWidget(QLabel("Use cima e baixo e pressione Espaço ou Enter. Atalhos: Alt+1 até Alt+4."))
+        self.reader_menu = ActivatableList()
+        self.reader_menu.setAccessibleName("Menu principal da Bíblia")
+        self.reader_menu.setAccessibleDescription(
+            "Livros Alt mais 1, Capítulos Alt mais 2, Versículos Alt mais 3 e Mais opções Alt mais 4."
+        )
+        for label, page_id in (
+            ("Livros — Alt+1", "reader_books"),
+            ("Capítulos — Alt+2", "reader_chapters"),
+            ("Versículos — Alt+3", "reader_verses"),
+            ("Mais opções — Alt+4", "reader_more"),
+        ):
+            item = QListWidgetItem(label)
+            item.setData(Qt.UserRole, page_id)
+            self.reader_menu.addItem(item)
+        self.reader_menu.setCurrentRow(0)
+        self.reader_menu.selectionRequested.connect(self.open_reader_section)
+        layout.addWidget(self.reader_menu, 1)
+        return section
 
+    def _build_reader_pages(self):
+        """Cria as quatro telas principais sem misturar suas listas na mesma página."""
         books_group = QGroupBox("Seção &Livros")
         books_layout = QVBoxLayout(books_group)
         self.testament_label = QLabel("Antigo Testamento")
@@ -358,7 +379,7 @@ class MainWindow(QMainWindow):
         self.book_list.customContextMenuRequested.connect(self.show_book_menu_at)
         books_layout.addWidget(self.book_list)
         books_group.setFocusProxy(self.book_list)
-        selection_row.addWidget(books_group, 1)
+        self._add_secondary_page("reader_books", "Livros — Alt+1", books_group, self.book_list)
 
         chapters_group = QGroupBox("Seção &Capítulos")
         chapters_layout = QVBoxLayout(chapters_group)
@@ -376,7 +397,7 @@ class MainWindow(QMainWindow):
         self.chapter_list.customContextMenuRequested.connect(self.show_chapter_menu_at)
         chapters_layout.addWidget(self.chapter_list)
         chapters_group.setFocusProxy(self.chapter_list)
-        selection_row.addWidget(chapters_group, 1)
+        self._add_secondary_page("reader_chapters", "Capítulos — Alt+2", chapters_group, self.chapter_list)
 
         verses_group = QGroupBox("Seção &Versículos")
         verses_layout = QVBoxLayout(verses_group)
@@ -402,8 +423,7 @@ class MainWindow(QMainWindow):
         self.verse_list.customContextMenuRequested.connect(self.show_verse_menu_at)
         verses_layout.addWidget(self.verse_list, 1)
         verses_group.setFocusProxy(self.verse_list)
-        selection_row.addWidget(verses_group, 2)
-        layout.addLayout(selection_row, 2)
+        self._add_secondary_page("reader_verses", "Versículos — Alt+3", verses_group, self.verse_list)
 
         more_group = QGroupBox("Seção &Mais opções")
         more_layout = QVBoxLayout(more_group)
@@ -432,12 +452,28 @@ class MainWindow(QMainWindow):
         self.more_options.selectionRequested.connect(self.open_more_option)
         more_layout.addWidget(self.more_options)
         more_group.setFocusProxy(self.more_options)
-        layout.addWidget(more_group, 1)
+        self._add_secondary_page("reader_more", "Mais opções — Alt+4", more_group, self.more_options)
 
-        QWidget.setTabOrder(self.book_list, self.chapter_list)
-        QWidget.setTabOrder(self.chapter_list, self.verse_list)
-        QWidget.setTabOrder(self.verse_list, self.more_options)
-        return section
+    def open_reader_section(self, item_or_id):
+        """Abre uma das quatro telas principais e posiciona o foco na lista correta."""
+        page_id = item_or_id.data(Qt.UserRole) if isinstance(item_or_id, QListWidgetItem) else item_or_id
+        if page_id not in {"reader_books", "reader_chapters", "reader_verses", "reader_more"}:
+            return
+        index, focus_widget = self.secondary_pages[page_id]
+        self.page_stack.setCurrentIndex(index)
+        focus_widget.setFocus()
+        if isinstance(focus_widget, QListWidget) and focus_widget.count():
+            focus_widget.setCurrentRow(max(0, focus_widget.currentRow()))
+        title = {
+            "reader_books": "Livros",
+            "reader_chapters": "Capítulos",
+            "reader_verses": "Versículos",
+            "reader_more": "Mais opções",
+        }[page_id]
+        if page_id == "reader_verses" and self.verse_list.currentItem():
+            self._verse_changed(self.verse_list.currentItem())
+        else:
+            self.statusBar().showMessage(f"Tela {title}. Pressione Escape para voltar ao menu principal.")
 
     def _build_translation_section(self):
         """Cria a tela com uma caixa de combinação para a tradução padrão."""
@@ -564,9 +600,9 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Nova tela aberta. Pressione Escape para voltar à Bíblia.")
 
     def show_main_page(self):
-        """Fecha a tela interna e devolve o foco à seção Mais opções."""
+        """Fecha a tela interna e devolve o foco ao menu das quatro áreas."""
         self.page_stack.setCurrentIndex(self.main_page_index)
-        self.more_options.setFocus()
+        self.reader_menu.setFocus()
         self.statusBar().showMessage("Menu principal da Bíblia.")
 
     def _build_search_section(self):
@@ -725,8 +761,9 @@ class MainWindow(QMainWindow):
         self.help_text.set_text(
             "BÍBLIA ACESSÍVEL\n\n"
             "NAVEGAÇÃO POR SEÇÕES\n"
-            "Na tela principal, Tab e Shift+Tab percorrem Livros, Capítulos, Versículos e Mais opções. "
-            "O texto bíblico fica diretamente em Versículos. Cima e baixo navegam dentro da seção atual. "
+            "Na tela principal, cima e baixo percorrem Livros, Capítulos, Versículos e Mais opções. "
+            "Alt+1 abre Livros, Alt+2 abre Capítulos, Alt+3 abre Versículos e Alt+4 abre Mais opções. "
+            "Cada área abre sozinha em uma nova tela; Escape retorna ao menu principal. O texto bíblico fica diretamente em Versículos. Cima e baixo navegam dentro da seção atual. "
             "Em Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo, anunciando a seleção e a quantidade de livros. Enter em Livros leva aos capítulos; Enter em "
             "Capítulos abre os versículos. Mais opções abre cada recurso numa tela limpa. Escape volta "
             "ao menu principal da Bíblia.\n\n"
@@ -827,6 +864,10 @@ class MainWindow(QMainWindow):
 
     def _build_shortcuts(self):
         """Registra atalhos globais sem substituir comandos de edição comuns."""
+        QShortcut(QKeySequence("Alt+1"), self, activated=lambda: self.open_reader_section("reader_books"))
+        QShortcut(QKeySequence("Alt+2"), self, activated=lambda: self.open_reader_section("reader_chapters"))
+        QShortcut(QKeySequence("Alt+3"), self, activated=lambda: self.open_reader_section("reader_verses"))
+        QShortcut(QKeySequence("Alt+4"), self, activated=lambda: self.open_reader_section("reader_more"))
         QShortcut(QKeySequence(SHORTCUTS["reference"]), self, activated=self._focus_reference)
         QShortcut(QKeySequence(SHORTCUTS["search"]), self, activated=self._focus_search)
         QShortcut(QKeySequence(SHORTCUTS["plans"]), self, activated=lambda: self.open_more_option("plans"))
@@ -917,15 +958,7 @@ class MainWindow(QMainWindow):
         self.search_book.setCurrentIndex(max(0, index))
 
     def _update_tab_order(self):
-        """Garante a rota principal de quatro seções e rotas locais nas telas internas."""
-        chain: list[QWidget] = [
-            self.book_list,
-            self.chapter_list,
-            self.verse_list,
-            self.more_options,
-        ]
-        for current, following in zip(chain, chain[1:]):
-            QWidget.setTabOrder(current, following)
+        """Garante rotas locais nas telas com mais de um controle."""
         QWidget.setTabOrder(self.devotional_reference, self.devotional_title)
         QWidget.setTabOrder(self.devotional_title, self.devotional_source)
         QWidget.setTabOrder(self.devotional_source, self.devotional_editor)
@@ -1090,9 +1123,9 @@ class MainWindow(QMainWindow):
         self._loading = False
 
     def focus_chapters(self):
-        """Move o foco de Livros para Capítulos após Enter."""
+        """Abre a tela de capítulos após a ativação de um livro."""
         if self.chapter_list.count():
-            self.chapter_list.setFocus()
+            self.open_reader_section("reader_chapters")
             self.statusBar().showMessage(
                 f"Capítulos de {self.book_list.currentItem().text()}. Escolha e pressione Enter."
             )
@@ -1108,7 +1141,7 @@ class MainWindow(QMainWindow):
         self.active_chapter = int(chapter_item.data(Qt.UserRole))
         self.load_chapter(focus_verse)
         if focus_reading:
-            self.verse_list.setFocus()
+            self.open_reader_section("reader_verses")
 
     # Leitura e posição -------------------------------------------------
     def load_chapter(self, focus_verse=None):
@@ -1215,8 +1248,7 @@ class MainWindow(QMainWindow):
             return
         self._show_location(book["book_code"], chapter, parsed.verse_start)
         self.reference_edit.clear()
-        self.page_stack.setCurrentIndex(self.main_page_index)
-        self.verse_list.setFocus()
+        self.open_reader_section("reader_verses")
 
     def _show_location(self, book_code: str, chapter: int, verse=None, focus_reading=True):
         """Sincroniza tradução, testamento, livro, capítulo e leitura."""
@@ -1736,8 +1768,7 @@ class MainWindow(QMainWindow):
         self.translation_list.setCurrentItem(target)
         self.select_current_translation()
         self._show_location(row["book_code"], int(row["chapter"]), row["verse"])
-        self.page_stack.setCurrentIndex(self.main_page_index)
-        self.verse_list.setFocus()
+        self.open_reader_section("reader_verses")
 
     # Configurações e IA -----------------------------------------------
     def _load_saved_api_key(self) -> str:

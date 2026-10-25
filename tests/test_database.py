@@ -43,6 +43,13 @@ class DatabaseTests(unittest.TestCase):
         self.assertIsNotNone(book)
         self.assertEqual("JHN", book["book_code"])
 
+    def test_ambiguous_book_resolution_for_worship_mode(self):
+        """Oferece Primeira e Segunda Pedro quando a pessoa diz apenas Pedro."""
+        matches = self.db.matching_books("bpm", "Pedro")
+        self.assertEqual(["1PE", "2PE"], [book["book_code"] for book in matches])
+        second = self.db.matching_books("bpm", "segunda Pedro")
+        self.assertEqual(["2PE"], [book["book_code"] for book in second])
+
     def test_search(self):
         """Confirma que a pesquisa por múltiplas palavras retorna itens."""
         self.assertGreater(len(self.db.search("bpm", "bom pastor")), 0)

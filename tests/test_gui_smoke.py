@@ -57,6 +57,21 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertFalse(hasattr(window, "tabs"))
         self.assertIs(window.page_stack, window.centralWidget())
         self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
+        self.assertEqual(4, window.reader_menu.count())
+        self.assertEqual(
+            ["Livros — Alt+1", "Capítulos — Alt+2", "Versículos — Alt+3", "Mais opções — Alt+4"],
+            [window.reader_menu.item(index).text() for index in range(window.reader_menu.count())],
+        )
+        window.open_reader_section("reader_books")
+        self.assertIs(window.book_list, window.focusWidget())
+        window._handle_escape()
+        self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
+        window.show()
+        self.app.processEvents()
+        QTest.keyClick(window, Qt.Key_2, Qt.AltModifier)
+        self.app.processEvents()
+        self.assertEqual(window.secondary_pages["reader_chapters"][0], window.page_stack.currentIndex())
+        window._handle_escape()
         self.assertEqual(28, window.more_options.count())
         labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
         self.assertIn("Harpa Cristã", labels)
@@ -120,6 +135,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertIn("Open Translation Bible em português", legal_content)
         self.assertIn("NTLH não foi incluída", legal_content)
         self.assertGreater(window.help_text.count(), 1)
+        window.open_reader_section("reader_more")
         window.more_options.setCurrentRow(7)
         QTest.keyClick(window.more_options, Qt.Key_Space)
         self.assertNotEqual(window.main_page_index, window.page_stack.currentIndex())

@@ -5,8 +5,9 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 ## Recursos incluídos
 
 - Bíblia offline com as cinco traduções completas do aplicativo desktop.
-- Tela principal com Continuar de onde parou, Livros, Capítulos, Versículos e Mais opções.
-- Continuar de onde parou abre o capítulo completo já posicionado no último versículo; o texto fica diretamente em Versículos.
+- Tela inicial curta: abrir o capítulo atual, trocar de livro ou abrir Mais opções.
+- A posição exata fica salva; ao escolher um capítulo, é possível começar no início ou escolher o versículo.
+- Capítulo anterior e Próximo capítulo aparecem no início da leitura. Um gesto horizontal de dois dedos também troca o capítulo e o TalkBack anuncia o destino.
 - Com o TalkBack, deslizar para a direita ou esquerda percorre as opções e o toque duplo abre a opção anunciada.
 - Ao fim dos versículos, há uma opção para abrir o próximo capítulo; no último capítulo, o fim do livro é anunciado.
 - Antigo e Novo Testamento, continuidade da última posição e pesquisa offline.
@@ -25,7 +26,7 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 - Harpa Cristã com 640 hinos e pesquisa offline por número, título ou trecho.
 - Quiz bíblico com 298 perguntas de estudo e Status do quiz com acertos, erros e aproveitamento.
 - Cada pergunta conta somente uma vez; o botão confirmado Recomeçar quiz do zero é a única forma de liberar todas novamente.
-- Modo culto: confirme João 3:16, Romanos 8 ou Salmos 23:1-6 e a passagem aparece e recebe foco imediatamente.
+- Modo culto disponível desde livros, capítulos e versículos, com busca por texto ou voz. Aceita João 3:16, Pedro 2 5 e Pedro 2 5 15; nomes ambíguos abrem uma escolha acessível.
 - Atualizador Android próprio, com consulta diária opcional, download cancelável, SHA-256 e backup antes da instalação.
 
 O backup automático do aplicativo está desativado. Notas, marcadores e chave de API permanecem no armazenamento privado do aplicativo e não fazem parte do APK.

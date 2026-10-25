@@ -21,6 +21,13 @@ class ReferenceParserTests(unittest.TestCase):
         parsed = parse_reference("Romanos 8")
         self.assertIsNone(parsed.verse_start)
 
+    def test_spoken_reference_without_punctuation(self):
+        """Interpreta capítulo, versículo e intervalo separados somente por espaços."""
+        parsed = parse_reference("Pedro 2 5")
+        self.assertEqual(("Pedro", 2, "5", None), tuple(parsed.__dict__.values()))
+        interval = parse_reference("segunda Pedro capítulo 2 versículo 5 até 15")
+        self.assertEqual(("segunda Pedro", 2, "5", "15"), tuple(interval.__dict__.values()))
+
     def test_rejects_reversed_range(self):
         """Recusa intervalos cujo fim aparece antes do começo."""
         with self.assertRaises(ValueError):

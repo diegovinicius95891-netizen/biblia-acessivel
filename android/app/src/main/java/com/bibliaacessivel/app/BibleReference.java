@@ -5,8 +5,11 @@ import java.util.regex.Pattern;
 
 /** Referência digitada com livro, capítulo e intervalo opcional de versículos. */
 final class BibleReference {
-    private static final Pattern PATTERN = Pattern.compile(
+    private static final Pattern COLON_PATTERN = Pattern.compile(
             "^\\s*(.+?)\\s+(\\d+)(?::(\\d+[a-z]?)(?:\\s*[-–]\\s*(\\d+[a-z]?))?)?\\s*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern SPOKEN_PATTERN = Pattern.compile(
+            "^\\s*(.+?)\\s+(\\d+)(?:\\s+(\\d+[a-z]?)(?:\\s*[-–]?\\s*(\\d+[a-z]?))?)?\\s*$",
             Pattern.CASE_INSENSITIVE);
 
     final String book;
@@ -21,11 +24,17 @@ final class BibleReference {
         this.endVerse = endVerse;
     }
 
-    /** Aceita exemplos como João 3:16, Romanos 8 e Salmos 23:1-6. */
+    /** Aceita pontuação tradicional e formas faladas como "Pedro 2 5 15". */
     static BibleReference parse(String value) {
-        Matcher match = PATTERN.matcher(value == null ? "" : value);
+        String cleaned = value == null ? "" : value.trim();
+        cleaned = cleaned.replaceAll("(?i)\\b(cap[ií]tulo|cap)\\b", " ")
+                .replaceAll("(?i)\\b(vers[ií]culos?|verso)\\b", " ")
+                .replaceAll("(?<=\\d)\\s+(?:a|ao|at[eé])\\s+(?=\\d)", " - ")
+                .replace(',', ':').replaceAll("\\s+", " ").trim();
+        Matcher match = (cleaned.contains(":") ? COLON_PATTERN : SPOKEN_PATTERN).matcher(cleaned);
         if (!match.matches()) {
-            throw new IllegalArgumentException("Use um formato como João 3:16, Romanos 8 ou Salmos 23:1-6.");
+            throw new IllegalArgumentException(
+                    "Diga ou digite algo como João 3:16, Romanos 8, Pedro 2 5 ou Pedro 2 5 15.");
         }
         int chapter = Integer.parseInt(match.group(2));
         if (chapter < 1) throw new IllegalArgumentException("O capítulo deve ser maior que zero.");
