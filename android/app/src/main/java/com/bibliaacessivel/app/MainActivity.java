@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
 /** Atividade única com telas nativas, navegação previsível e sem guias. */
@@ -183,19 +184,17 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(actionButton("Mais opções", "Abrir traduções, pesquisa, notas e configurações",
                 this::showMoreOptions));
         setContentView(root);
-        root.getChildAt(2).requestFocus();
+        focusForTalkBack(root.getChildAt(2), "Continuar leitura em " + currentReference());
     }
 
     /** Confirma se a pessoa deseja trocar o livro ou retomar exatamente a posição salva. */
     private void confirmBookChoice() {
-        new AlertDialog.Builder(this).setTitle("Seção Livros")
-                .setMessage("Você quer trocar de livro ou continuar no capítulo em que parou?")
-                .setItems(new String[]{
-                        "Continuar em " + currentReference(),
-                        "Trocar de livro"
-                }, (dialog, which) -> {
+        showChoiceDialog("Seção Livros",
+                "Você quer trocar de livro ou continuar no capítulo em que parou?",
+                new String[]{"Continuar em " + currentReference(), "Trocar de livro"},
+                which -> {
                     if (which == 0) showVerses(); else showBooks();
-                }).show();
+                });
     }
 
     /** Lista livros do testamento escolhido e oferece o menu de aplicações. */
@@ -224,7 +223,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(actionButton("Escolher livro", "Abrir os livros do testamento selecionado",
                 () -> populateBookScreen(testament.getSelectedItemPosition() == 1)));
         setContentView(root);
-        testament.requestFocus();
+        focusForTalkBack(testament, "Escolha Antigo ou Novo Testamento.");
     }
 
     /** Recria a lista de livros sem alterar o padrão de foco da tela. */
@@ -255,7 +254,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         setContentView(root);
         int index = Math.max(0, books.indexOf(selectedBook));
         list.setSelection(index);
-        list.requestFocus();
+        focusForTalkBack(list, "Escolha o livro.");
     }
 
     /** Mostra números de capítulo do livro atual. */
@@ -290,7 +289,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(paragraph("Ative para abrir. Toque e segure para Aplicações do capítulo."));
         setContentView(root);
         list.setSelection(Math.max(0, selectedChapter - 1));
-        list.requestFocus();
+        focusForTalkBack(list, "Escolha o capítulo de " + selectedBook.name + ".");
     }
 
     /** Lista os textos do capítulo e abre suas ações com uma única ativação. */
@@ -319,7 +318,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(paragraph("Ative um versículo para abrir suas ações. Também há botões e gesto de dois dedos para trocar de capítulo."));
         setContentView(root);
         list.setSelection(verseIndex(verses, selectedVerse == null ? "1" : selectedVerse.number));
-        list.requestFocus();
+        focusForTalkBack(list, "Versículos de " + currentChapterReference() + ".");
     }
 
     /** Reúne recursos secundários numa lista nativa navegável. */
@@ -357,7 +356,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         });
         root.addView(list, fill());
         setContentView(root);
-        list.requestFocus();
+        focusForTalkBack(list, "Mais opções.");
     }
 
     /** Lista categorias prontas e a pergunta livre do Teólogo de IA. */
@@ -387,7 +386,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 showAiStudyComposer(topics.get(position), this::showStudies));
         root.addView(list, fill());
         setContentView(root);
-        list.requestFocus();
+        focusForTalkBack(list, "Categorias de estudo.");
     }
 
     /** Abre um campo editável com a pergunta sugerida e o texto bíblico usado como contexto. */
@@ -413,7 +412,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             }
         }));
         setContentView(root);
-        question.requestFocus();
+        focusForTalkBack(question, "Edite ou escreva sua pergunta.");
         if (!topic.suggestedQuestion.isEmpty()) question.selectAll();
     }
 
@@ -454,7 +453,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             feedback.announceForAccessibility(feedback.getText());
         }));
         setContentView(root);
-        choices.requestFocus();
+        focusForTalkBack(choices, "Escolha a tradução padrão.");
     }
 
     /** Escolhe origem e destino e compara o versículo atual em seções separadas. */
@@ -482,7 +481,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 showComparisonResult(translations.get(source.getSelectedItemPosition()),
                         translations.get(target.getSelectedItemPosition()))));
         setContentView(root);
-        source.requestFocus();
+        focusForTalkBack(source, "Escolha a tradução de origem.");
     }
 
     /** Mostra primeiro a origem e depois o destino, permitindo inverter as duas. */
@@ -506,7 +505,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 () -> showComparisonResult(target, source)));
         root.addView(actionButton("Escolher outras traduções", "Voltar às caixas de combinação", this::showComparison));
         setContentView(root);
-        sourceView.requestFocus();
+        focusForTalkBack(sourceView, "Tradução de origem, " + source.name + ".");
     }
 
     private String verseText(String chosenTranslation, String verseNumber) {
@@ -531,7 +530,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         });
         root.addView(go);
         setContentView(root);
-        input.requestFocus();
+        focusForTalkBack(input, "Digite a referência bíblica.");
     }
 
     /** Pesquisa localmente sem depender de internet. */
@@ -555,7 +554,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         });
         root.addView(search);
         setContentView(root);
-        input.requestFocus();
+        focusForTalkBack(input, "Digite o texto para pesquisar.");
     }
 
     /** Mostra resultados textuais e permite copiá-los pelo menu padrão. */
@@ -569,7 +568,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 showTextScreen("Resultado", results.get(position), () -> showSearchResults(query)));
         root.addView(list, fill());
         setContentView(root);
-        list.requestFocus();
+        focusForTalkBack(list, results.size() + " resultados encontrados.");
     }
 
     /** Cria editor de devocional com referência substituível e exportação SAF. */
@@ -608,7 +607,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             startActivityForResult(intent, CREATE_DEVOTIONAL);
         }));
         showCustomScreen("Fazer devocional", content, this::showMoreOptions);
-        reference.requestFocus();
+        focusForTalkBack(reference, "Referência bíblica do devocional.");
     }
 
     /** Exibe todo o histórico do site e mantém uma cópia para leitura offline. */
@@ -632,7 +631,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(onlineDevotionalList, fill());
         setContentView(root);
         populateOnlineDevotionals();
-        onlineDevotionalList.requestFocus();
+        focusForTalkBack(onlineDevotionalList, "Devocionais publicados.");
         refreshOnlineDevotionals(false);
     }
 
@@ -704,7 +703,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(navigation);
         setContentView(root);
         populateGospelRadio();
-        radioList.requestFocus();
+        focusForTalkBack(radioList, "Louvores da Rádio Gospel.");
         refreshGospelRadio(false);
     }
 
@@ -857,7 +856,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         });
         root.addView(list, fill());
         setContentView(root);
-        list.requestFocus();
+        focusForTalkBack(list, "Anotações organizadas por dia e título.");
     }
 
     /** Exibe opções persistentes de IA, voz, velocidade e contraste do sistema. */
@@ -896,7 +895,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         });
         root.addView(list, fill());
         setContentView(root);
-        list.requestFocus();
+        focusForTalkBack(list, "Configurações.");
     }
 
     /** Converte o HTML jurídico do banco em texto selecionável e acessível. */
@@ -1032,22 +1031,19 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         });
         root.addView(list, fill());
         setContentView(root);
-        if (query.isEmpty()) input.requestFocus();
-        else if (!results.isEmpty()) list.requestFocus();
-        else input.requestFocus();
+        if (query.isEmpty()) focusForTalkBack(input, "Pesquisar hino.");
+        else if (!results.isEmpty()) focusForTalkBack(list, results.size() + " hinos encontrados.");
+        else focusForTalkBack(input, "Nenhum hino encontrado. Digite outra pesquisa.");
     }
 
     /** Escolhe filtros do quiz em diálogos nativos e abre a lista resultante. */
     private void showQuiz() {
-        new AlertDialog.Builder(this).setTitle("Dificuldade do quiz")
-                .setItems(QuizCatalog.DIFFICULTIES, (firstDialog, difficultyIndex) ->
-                        new AlertDialog.Builder(this).setTitle("Categoria do quiz")
-                                .setItems(quizCatalog.categories, (secondDialog, categoryIndex) ->
-                                        showQuizQuestions(
-                                                QuizCatalog.DIFFICULTIES[difficultyIndex],
-                                                quizCatalog.categories[categoryIndex]))
-                                .setNegativeButton("Cancelar", null).show())
-                .setNegativeButton("Cancelar", null).show();
+        showChoiceDialog("Dificuldade do quiz", "Escolha a dificuldade.",
+                QuizCatalog.DIFFICULTIES, difficultyIndex ->
+                        showChoiceDialog("Categoria do quiz", "Escolha a categoria.",
+                                quizCatalog.categories, categoryIndex ->
+                                        showQuizQuestions(QuizCatalog.DIFFICULTIES[difficultyIndex],
+                                                quizCatalog.categories[categoryIndex])));
     }
 
     /** Lista as perguntas filtradas e mantém o foco na primeira linha. */
@@ -1063,7 +1059,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(list, fill());
         root.addView(actionButton("Trocar filtros", "Escolher outra dificuldade ou categoria", this::showQuiz));
         setContentView(root);
-        list.requestFocus();
+        focusForTalkBack(list, "Perguntas do quiz bíblico.");
     }
 
     /** Informa imediatamente acerto ou erro, explicação e referência bíblica. */
@@ -1075,8 +1071,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                             showQuizQuestions(difficulty, category)).show();
             return;
         }
-        new AlertDialog.Builder(this).setTitle(question.text)
-                .setItems(question.answers, (dialog, chosen) -> {
+        showChoiceDialog(question.text, "Escolha uma resposta.", question.answers, chosen -> {
                     boolean correct = chosen == question.correct;
                     if (!userData.recordQuizAttempt(question, correct)) {
                         new AlertDialog.Builder(this).setTitle("Pergunta já respondida")
@@ -1093,7 +1088,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                             .setMessage(result).setPositiveButton("Continuar",
                                     (resultDialog, which) -> showQuizQuestions(difficulty, category))
                             .setNegativeButton("Fechar", null).show();
-                }).setNegativeButton("Cancelar", null).show();
+                });
     }
 
     /** Mostra quantas respostas foram certas e erradas neste aparelho. */
@@ -1121,7 +1116,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                             showQuizStatus();
                         }).setNegativeButton("Cancelar", null).show()));
         setContentView(root);
-        list.requestFocus();
+        focusForTalkBack(list, "Status do quiz bíblico.");
     }
 
     /** Cria a busca rápida do culto com o campo focado e o resultado na mesma tela. */
@@ -1175,7 +1170,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             return true;
         });
         setContentView(root);
-        worshipInput.requestFocus();
+        focusForTalkBack(worshipInput, "Pesquisar passagem por texto ou voz.");
     }
 
     /** Resolve a referência e move o foco direto para o texto, sem menu intermediário. */
@@ -1209,16 +1204,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 })
                 .setNegativeButton("Cancelar", null)
                 .create();
-        dialog.setOnShowListener(ignored -> {
-            ListView options = dialog.getListView();
-            if (options != null) {
-                options.setContentDescription("Livros encontrados para " + reference.book);
-                options.requestFocus();
-                options.announceForAccessibility(
-                        matches.size() + " livros encontrados. Deslize e toque duas vezes para escolher.");
-            }
-        });
-        dialog.show();
+        showDialogWithChoiceFocus(dialog, matches.size() + " livros encontrados para " +
+                reference.book + ". Primeira opção: " + choices[0] +
+                ". Deslize e toque duas vezes para escolher.");
     }
 
     /** Valida capítulo e intervalo depois que o livro exato foi escolhido. */
@@ -1332,31 +1320,28 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(actionButton("Alternar notificações",
                 "Ativar ou desativar avisos de nova versão", updateManager::toggleNotifications));
         setContentView(root);
-        root.getChildAt(2).requestFocus();
+        focusForTalkBack(root.getChildAt(2), "Verificar atualizações.");
     }
 
     /** Mantém a IA como primeira ação do livro. */
     private void showBookActions() {
-        new AlertDialog.Builder(this)
-                .setTitle("Menu do livro " + selectedBook.name)
-                .setItems(new String[]{"Gerar resumo do livro com IA"}, (dialog, which) -> {
+        showChoiceDialog("Menu do livro " + selectedBook.name, "Escolha uma ação.",
+                new String[]{"Gerar resumo do livro com IA"}, which -> {
                     int words = 550;
                     runAi("Resumo de " + selectedBook.name,
                             "Resuma " + selectedBook.name + " em no máximo " + words +
                                     " palavras, em poucos parágrafos, e conclua completamente.",
                             () -> bible.bookText(translationId, selectedBook.code));
-                }).setNegativeButton("Cancelar", null).show();
+                });
     }
 
     /** Mantém a IA como primeira ação do capítulo. */
     private void showChapterActions() {
-        new AlertDialog.Builder(this)
-                .setTitle("Menu do capítulo " + selectedChapter)
-                .setItems(new String[]{"Gerar resumo do capítulo com IA"}, (dialog, which) ->
+        showChoiceDialog("Menu do capítulo " + selectedChapter, "Escolha uma ação.",
+                new String[]{"Gerar resumo do capítulo com IA"}, which ->
                         runAi("Resumo de " + currentChapterReference(),
                                 "Resuma o capítulo em no máximo 320 palavras e conclua completamente.",
-                                () -> bible.chapterText(translationId, selectedBook.code, selectedChapter)))
-                .setNegativeButton("Cancelar", null).show();
+                                () -> bible.chapterText(translationId, selectedBook.code, selectedChapter)));
     }
 
     /** Oferece IA, estudos, anotação, cópia, marcador e voz para o texto atual. */
@@ -1370,8 +1355,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "Copiar referência e texto", marked ? "Remover marcador" : "Adicionar marcador",
                 "Ouvir ou repetir pelo leitor de tela"
         };
-        new AlertDialog.Builder(this).setTitle("Menu do versículo " + currentReference())
-                .setItems(actions, (dialog, which) -> {
+        showChoiceDialog("Menu do versículo " + currentReference(), "Escolha uma ação.",
+                actions, which -> {
                     switch (which) {
                         case 0:
                             runAi("Explicação de " + currentReference(),
@@ -1390,7 +1375,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                         default:
                             speakOrAnnounce(getWindow().getDecorView(), selectedVerse.toString());
                     }
-                }).setNegativeButton("Cancelar", null).show();
+                });
     }
 
     /** Mostra as categorias teológicas a partir do menu do versículo atual. */
@@ -1398,12 +1383,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         List<AiStudyCatalog.Topic> topics = AiStudyCatalog.TOPICS;
         String[] labels = new String[topics.size()];
         for (int index = 0; index < topics.size(); index++) labels[index] = topics.get(index).label;
-        new AlertDialog.Builder(this)
-                .setTitle("Teólogo de IA — " + currentReference())
-                .setItems(labels, (dialog, which) ->
-                        showAiStudyComposer(topics.get(which), this::showVerseActions))
-                .setNegativeButton("Cancelar", null)
-                .show();
+        showChoiceDialog("Teólogo de IA — " + currentReference(), "Escolha o tipo de estudo.",
+                labels, which -> showAiStudyComposer(topics.get(which), this::showVerseActions));
     }
 
     /** Solicita título e corpo e grava a nota somente quando houver conteúdo. */
@@ -1435,6 +1416,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 }));
         dialog.show();
         title.selectAll();
+        focusForTalkBack(title, "Título da anotação. Depois, preencha o texto da anotação.");
     }
 
     /** Executa a rede fora da thread visual e anuncia começo, sucesso ou falha. */
@@ -1475,7 +1457,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         EditText input = editText("Chave da API do Google Gemini", false);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         input.setText(secureStore.loadApiKey());
-        new AlertDialog.Builder(this).setTitle("Chave do Google Gemini")
+        AlertDialog keyDialog = new AlertDialog.Builder(this).setTitle("Chave do Google Gemini")
                 .setView(input).setPositiveButton("Salvar", (dialog, which) -> {
                     try {
                         secureStore.saveApiKey(input.getText().toString());
@@ -1483,7 +1465,10 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                     } catch (Exception error) {
                         toast("Não foi possível proteger a chave.");
                     }
-                }).setNegativeButton("Cancelar", null).show();
+                }).setNegativeButton("Cancelar", null).create();
+        keyDialog.setOnShowListener(ignored ->
+                focusForTalkBack(input, "Cole ou digite a chave da API do Google Gemini."));
+        keyDialog.show();
     }
 
     /** Abre a página oficial do Google AI Studio para criar ou copiar uma chave Gemini. */
@@ -1502,12 +1487,13 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         String current = preferences.getString("ai_model", AI_MODELS[0]);
         int checked = 0;
         for (int i = 0; i < AI_MODELS.length; i++) if (AI_MODELS[i].equals(current)) checked = i;
-        new AlertDialog.Builder(this).setTitle("Modelo da inteligência artificial")
-                .setSingleChoiceItems(AI_MODELS, checked, (dialog, which) -> {
+        AlertDialog modelDialog = new AlertDialog.Builder(this).setTitle("Modelo da inteligência artificial")
+                .setSingleChoiceItems(AI_MODELS, checked, (choiceDialog, which) -> {
                     preferences.edit().putString("ai_model", AI_MODELS[which]).apply();
-                    dialog.dismiss();
+                    choiceDialog.dismiss();
                     toast("Modelo selecionado: " + AI_MODELS[which]);
-                }).setNegativeButton("Cancelar", null).show();
+                }).setNegativeButton("Cancelar", null).create();
+        showDialogWithChoiceFocus(modelDialog, "Escolha o modelo da inteligência artificial.");
     }
 
     /** Lista vozes instaladas pelo Android e inclui a desativação. */
@@ -1528,24 +1514,22 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 }
             }
         }
-        new AlertDialog.Builder(this).setTitle("Voz do Android")
-                .setItems(labels.toArray(new String[0]), (dialog, which) -> {
+        showChoiceDialog("Voz do Android", "Escolha uma voz.", labels.toArray(new String[0]), which -> {
                     preferences.edit().putString("voice", values.get(which)).apply();
                     applyVoice();
                     toast("Voz selecionada: " + labels.get(which));
-                }).setNegativeButton("Cancelar", null).show();
+                });
     }
 
     /** Ajusta a velocidade em valores compreensíveis, sem controle deslizante inacessível. */
     private void chooseSpeechRate() {
         String[] labels = {"Lenta", "Normal", "Rápida"};
         float[] values = {0.75f, 1.0f, 1.35f};
-        new AlertDialog.Builder(this).setTitle("Velocidade da voz")
-                .setItems(labels, (dialog, which) -> {
+        showChoiceDialog("Velocidade da voz", "Escolha a velocidade.", labels, which -> {
                     preferences.edit().putFloat("speech_rate", values[which]).apply();
                     if (ttsReady) tts.setSpeechRate(values[which]);
                     toast("Velocidade: " + labels[which]);
-                }).setNegativeButton("Cancelar", null).show();
+                });
     }
 
     /** Usa voz interna ou força novo anúncio quando ela estiver desligada. */
@@ -1611,10 +1595,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Oferece início imediato ou escolha de um versículo antes de abrir a leitura. */
     private void askHowToOpenChapter() {
-        new AlertDialog.Builder(this).setTitle(currentChapterReference())
-                .setMessage("Você quer começar no início ou escolher um versículo?")
-                .setItems(new String[]{"Começar no versículo 1", "Escolher versículo"},
-                        (dialog, which) -> {
+        showChoiceDialog(currentChapterReference(),
+                "Você quer começar no início ou escolher um versículo?",
+                new String[]{"Começar no versículo 1", "Escolher versículo"}, which -> {
                             if (which == 0) {
                                 selectVerse("1");
                                 savePosition();
@@ -1622,7 +1605,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                             } else {
                                 showVersePicker();
                             }
-                        }).show();
+                        });
     }
 
     /** Lista os versículos do capítulo para que a leitura possa começar em qualquer ponto. */
@@ -1640,7 +1623,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(list, fill());
         setContentView(root);
         list.setSelection(verseIndex(verses, selectedVerse == null ? "1" : selectedVerse.number));
-        list.requestFocus();
+        focusForTalkBack(list, "Escolha o versículo inicial.");
     }
 
     private String previousChapterDescription() {
@@ -1808,7 +1791,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         content.addView(body, fill());
         content.addView(actionButton("Copiar texto", "Copiar todo o conteúdo", () -> copy(text)));
         showCustomScreen(title, content, back);
-        body.requestFocus();
+        focusForTalkBack(body, title + ". Texto disponível para leitura.");
     }
 
     /** Envolve conteúdo customizado em título e botão Voltar. */
@@ -1867,6 +1850,61 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         button.setMinHeight(dp(52));
         button.setOnClickListener(view -> action.run());
         return button;
+    }
+
+    /** Exibe uma escolha padronizada e entrega o foco à primeira opção após o diálogo abrir. */
+    private void showChoiceDialog(String title, String message, String[] items, IntConsumer action) {
+        if (items == null || items.length == 0) {
+            toast("Não há opções disponíveis nesta parte do aplicativo.");
+            return;
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setItems(items, (choiceDialog, which) -> action.accept(which))
+                .setNegativeButton("Cancelar", null)
+                .create();
+        showDialogWithChoiceFocus(dialog, title + ". " + message + " " + items.length +
+                " opções. Primeira opção: " + items[0] + ".");
+    }
+
+    /** Aguarda a janela estar anexada antes de focar e anunciar sua lista ao TalkBack. */
+    private void showDialogWithChoiceFocus(AlertDialog dialog, String announcement) {
+        dialog.setOnShowListener(ignored -> {
+            ListView choices = dialog.getListView();
+            if (choices == null || choices.getAdapter() == null || choices.getAdapter().getCount() == 0) return;
+            choices.setFocusable(true);
+            choices.setFocusableInTouchMode(true);
+            choices.setSelection(0);
+            choices.postDelayed(() -> {
+                if (!dialog.isShowing()) return;
+                choices.requestFocus();
+                View firstChoice = choices.getChildAt(0);
+                View accessibilityTarget = firstChoice == null ? choices : firstChoice;
+                accessibilityTarget.performAccessibilityAction(
+                        android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
+                choices.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_VIEW_FOCUSED);
+                choices.announceForAccessibility(announcement);
+            }, 80);
+        });
+        dialog.show();
+    }
+
+    /** Repete o foco depois do layout para evitar que o TalkBack permaneça na tela anterior. */
+    private void focusForTalkBack(View view, String announcement) {
+        if (view == null) return;
+        view.setFocusable(true);
+        view.requestFocus();
+        view.postDelayed(() -> {
+            if (!view.isShown()) return;
+            view.requestFocus();
+            view.performAccessibilityAction(
+                    android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
+            view.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_VIEW_FOCUSED);
+            if (announcement != null && !announcement.isEmpty()) {
+                view.announceForAccessibility(announcement);
+            }
+        }, 80);
     }
 
     /** Cria lista nativa com linhas grandes e quebra de texto. */

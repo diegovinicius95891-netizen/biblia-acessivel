@@ -24,10 +24,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.3.2\n\n" +
-            "A busca inteligente do Modo culto agora cobre todas as famílias numeradas: Samuel, Reis, Crônicas, Coríntios, Tessalonicenses, Timóteo, Pedro e João.\n\n" +
-            "Ela entende formas como Segundo Samuel, primeiro livro de Samuel, Segunda carta aos Coríntios, II Timóteo e números com símbolo ordinal.\n\n" +
-            "Ao pesquisar João sem número, o aplicativo oferece o Evangelho e as três cartas. Dizer Evangelho de João seleciona somente o Evangelho.\n\n" +
+            "Novidades da versão Android 4.3.3\n\n" +
+            "Os diálogos de escolha agora movem o foco do TalkBack para a primeira opção somente depois que a janela está pronta.\n\n" +
+            "Perguntas como trocar de livro ou continuar, escolher como abrir o capítulo, menus de ações, quiz, voz, modelo e estudos ficaram previsíveis para deslizar e ativar.\n\n" +
+            "As telas principais, listas, caixas de combinação e campos de edição também repetem o foco após o layout, evitando que ele permaneça na tela anterior.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;
