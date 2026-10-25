@@ -8,4 +8,5 @@
 - Pesquisa do Modo culto por texto ou voz.
 - Referências sem pontuação, como `Pedro 2 5 15`, são interpretadas como capítulo 2, versículos 5 a 15.
 - Nomes ambíguos, como Pedro, oferecem Primeira Pedro e Segunda Pedro para escolha.
+- A consulta do canal Android ficou mais resistente ao cache temporário do GitHub.
 - Posição, traduções, anotações, favoritos, quiz, configurações e chave da IA são preservados.

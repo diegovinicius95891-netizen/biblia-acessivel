@@ -82,7 +82,7 @@ final class AndroidUpdateService {
 
     /** Procura a release estável Android mais nova e ignora releases Windows. */
     ReleaseInfo check(String currentVersion) throws UpdateException {
-        String endpoint = "https://api.github.com/repos/" + REPOSITORY + "/releases?per_page=30";
+        String endpoint = "https://api.github.com/repos/" + REPOSITORY + "/releases?per_page=30&page=1";
         Log.i(TAG, "Verificando versão Android " + currentVersion);
         try {
             JSONArray releases = new JSONArray(readText(endpoint, 2_000_000));
