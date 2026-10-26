@@ -8,6 +8,7 @@ texto selecionado. Regras de dados permanecem nos módulos ``database`` e
 
 from __future__ import annotations
 
+import os
 import re
 import threading
 from collections import defaultdict
@@ -81,7 +82,9 @@ SPEECH_RATE_OPTIONS = (
 CONTRAST_OPTIONS = (("Desativado", False), ("Ativado", True))
 UPDATE_AUTOMATIC_OPTIONS = (("Ativada", True), ("Desativada", False))
 UPDATE_NOTIFICATION_OPTIONS = (("Ativada", True), ("Desativada", False))
+EXIT_CONFIRMATION_OPTIONS = (("Pedir confirmação", True), ("Fechar diretamente", False))
 VOICE_OFF = "__off__"
+APP_DISPLAY_NAME = "Bíblia AGB (Audio Games Brasil)"
 SHORTCUTS = {
     "search": "Ctrl+F", "reference": "Ctrl+G", "favorite": "Ctrl+D",
     "note": "Ctrl+M", "plans": "Ctrl+L", "prayers": "Ctrl+O",
@@ -262,6 +265,10 @@ class MainWindow(QMainWindow):
         self.pending_update_notify = self.update_notify
         self.devotional_notify = self.settings.value("devotionals/notify", True, type=bool)
         self.pending_devotional_notify = self.devotional_notify
+        self.confirm_exit = self.settings.value("accessibility/confirm_exit", True, type=bool)
+        self.pending_confirm_exit = self.confirm_exit
+        self._exit_approved = False
+        self._resources_closed = False
         self.tts = None
         self._tts_checked = False
         self._loading = False
@@ -275,9 +282,9 @@ class MainWindow(QMainWindow):
         self.active_chapter = 1
         self._ai_result_title = "Resultado da inteligência artificial"
 
-        self.setWindowTitle(f"Bíblia Acessível {APP_VERSION}")
+        self.setWindowTitle(APP_DISPLAY_NAME)
         self.resize(1100, 760)
-        self.setAccessibleName("Bíblia Acessível")
+        self.setAccessibleName(APP_DISPLAY_NAME)
         self._build_ui()
         self._build_menu()
         self._build_shortcuts()
@@ -327,7 +334,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.page_stack)
 
     def _build_reader_section(self):
-        """Monta o menu inicial com quatro destinos, cada um em sua própria tela."""
+        """Monta o menu inicial com a retomada e quatro destinos em telas próprias."""
         section = QWidget()
         layout = QVBoxLayout(section)
         self.start_summary = QLabel("Continuar leitura será carregado em instantes.")
@@ -338,9 +345,11 @@ class MainWindow(QMainWindow):
         self.reader_menu = ActivatableList()
         self.reader_menu.setAccessibleName("Menu principal da Bíblia")
         self.reader_menu.setAccessibleDescription(
-            "Livros Alt mais 1, Capítulos Alt mais 2, Versículos Alt mais 3 e Mais opções Alt mais 4."
+            "Continuar de onde parou, Livros Alt mais 1, Capítulos Alt mais 2, "
+            "Versículos Alt mais 3 e Mais opções Alt mais 4."
         )
         for label, page_id in (
+            ("Continuar leitura — carregando posição", "continue_reading"),
             ("Livros — Alt+1", "reader_books"),
             ("Capítulos — Alt+2", "reader_chapters"),
             ("Versículos — Alt+3", "reader_verses"),
@@ -478,6 +487,9 @@ class MainWindow(QMainWindow):
     def open_reader_section(self, item_or_id):
         """Abre uma das quatro telas principais e posiciona o foco na lista correta."""
         page_id = item_or_id.data(Qt.UserRole) if isinstance(item_or_id, QListWidgetItem) else item_or_id
+        continuing = page_id == "continue_reading"
+        if continuing:
+            page_id = "reader_verses"
         if page_id not in {"reader_books", "reader_chapters", "reader_verses", "reader_more"}:
             return
         index, focus_widget = self.secondary_pages[page_id]
@@ -494,7 +506,8 @@ class MainWindow(QMainWindow):
             current = self.verse_list.currentItem()
             verse = current.data(Qt.UserRole + 1)
             message = (
-                f"Tela Versículos. {self.active_book_name} {self.active_chapter}"
+                ("Continuando leitura. " if continuing else "Tela Versículos. ")
+                + f"{self.active_book_name} {self.active_chapter}"
                 + (f":{verse}." if verse is not None else ".")
             )
         else:
@@ -597,7 +610,7 @@ class MainWindow(QMainWindow):
             return
         if page_id == "ideas":
             query = QUrlQuery()
-            query.addQueryItem("subject", "Ideia ou problema na Bíblia Acessível")
+            query.addQueryItem("subject", "Ideia ou problema na Bíblia AGB")
             query.addQueryItem("body", "Olá, Diego!\n\nQuero enviar a seguinte ideia ou relatar este problema:\n\n")
             address = QUrl("mailto:diego@audiogames.com.br")
             address.setQuery(query)
@@ -635,22 +648,31 @@ class MainWindow(QMainWindow):
         self.page_stack.setCurrentIndex(self.main_page_index)
         self._restore_accessible_focus(
             self.reader_menu,
-            "Menu principal da Bíblia. Livros, Capítulos, Versículos e Mais opções.",
+            "Menu principal da Bíblia. Continuar leitura, Livros, Capítulos, Versículos e Mais opções.",
         )
 
-    def request_exit(self):
+    def request_exit(self, focus_widget=None):
         """Confirma o fechamento a partir da opção acessível de Mais opções."""
         answer = QMessageBox.question(
             self,
-            "Sair da Bíblia Acessível",
+            "Sair da Bíblia AGB",
             "Deseja realmente fechar o aplicativo?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
         if answer == QMessageBox.Yes:
+            self._exit_approved = True
             self.close()
         else:
-            self._restore_accessible_focus(self.more_options, "Saída cancelada. Mais opções.")
+            target = focus_widget or (
+                self.reader_menu if self.page_stack.currentIndex() == self.main_page_index else self.more_options
+            )
+            self._restore_accessible_focus(target, "Saída cancelada.")
+
+    def close_without_confirmation(self):
+        """Fecha durante a instalação de atualização sem interromper o fluxo."""
+        self._exit_approved = True
+        self.close()
 
     def _restore_accessible_focus(self, widget: QWidget, message: str = ""):
         """Restaura foco depois da troca de página e anuncia quando a tela já está pronta."""
@@ -880,7 +902,7 @@ class MainWindow(QMainWindow):
         file_menu = self.menuBar().addMenu("&Arquivo")
         exit_action = QAction("&Sair", self)
         exit_action.setShortcut(QKeySequence.Quit)
-        exit_action.triggered.connect(self.close)
+        exit_action.triggered.connect(lambda _checked=False: self.request_exit())
         file_menu.addAction(exit_action)
 
         navigate = self.menuBar().addMenu("&Navegar")
@@ -1011,6 +1033,27 @@ class MainWindow(QMainWindow):
             f"Versículo do dia: {reference}. Continuar leitura: {self.active_book_name} "
             f"{self.active_chapter}:{verse}. {plan_text}"
         )
+        if self.reader_menu.count():
+            self._refresh_continue_item(verse)
+
+    def _refresh_continue_item(self, verse=None):
+        """Mantém a retomada do menu sincronizada com o item lido mais recentemente."""
+        if not self.reader_menu.count() or not self.active_book_name:
+            return
+        if verse is None:
+            key = self._current_verse_key()
+            verse = key[3] if key else "1"
+        self.reader_menu.item(0).setText(
+            f"Continuar em {self.active_book_name}, capítulo {self.active_chapter}, versículo {verse}"
+        )
+
+    def _update_window_title(self):
+        """Expõe a posição atual no título para Alt+Tab e leitores de tela."""
+        title = APP_DISPLAY_NAME
+        if self.active_book_name:
+            title = f"Bíblia AGB — {self.active_book_name}, capítulo {self.active_chapter}"
+        self.setWindowTitle(title)
+        self.setAccessibleName(title)
 
     def _populate_search_books(self):
         """Atualiza o filtro de livro segundo a tradução escolhida para pesquisa."""
@@ -1252,6 +1295,7 @@ class MainWindow(QMainWindow):
         self.chapter_heading.setText(
             f"{self.active_book_name}, capítulo {self.active_chapter} — {self.current_translation_name()}"
         )
+        self._update_window_title()
         self.settings.setValue("position/translation", self.current_translation_id())
         self.settings.setValue("position/testament", self.testament)
         self.settings.setValue("position/book", self.active_book_code)
@@ -1280,6 +1324,7 @@ class MainWindow(QMainWindow):
             return
         verse = str(current.data(Qt.UserRole + 1))
         self.settings.setValue("position/verse", verse)
+        self._refresh_continue_item(verse)
         marked = self.user_data.is_bookmarked(
             self.current_translation_id(), self.active_book_code, self.active_chapter, verse
         )
@@ -1885,6 +1930,7 @@ class MainWindow(QMainWindow):
             (f"Atualizações automáticas — {self._choice_label(UPDATE_AUTOMATIC_OPTIONS, self.pending_update_automatic)}", "update_automatic"),
             (f"Notificar nova versão — {self._choice_label(UPDATE_NOTIFICATION_OPTIONS, self.pending_update_notify)}", "update_notify"),
             (f"Notificar novos devocionais — {self._choice_label(UPDATE_NOTIFICATION_OPTIONS, self.pending_devotional_notify)}", "devotional_notify"),
+            (f"Confirmação ao sair com Alt+F4 — {self._choice_label(EXIT_CONFIRMATION_OPTIONS, self.pending_confirm_exit)}", "confirm_exit"),
         )
         for label, option_id in entries:
             item = QListWidgetItem(label)
@@ -1936,6 +1982,11 @@ class MainWindow(QMainWindow):
                 self, "Notificação de novos devocionais",
                 UPDATE_NOTIFICATION_OPTIONS, self.pending_devotional_notify
             )
+        elif option_id == "confirm_exit":
+            value, accepted = ChoiceDialog.get_choice(
+                self, "Confirmação ao sair com Alt+F4",
+                EXIT_CONFIRMATION_OPTIONS, self.pending_confirm_exit
+            )
         else:
             value, accepted = ChoiceDialog.get_choice(
                 self, "Alto contraste", CONTRAST_OPTIONS, self.pending_high_contrast
@@ -1957,6 +2008,8 @@ class MainWindow(QMainWindow):
                 self.pending_update_notify = bool(value)
             elif option_id == "devotional_notify":
                 self.pending_devotional_notify = bool(value)
+            elif option_id == "confirm_exit":
+                self.pending_confirm_exit = bool(value)
             else:
                 self.pending_high_contrast = bool(value)
             self._refresh_settings_options()
@@ -2040,6 +2093,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("updates/automatic", self.pending_update_automatic)
         self.settings.setValue("updates/notify", self.pending_update_notify)
         self.settings.setValue("devotionals/notify", self.pending_devotional_notify)
+        self.settings.setValue("accessibility/confirm_exit", self.pending_confirm_exit)
         self.settings.sync()
         self.api_key = self.pending_api_key
         self.ai_model = self.pending_ai_model
@@ -2051,6 +2105,7 @@ class MainWindow(QMainWindow):
         self.update_automatic = self.pending_update_automatic
         self.update_notify = self.pending_update_notify
         self.devotional_notify = self.pending_devotional_notify
+        self.confirm_exit = self.pending_confirm_exit
         self._apply_accessibility_settings()
         self._refresh_settings_options()
         self._announce_for(self.settings_options, "Configurações salvas.")
@@ -2246,11 +2301,12 @@ class MainWindow(QMainWindow):
             self.update_controller.show_current_changelog()
 
     def _handle_escape(self):
-        """Volta das telas internas ou, na Bíblia, interrompe a voz."""
+        """Volta das telas internas ou oferece sair quando já está no menu inicial."""
         if self.page_stack.currentIndex() != self.main_page_index:
             self.show_main_page()
         else:
             self.stop_speech()
+            self.request_exit(self.reader_menu)
 
     def _warn(self, title: str, message: str):
         """Exibe mensagens operacionais em diálogo nativo acessível."""
@@ -2268,8 +2324,24 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
-        """Libera voz e bancos antes de confirmar o fechamento."""
+        """Respeita a preferência do Alt+F4 e libera os recursos uma única vez."""
+        is_test_platform = os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen"
+        if not self._exit_approved and self.confirm_exit and not is_test_platform:
+            answer = QMessageBox.question(
+                self,
+                "Sair da Bíblia AGB",
+                "Deseja realmente fechar o aplicativo?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if answer != QMessageBox.Yes:
+                event.ignore()
+                self._restore_accessible_focus(self.focusWidget() or self.reader_menu, "Saída cancelada.")
+                return
+        self._exit_approved = True
         self.stop_speech()
-        self.db.close()
-        self.user_data.close()
+        if not self._resources_closed:
+            self.db.close()
+            self.user_data.close()
+            self._resources_closed = True
         super().closeEvent(event)

@@ -669,7 +669,7 @@ class UserDataDatabase:
     def import_payload(self, payload: dict):
         """Valida e importa o backup numa transação, revertendo tudo se houver falha."""
         if payload.get("format") != "biblia-acessivel-backup" or payload.get("version") not in (1, 2):
-            raise ValueError("Este arquivo não é um backup compatível da Bíblia Acessível.")
+            raise ValueError("Este arquivo não é um backup compatível da Bíblia AGB.")
         legacy = {
             "favorite_categories", "bookmarks", "notes", "search_history",
             "reading_history", "reading_plans", "reading_plan_days", "prayers",

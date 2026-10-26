@@ -1,12 +1,12 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.3.1
+CURRENT_CHANGELOG = """Novidades da versão 4.4.0
 
-Mais opções agora contém Sair do aplicativo, com confirmação antes de fechar.
+O aplicativo agora se chama Bíblia AGB (Audio Games Brasil).
 
-A tela Versículos ganhou botões de Capítulo anterior, Próximo capítulo e Voltar ao menu principal. As setas esquerda e direita continuam funcionando.
+O menu inicial ganhou Continuar leitura, informando livro, capítulo e versículo e abrindo exatamente o ponto salvo.
 
-Depois de trocar o capítulo, o leitor de tela anuncia claramente se você avançou ou voltou e informa o novo livro e capítulo.
+No menu inicial, Escape oferece a saída do aplicativo. Em Configurações, a pessoa escolhe se Alt+F4 deve pedir confirmação ou fechar diretamente.
 
-O foco das listas e telas foi reforçado depois de cada transição para evitar momentos em que a interface parecia inacessível.
+O título da janela informa o livro e o capítulo atuais, facilitando a identificação da leitura ao usar Alt+Tab e leitores de tela.
 """

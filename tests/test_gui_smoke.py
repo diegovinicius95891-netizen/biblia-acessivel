@@ -57,11 +57,21 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertFalse(hasattr(window, "tabs"))
         self.assertIs(window.page_stack, window.centralWidget())
         self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
-        self.assertEqual(4, window.reader_menu.count())
+        self.assertEqual(5, window.reader_menu.count())
+        labels = [window.reader_menu.item(index).text() for index in range(window.reader_menu.count())]
+        self.assertTrue(labels[0].startswith("Continuar em "))
         self.assertEqual(
             ["Livros — Alt+1", "Capítulos — Alt+2", "Versículos — Alt+3", "Mais opções — Alt+4"],
-            [window.reader_menu.item(index).text() for index in range(window.reader_menu.count())],
+            labels[1:],
         )
+        self.assertIn(window.active_book_name, window.windowTitle())
+        self.assertIn(f"capítulo {window.active_chapter}", window.windowTitle())
+        window.open_reader_section("continue_reading")
+        self.assertIs(window.verse_list, window.focusWidget())
+        window._handle_escape()
+        with patch.object(window, "request_exit") as request_exit:
+            window._handle_escape()
+        request_exit.assert_called_once_with(window.reader_menu)
         window.open_reader_section("reader_books")
         self.assertIs(window.book_list, window.focusWidget())
         window._handle_escape()
@@ -229,10 +239,11 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertTrue(hasattr(window, "action_create_note"))
         self.assertEqual("Anotações organizadas por dia", window.notes_list.accessibleName())
         self.assertEqual("Opções de configurações", window.settings_options.accessibleName())
-        self.assertEqual(10, window.settings_options.count())
+        self.assertEqual(11, window.settings_options.count())
         self.assertIn("chave da API", window.settings_options.item(0).text())
         self.assertIn("modelo", window.settings_options.item(1).text())
         self.assertIn("Voz SAPI", window.settings_options.item(4).text())
+        self.assertIn("Alt+F4", window.settings_options.item(10).text())
         self.assertTrue(all(model_id.startswith("gemini-") for _label, model_id in ModelDialog.MODELS))
         window.pending_api_key = ""
         window._refresh_settings_options()

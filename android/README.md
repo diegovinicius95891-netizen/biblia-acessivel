@@ -1,4 +1,4 @@
-# Bíblia Acessível para Android
+# Bíblia AGB (Audio Games Brasil) para Android
 
 Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou superior. A interface usa controles padrão do sistema para oferecer navegação previsível com TalkBack e toque.
 

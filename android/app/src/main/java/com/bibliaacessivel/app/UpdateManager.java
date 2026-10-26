@@ -24,10 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.3.5\n\n" +
-            "Corrige o último diálogo do Modo culto que ainda mostrava apenas o botão Cancelar quando havia vários livros possíveis.\n\n" +
-            "Agora todos os livros encontrados aparecem numa lista acessível, com foco na primeira opção e anúncio da quantidade de resultados.\n\n" +
-            "As correções de foco dos demais menus e do gesto de dois dedos para trocar capítulos permanecem preservadas.\n\n" +
+            "Novidades da versão Android 4.4.0\n\n" +
+            "O aplicativo agora se chama Bíblia AGB (Audio Games Brasil).\n\n" +
+            "As melhorias de foco do TalkBack, a escolha acessível entre livros parecidos no Modo culto e o gesto de dois dedos para trocar capítulos continuam preservados.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;
@@ -247,7 +246,7 @@ final class UpdateManager {
         }
         if (!activity.getPackageManager().canRequestPackageInstalls()) {
             new AlertDialog.Builder(activity).setTitle("Autorizar instalação")
-                    .setMessage("O Android precisa permitir que a Bíblia Acessível abra o APK validado. " +
+                    .setMessage("O Android precisa permitir que a Bíblia AGB abra o APK validado. " +
                             "Ative a permissão nesta tela e depois volte a Atualizações para instalar.")
                     .setPositiveButton("Abrir permissão", (dialog, which) -> {
                         Intent settings = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,

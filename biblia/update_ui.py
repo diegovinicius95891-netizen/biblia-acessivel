@@ -241,7 +241,7 @@ class UpdateController(QObject):
         dialog = UpdateAvailableDialog(self.host, release)
         dialog.exec()
         if release.mandatory and dialog.action == "close":
-            self.host.close()
+            self.host.close_without_confirmation()
             return
         if dialog.action == "ignore":
             self.settings.setValue("updates/ignored_version", release.version)
@@ -377,7 +377,7 @@ class UpdateController(QObject):
         )
         self.settings.setValue("updates/installing_version", archive.name.split("-", 1)[0].lstrip("v"))
         self.settings.sync()
-        self.host.close()
+        self.host.close_without_confirmation()
 
     def _show_post_update_message(self):
         """Mostra uma única confirmação quando a versão instalada mudou."""

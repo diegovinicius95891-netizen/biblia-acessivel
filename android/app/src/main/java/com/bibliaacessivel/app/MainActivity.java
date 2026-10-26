@@ -163,7 +163,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Mostra um estado simples enquanto o banco grande é copiado na primeira abertura. */
     private void showLoading() {
         LinearLayout root = rootLayout();
-        TextView text = heading("Bíblia Acessível. Preparando leitura offline, aguarde.");
+        TextView text = heading("Bíblia AGB. Preparando leitura offline, aguarde.");
         root.addView(text);
         setContentView(root);
     }
@@ -182,7 +182,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         chapterSwipeEnabled = false;
         backAction = null;
         LinearLayout root = rootLayout();
-        root.addView(heading("Bíblia Acessível"));
+        root.addView(heading("Bíblia AGB (Audio Games Brasil)"));
         root.addView(paragraph("Seção Livros. Sua posição é " + currentReference() + "."));
         root.addView(actionButton("Abrir capítulo " + selectedChapter + " de " + selectedBook.name,
                 "Continuar a leitura em " + currentReference(), this::showVerses));
@@ -836,7 +836,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Abre o aplicativo de e-mail já endereçado para sugestões e problemas. */
     private void openIdeasEmail() {
         Uri uri = Uri.parse("mailto:diego@audiogames.com.br").buildUpon()
-                .appendQueryParameter("subject", "Ideia ou problema na Bíblia Acessível")
+                .appendQueryParameter("subject", "Ideia ou problema na Bíblia AGB")
                 .appendQueryParameter("body", "Olá, Diego!\n\nQuero enviar a seguinte ideia ou relatar este problema:\n\n")
                 .build();
         try {
@@ -2016,7 +2016,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Copia texto e confirma a ação sem expor dados para fora do clipboard escolhido. */
     private void copy(String text) {
         ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        clipboard.setPrimaryClip(ClipData.newPlainText("Bíblia Acessível", text));
+        clipboard.setPrimaryClip(ClipData.newPlainText("Bíblia AGB", text));
         toast("Texto copiado.");
     }
 

@@ -1,4 +1,4 @@
-"""Ponto de entrada da Bíblia Acessível."""
+"""Ponto de entrada da Bíblia AGB (Audio Games Brasil)."""
 
 from __future__ import annotations
 
@@ -21,7 +21,10 @@ def main() -> int:
     from biblia.paths import migrate_legacy_personal_database, personal_data_directory
 
     app = QApplication(sys.argv)
+    # O nome interno permanece igual para conservar todas as configurações
+    # gravadas pelas versões anteriores. O nome exibido recebe a nova marca.
     app.setApplicationName("Bíblia Acessível")
+    app.setApplicationDisplayName("Bíblia AGB (Audio Games Brasil)")
     app.setOrganizationName("Projeto Bíblia Acessível")
 
     # O pacote oficial mantém uma cópia externa para atualização e também uma

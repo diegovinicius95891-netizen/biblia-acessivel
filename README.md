@@ -1,6 +1,6 @@
-# Bíblia Acessível
+# Bíblia AGB (Audio Games Brasil)
 
-Versões atuais: **4.3.1 para Windows** e **4.3.5 para Android**.
+Versões atuais: **4.4.0 para Windows** e **4.4.0 para Android**.
 
 Em Mais opções, **Devocionais novos do site** consulta diariamente os textos publicados em
 `audiogames.com.br/diego/devocionais`, mantém o histórico para leitura offline e avisa somente
@@ -31,8 +31,9 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 ## Acessibilidade
 
 - Controles com nomes e descrições acessíveis.
-- No Windows, a abertura mostra um menu com Livros, Capítulos, Versículos e Mais opções; cada item abre sozinho em uma nova tela.
-- Alt+1 abre Livros, Alt+2 abre Capítulos, Alt+3 abre Versículos e Alt+4 abre Mais opções. Cima e baixo navegam nas listas e Escape volta.
+- No Windows, a abertura mostra Continuar leitura, Livros, Capítulos, Versículos e Mais opções; cada item abre sozinho em uma nova tela.
+- Continuar leitura informa livro, capítulo e versículo e abre exatamente a posição salva. O título da janela acompanha o livro e o capítulo atuais.
+- Alt+1 abre Livros, Alt+2 abre Capítulos, Alt+3 abre Versículos e Alt+4 abre Mais opções. Cima e baixo navegam nas listas; Escape volta das telas e, no menu inicial, oferece sair.
 - Versículos oferece botões de capítulo anterior, próximo capítulo e voltar. Toda troca anuncia a direção e o novo capítulo; Mais opções também oferece Sair do aplicativo.
 - Mais opções reúne os recursos pessoais e de estudo em telas internas limpas; Escape volta à Bíblia.
 - A tela Traduções usa uma caixa de combinação acessível para escolher a edição padrão.
@@ -80,7 +81,7 @@ A tela **Licenças e leis** apresenta um único texto simples, somente leitura, 
 
 ## Configurações e IA opcional
 
-A tela Configurações, aberta por Mais opções, usa uma única lista navegável com cima/baixo. Ela contém chave da API, modelo, detalhamento das respostas, tamanho do texto, escolha da voz SAPI, velocidade da voz, alto contraste, verificação automática e notificações de versão. A voz pode ser trocada entre as opções instaladas no Windows ou desativada; nesse modo, Enter repete o versículo pelo leitor de tela. Espaço ou Enter abre qualquer opção em um diálogo também navegável. Quando nenhuma chave foi informada, o botão “Obter chave da API do Google” abre a página oficial do Google AI Studio. Tab leva aos botões disponíveis; Espaço ou Enter os aciona.
+A tela Configurações, aberta por Mais opções, usa uma única lista navegável com cima/baixo. Ela contém chave da API, modelo, detalhamento das respostas, tamanho do texto, escolha da voz SAPI, velocidade da voz, alto contraste, verificação automática, notificações de versão e confirmação opcional ao sair com Alt+F4. A voz pode ser trocada entre as opções instaladas no Windows ou desativada; nesse modo, Enter repete o versículo pelo leitor de tela. Espaço ou Enter abre qualquer opção em um diálogo também navegável. Quando nenhuma chave foi informada, o botão “Obter chave da API do Google” abre a página oficial do Google AI Studio. Tab leva aos botões disponíveis; Espaço ou Enter os aciona.
 
 A chave do Gemini é criptografada pela DPAPI para a conta atual do Windows e recuperada nas próximas aberturas; nunca é publicada no GitHub. A IA usa o endpoint `generateContent` da API Google Gemini, pode consumir a cota ou o saldo da conta e exige internet. Aplicações ou Shift+F10 oferece resumo no livro selecionado, resumo no capítulo selecionado e explicação no versículo selecionado. Resumos têm limite explícito de palavras e uma margem maior de tokens para terminarem a conclusão; respostas que ainda terminarem em `MAX_TOKENS` não são apresentadas silenciosamente como completas. O resultado é convertido para texto simples, sem asteriscos ou outras marcas de Markdown, e abre em diálogo de parágrafos navegáveis.
 
