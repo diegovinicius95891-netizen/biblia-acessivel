@@ -1201,19 +1201,13 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void showWorshipBookChoices(BibleReference reference, List<Models.Book> matches) {
         String[] choices = new String[matches.size()];
         for (int index = 0; index < matches.size(); index++) choices[index] = matches.get(index).name;
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Escolha o livro. " + matches.size() + " opções")
-                .setMessage("A busca por “" + reference.book + "” pode indicar mais de um livro.")
-                .setItems(choices, (choiceDialog, which) -> {
+        showChoiceDialog("Modo culto — livros encontrados",
+                "A busca por “" + reference.book + "” encontrou " + matches.size() +
+                        " livros. Escolha um deles.", choices, which -> {
                     Models.Book chosen = matches.get(which);
                     worshipInput.setText(formatWorshipReference(chosen, reference));
                     openWorshipPassageForBook(reference, chosen);
-                })
-                .setNegativeButton("Cancelar", null)
-                .create();
-        showDialogWithChoiceFocus(dialog, matches.size() + " livros encontrados para " +
-                reference.book + ". Primeira opção: " + choices[0] +
-                ". Deslize e toque duas vezes para escolher.");
+                });
     }
 
     /** Valida capítulo e intervalo depois que o livro exato foi escolhido. */
