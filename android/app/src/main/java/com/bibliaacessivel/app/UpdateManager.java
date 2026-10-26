@@ -24,10 +24,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.3.3\n\n" +
-            "Os diálogos de escolha agora movem o foco do TalkBack para a primeira opção somente depois que a janela está pronta.\n\n" +
-            "Perguntas como trocar de livro ou continuar, escolher como abrir o capítulo, menus de ações, quiz, voz, modelo e estudos ficaram previsíveis para deslizar e ativar.\n\n" +
-            "As telas principais, listas, caixas de combinação e campos de edição também repetem o foco após o layout, evitando que ele permaneça na tela anterior.\n\n" +
+            "Novidades da versão Android 4.3.4\n\n" +
+            "Corrige imediatamente os diálogos de escolha que mostravam apenas o botão Cancelar. As opções voltaram a aparecer e a primeira recebe foco do TalkBack.\n\n" +
+            "O gesto horizontal de dois dedos na tela de versículos agora reconhece o momento correto em que um dedo deixa a tela.\n\n" +
+            "Também existe um tratamento específico para exploração por toque, quando o TalkBack transforma o gesto antes de entregá-lo ao aplicativo. Esquerda volta e direita avança o capítulo.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;

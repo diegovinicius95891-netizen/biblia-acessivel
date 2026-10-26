@@ -1,6 +1,5 @@
 package com.bibliaacessivel.app;
 
-import android.annotation.SuppressLint;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -26,6 +25,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 import android.widget.AdapterView;
@@ -99,6 +99,12 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private MediaPlayer radioPlayer;
     private int radioIndex = -1;
     private boolean radioPreparing;
+    private boolean chapterSwipeEnabled;
+    private boolean chapterSwipeTracking;
+    private float chapterSwipeStartX;
+    private boolean touchExplorationSwipeTracking;
+    private float touchExplorationStartX;
+    private float touchExplorationStartY;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -173,6 +179,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Cria uma entrada curta: continuar o capítulo, trocar o livro ou abrir recursos. */
     private void showMainMenu() {
+        chapterSwipeEnabled = false;
         backAction = null;
         LinearLayout root = rootLayout();
         root.addView(heading("Bíblia Acessível"));
@@ -295,6 +302,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Lista os textos do capítulo e abre suas ações com uma única ativação. */
     private void showVerses() {
         LinearLayout root = screen("Versículos de " + currentChapterReference(), this::showMainMenu);
+        chapterSwipeEnabled = true;
         root.addView(actionButton("Modo culto", "Abrir pesquisa rápida do Modo culto", this::showWorshipModeFromReading));
         LinearLayout navigation = horizontalRow();
         navigation.addView(actionButton("Capítulo anterior",
@@ -306,7 +314,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         ListView list = listView(verses);
         list.setContentDescription("Versículos de " + currentChapterReference() +
                 ". Deslize com dois dedos para a esquerda para voltar o capítulo ou para a direita para avançar.");
-        attachChapterSwipe(list);
         list.setOnItemClickListener((parent, view, position, id) -> {
             selectedVerse = verses.get(position);
             savePosition();
@@ -1660,28 +1667,72 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         getWindow().getDecorView().announceForAccessibility(message);
     }
 
-    /** Reconhece o gesto opcional de dois dedos sem remover os botões acessíveis. */
-    @SuppressLint("ClickableViewAccessibility")
-    private void attachChapterSwipe(View view) {
-        final float[] startX = {0f};
-        final boolean[] twoFingers = {false};
-        view.setOnTouchListener((target, event) -> {
-            if (event.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN && event.getPointerCount() == 2) {
-                startX[0] = (event.getX(0) + event.getX(1)) / 2f;
-                twoFingers[0] = true;
-            } else if (event.getActionMasked() == MotionEvent.ACTION_UP && twoFingers[0]) {
-                twoFingers[0] = false;
-                float distance = event.getX() - startX[0];
-                if (Math.abs(distance) >= dp(72)) {
-                    // Conforme o fluxo pedido: esquerda volta; direita avança.
-                    changeReadingChapter(distance < 0 ? -1 : 1);
+    /** Captura o gesto antes da lista, inclusive quando o TalkBack altera o fluxo de toque. */
+    @Override public boolean dispatchTouchEvent(MotionEvent event) {
+        if (chapterSwipeEnabled && handleChapterSwipe(event)) return true;
+        return super.dispatchTouchEvent(event);
+    }
+
+    /** Usa a posição dos dois dedos antes de um deles sair da tela. */
+    private boolean handleChapterSwipe(MotionEvent event) {
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN && touchExplorationIsEnabled()) {
+            touchExplorationSwipeTracking = true;
+            touchExplorationStartX = event.getX();
+            touchExplorationStartY = event.getY();
+        }
+        if (action == MotionEvent.ACTION_POINTER_DOWN && event.getPointerCount() == 2) {
+            touchExplorationSwipeTracking = false;
+            chapterSwipeStartX = averageFirstTwoPointers(event);
+            chapterSwipeTracking = true;
+            // Cancela o possível toque simples iniciado pela lista com o primeiro dedo.
+            MotionEvent cancel = MotionEvent.obtain(event);
+            cancel.setAction(MotionEvent.ACTION_CANCEL);
+            super.dispatchTouchEvent(cancel);
+            cancel.recycle();
+            return true;
+        }
+        if (!chapterSwipeTracking) {
+            if (action == MotionEvent.ACTION_UP && touchExplorationSwipeTracking) {
+                touchExplorationSwipeTracking = false;
+                float horizontal = event.getX() - touchExplorationStartX;
+                float vertical = event.getY() - touchExplorationStartY;
+                if (Math.abs(horizontal) >= dp(64) && Math.abs(horizontal) > Math.abs(vertical) * 1.25f) {
+                    int direction = horizontal < 0 ? -1 : 1;
+                    getWindow().getDecorView().post(() -> changeReadingChapter(direction));
                     return true;
                 }
-            } else if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-                twoFingers[0] = false;
             }
+            if (action == MotionEvent.ACTION_CANCEL) touchExplorationSwipeTracking = false;
             return false;
-        });
+        }
+        if (action == MotionEvent.ACTION_MOVE) return true;
+        if (action == MotionEvent.ACTION_POINTER_UP && event.getPointerCount() >= 2) {
+            float distance = averageFirstTwoPointers(event) - chapterSwipeStartX;
+            chapterSwipeTracking = false;
+            if (Math.abs(distance) >= dp(64)) {
+                int direction = distance < 0 ? -1 : 1;
+                getWindow().getDecorView().post(() -> changeReadingChapter(direction));
+            } else {
+                toast("Gesto curto. Deslize os dois dedos um pouco mais para o lado.");
+            }
+            return true;
+        }
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            chapterSwipeTracking = false;
+            return true;
+        }
+        return true;
+    }
+
+    private static float averageFirstTwoPointers(MotionEvent event) {
+        return (event.getX(0) + event.getX(1)) / 2f;
+    }
+
+    private boolean touchExplorationIsEnabled() {
+        AccessibilityManager manager =
+                (AccessibilityManager) getSystemService(ACCESSIBILITY_SERVICE);
+        return manager != null && manager.isEnabled() && manager.isTouchExplorationEnabled();
     }
 
     /** Seleciona pelo início do número para também aceitar intervalos. */
@@ -1812,6 +1863,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Cria tela secundária uniforme e registra a ação do botão Voltar. */
     private LinearLayout screen(String title, Runnable back) {
+        chapterSwipeEnabled = false;
+        chapterSwipeTracking = false;
+        touchExplorationSwipeTracking = false;
         backAction = back;
         LinearLayout root = rootLayout();
         root.addView(heading(title));
@@ -1859,8 +1913,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             return;
         }
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(title)
-                .setMessage(message)
+                .setTitle(title + ". " + message)
                 .setItems(items, (choiceDialog, which) -> action.accept(which))
                 .setNegativeButton("Cancelar", null)
                 .create();
@@ -1874,7 +1927,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             ListView choices = dialog.getListView();
             if (choices == null || choices.getAdapter() == null || choices.getAdapter().getCount() == 0) return;
             choices.setFocusable(true);
-            choices.setFocusableInTouchMode(true);
             choices.setSelection(0);
             choices.postDelayed(() -> {
                 if (!dialog.isShowing()) return;
@@ -1898,7 +1950,11 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         view.postDelayed(() -> {
             if (!view.isShown()) return;
             view.requestFocus();
-            view.performAccessibilityAction(
+            View accessibilityTarget = view;
+            if (view instanceof ListView && ((ListView) view).getChildCount() > 0) {
+                accessibilityTarget = ((ListView) view).getChildAt(0);
+            }
+            accessibilityTarget.performAccessibilityAction(
                     android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
             view.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_VIEW_FOCUSED);
             if (announcement != null && !announcement.isEmpty()) {

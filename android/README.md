@@ -10,6 +10,7 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 - Capítulo anterior e Próximo capítulo aparecem no início da leitura. Um gesto horizontal de dois dedos também troca o capítulo e o TalkBack anuncia o destino.
 - Com o TalkBack, deslizar para a direita ou esquerda percorre as opções e o toque duplo abre a opção anunciada.
 - Diálogos de escolha e telas novas estabilizam o foco depois que o conteúdo aparece, colocando o TalkBack na primeira opção utilizável.
+- O gesto de dois dedos na leitura trata tanto os eventos multitoque normais quanto o fluxo transformado pela exploração por toque do TalkBack.
 - Ao fim dos versículos, há uma opção para abrir o próximo capítulo; no último capítulo, o fim do livro é anunciado.
 - Antigo e Novo Testamento, continuidade da última posição e pesquisa offline.
 - Caixa de combinação para a tradução padrão e outra para escolher Antigo ou Novo Testamento, com feedback pelo TalkBack.
