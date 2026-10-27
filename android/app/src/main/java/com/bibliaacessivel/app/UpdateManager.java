@@ -24,9 +24,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.4.0\n\n" +
-            "O aplicativo agora se chama Bíblia AGB (Audio Games Brasil).\n\n" +
-            "As melhorias de foco do TalkBack, a escolha acessível entre livros parecidos no Modo culto e o gesto de dois dedos para trocar capítulos continuam preservados.\n\n" +
+            "Novidades da versão Android 4.5.0\n\n" +
+            "O Teólogo de IA ganhou Temas para estudo, com 2.000 opções pesquisáveis, incluindo questões práticas, doutrinas, família, emoções e vida cristã.\n\n" +
+            "A seção Livros agora permite pesquisar pelo nome e escolher Antigo Testamento, Novo Testamento ou Todos os livros.\n\n" +
+            "As melhorias de foco do TalkBack, o Modo culto e o gesto de dois dedos para trocar capítulos continuam preservados.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;

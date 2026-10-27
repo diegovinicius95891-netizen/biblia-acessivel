@@ -82,7 +82,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(window.secondary_pages["reader_chapters"][0], window.page_stack.currentIndex())
         window._handle_escape()
-        self.assertEqual(29, window.more_options.count())
+        self.assertEqual(30, window.more_options.count())
         labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
         self.assertIn("Harpa Cristã", labels)
         self.assertIn("Status do quiz", labels)
@@ -90,6 +90,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertIn("Rádio Gospel", labels)
         self.assertIn("Ideias, sugestões e suporte", labels)
         self.assertIn("Comparar traduções", labels)
+        self.assertIn("Estudos — Teólogo de IA", labels)
         self.assertIn("Sair do aplicativo", labels)
         self.assertEqual("Capítulo anterior", window.previous_chapter_button.text().replace("&", ""))
         self.assertEqual("Próximo capítulo", window.next_chapter_button.text().replace("&", ""))
@@ -104,6 +105,13 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertIn("Novo Testamento", window.testament_label.text())
         QTest.keyClick(window.book_list, Qt.Key_Left)
         self.assertEqual(39, window.book_list.count())
+        window.show_all_books()
+        self.assertEqual(66, window.book_list.count())
+        self.assertIn("Todos os livros", window.testament_label.text())
+        window.book_search.setText("pedro")
+        window.search_books()
+        self.assertEqual(2, window.book_list.count())
+        self.assertEqual(["1 Pedro", "2 Pedro"], [window.book_list.item(i).text() for i in range(2)])
 
         window.reference_edit.setText("João 3:16")
         window.go_to_reference()
@@ -185,7 +193,7 @@ class GuiSmokeTests(unittest.TestCase):
         window = self.make_window()
         page_ids = (
             "dashboard", "plans", "prayers", "daily_devotional", "online_devotionals", "radio_gospel", "favorites",
-            "history", "topics", "books_info", "characters", "memorization",
+            "history", "ai_studies", "topics", "books_info", "characters", "memorization",
             "hymnal", "quiz", "quiz_status", "statistics", "worship", "backup",
         )
         for page_id in page_ids:
@@ -197,6 +205,10 @@ class GuiSmokeTests(unittest.TestCase):
                 self.assertTrue(window.focusWidget().accessibleName())
         self.assertEqual(640, window.extended.hymnal_list.count())
         self.assertEqual(298, window.extended.quiz_list.count())
+        self.assertEqual(2000, len(window.extended.ai_study_themes))
+        window.extended.ai_theme_search.setText("posso beber")
+        window.extended.refresh_ai_study_themes()
+        self.assertEqual(10, window.extended.ai_study_list.count())
         window.user_data.record_quiz_attempt("smoke", "fácil", "Jesus", True)
         window.extended.refresh_quiz_status()
         self.assertIn("Acertos: 1", [

@@ -1,6 +1,6 @@
 # Bíblia AGB (Audio Games Brasil)
 
-Versões atuais: **4.4.0 para Windows** e **4.4.0 para Android**.
+Versões atuais: **4.5.0 para Windows** e **4.5.0 para Android**.
 
 Em Mais opções, **Devocionais novos do site** consulta diariamente os textos publicados em
 `audiogames.com.br/diego/devocionais`, mantém o histórico para leitura offline e avisa somente
@@ -38,6 +38,7 @@ As licenças, fontes, atribuições, artigos relevantes da Lei nº 9.610/1998 e 
 - Mais opções reúne os recursos pessoais e de estudo em telas internas limpas; Escape volta à Bíblia.
 - A tela Traduções usa uma caixa de combinação acessível para escolher a edição padrão.
 - No Windows, a seção Livros abre diretamente na lista: esquerda mostra o Antigo Testamento e direita mostra o Novo, com anúncio da seleção e da quantidade de livros. No Android, a escolha de testamento permanece explícita para facilitar o uso pelo toque.
+- Livros também oferece pesquisa por nome e a opção Todos os livros, reunindo os 66 livros em ordem canônica.
 - Enter em Livros leva aos capítulos; Enter em Capítulos abre a seção Versículos.
 - Lista de leitura adequada para navegação linha a linha com NVDA, JAWS ou Narrador.
 - Na seção Versículos, o texto bíblico fica diretamente na lista; esquerda volta um capítulo e direita avança um capítulo do mesmo livro.
@@ -72,6 +73,7 @@ O aplicativo salva automaticamente tradução, testamento, livro, capítulo e it
 - Cada pergunta do quiz conta somente na primeira resposta. Recomeçar quiz do zero, com confirmação, é a única forma de liberar todas novamente.
 - Comparação de traduções com caixas de origem e destino, duas seções de resultado e comando para inverter as edições.
 - Modo culto com busca inteligente: no Android, aceita texto ou voz, nomes isolados, ordinais e intervalos. Samuel, Reis, Crônicas, Coríntios, Tessalonicenses, Timóteo, Pedro e João oferecem todos os livros possíveis em uma lista acessível.
+- Estudos — Teólogo de IA oferece 2.000 temas pesquisáveis, formados por 200 assuntos e dez abordagens de estudo. Inclui questões práticas, doutrinas, família, emoções, igreja e vida cristã.
 - No Android, a tela inicial oferece continuar o capítulo atual ou trocar de livro. Ao escolher capítulo, é possível selecionar o versículo inicial; capítulo anterior e próximo ficam no começo da leitura e também podem ser acionados por gesto horizontal de dois dedos.
 - Backup JSON versionado e validado para favoritos, notas, planos, orações, devocionais, histórico e configurações não secretas.
 

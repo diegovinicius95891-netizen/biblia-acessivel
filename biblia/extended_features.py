@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
 )
 
 from .dialogs import AccessibleButton, AccessibleResultDialog, AccessibleTextDialog, ActivatableList, ApplicationsDialog, ChoiceDialog
+from .ai_study_topics import load_study_themes, search_study_themes
 from .hymnal import load_hymnal, search_hymns
 from .online_devotionals import DevotionalFeedError, OnlineDevotionalService
 from .online_radio import OnlineRadioService, RadioFeedError
@@ -125,6 +126,7 @@ class ExtendedFeatures:
         self._build_daily_devotional()
         self._build_favorites()
         self._build_history()
+        self._build_ai_studies()
         self._build_topics()
         self._build_books_info()
         self._build_characters()
@@ -147,6 +149,7 @@ class ExtendedFeatures:
             ("Rádio Gospel", "radio_gospel"),
             ("Favoritos", "favorites"),
             ("Histórico de leitura", "history"),
+            ("Estudos — Teólogo de IA", "ai_studies"),
             ("Temas bíblicos", "topics"),
             ("Informações sobre livros", "books_info"),
             ("Personagens", "characters"),
@@ -959,6 +962,62 @@ class ExtendedFeatures:
             self.data.clear_reading_history(); self.refresh_history()
 
     # Conteúdo de estudo ----------------------------------------------
+    def _build_ai_studies(self):
+        """Cria a pesquisa acessível dos dois mil temas prontos para a IA."""
+        section = QGroupBox("Estudos — Teólogo de IA")
+        layout = QVBoxLayout(section)
+        layout.addWidget(QLabel(
+            "Temas para estudo. Pesquise um assunto ou deixe vazio para mostrar os 2.000 temas. "
+            "Ative um resultado para pedir a explicação da IA usando o capítulo atual como contexto."
+        ))
+        self.ai_theme_search = QLineEdit()
+        self.ai_theme_search.setAccessibleName("Pesquisar nos temas para estudo")
+        self.ai_theme_search.setPlaceholderText("Exemplo: amor, posso beber, fruto do Espírito")
+        self.ai_theme_search.returnPressed.connect(self.refresh_ai_study_themes)
+        layout.addWidget(self.ai_theme_search)
+        self.ai_theme_search_button = AccessibleButton("&Pesquisar temas")
+        self.ai_theme_search_button.clicked.connect(self.refresh_ai_study_themes)
+        layout.addWidget(self.ai_theme_search_button)
+        self.ai_theme_status = QLabel("")
+        self.ai_theme_status.setAccessibleName("Quantidade de temas encontrados")
+        layout.addWidget(self.ai_theme_status)
+        self.ai_study_list = ActivatableList()
+        self.ai_study_list.setAccessibleName("Temas para estudo do Teólogo de IA")
+        self.ai_study_list.setAccessibleDescription(
+            "Cima e baixo navegam. Espaço ou Enter envia o tema selecionado ao Teólogo de IA."
+        )
+        self.ai_study_list.selectionRequested.connect(self.open_ai_study_theme)
+        layout.addWidget(self.ai_study_list, 1)
+        self.ai_study_themes = load_study_themes(
+            self.host.resource_dir / "data" / "ai_study_topics.txt"
+        )
+        self._register("ai_studies", "Estudos — Teólogo de IA", section, self.ai_theme_search)
+        self.refresh_ai_study_themes()
+
+    def refresh_ai_study_themes(self):
+        """Filtra assuntos e abordagens sem perder a navegação por teclado."""
+        matches = search_study_themes(self.ai_study_themes, self.ai_theme_search.text())
+        self.ai_study_list.clear()
+        for theme in matches:
+            item = QListWidgetItem(theme.label)
+            item.setData(Qt.UserRole, theme)
+            self.ai_study_list.addItem(item)
+        self.ai_theme_status.setText(f"{len(matches)} temas encontrados.")
+        if self.ai_study_list.count():
+            self.ai_study_list.setCurrentRow(0)
+            self.ai_study_list.setFocus()
+            self.host._announce_for(
+                self.ai_study_list,
+                f"{len(matches)} temas encontrados. Primeiro resultado: {matches[0].label}.",
+            )
+        else:
+            self.ai_theme_search.setFocus()
+            self.host._announce_for(self.ai_theme_search, "Nenhum tema encontrado. Tente outras palavras.")
+
+    def open_ai_study_theme(self, item):
+        """Envia o tema selecionado com a passagem atual como contexto bíblico."""
+        self.host.generate_ai_study(item.data(Qt.UserRole), self.ai_study_list)
+
     def _build_topics(self):
         """Lista temas do mesmo índice usado pela busca inteligente."""
         section, _layout, self.topics_list = self._list_section("Temas bíblicos", "Ative um tema para conhecer e abrir passagens relacionadas.")
@@ -1377,6 +1436,7 @@ class ExtendedFeatures:
             "dashboard": self.refresh_dashboard, "plans": self.refresh_plans,
             "prayers": self.refresh_prayers, "daily_devotional": self.prepare_moment,
             "favorites": self.refresh_favorites, "history": self.refresh_history,
+            "ai_studies": self.refresh_ai_study_themes,
             "books_info": self.refresh_books_info, "memorization": self.refresh_memory,
             "hymnal": self.refresh_hymnal, "quiz": self.refresh_quiz,
             "quiz_status": self.refresh_quiz_status, "statistics": self.refresh_statistics,

@@ -209,57 +209,89 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         boolean newTestament = selectedBook.number > 39;
         LinearLayout root = screen("Livros", this::showMainMenu);
         root.addView(actionButton("Modo culto", "Abrir pesquisa rápida do Modo culto", this::showWorshipModeFromReading));
-        root.addView(paragraph("Selecione a seção: Antigo ou Novo Testamento."));
+        root.addView(paragraph("Selecione a seção: Antigo Testamento, Novo Testamento ou Todos os livros."));
         Spinner testament = new Spinner(this);
-        testament.setContentDescription("Seção da Bíblia: Antigo ou Novo Testamento");
+        testament.setContentDescription("Seção da Bíblia: Antigo Testamento, Novo Testamento ou Todos os livros");
         testament.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item,
-                new String[]{"Antigo Testamento", "Novo Testamento"}));
+                new String[]{"Antigo Testamento", "Novo Testamento", "Todos os livros"}));
         testament.setSelection(newTestament ? 1 : 0);
         root.addView(testament);
         TextView feedback = paragraph("");
         root.addView(feedback);
         testament.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                int count = position == 1 ? 27 : 39;
-                String name = position == 1 ? "Novo Testamento" : "Antigo Testamento";
+                int count = position == 2 ? 66 : position == 1 ? 27 : 39;
+                String name = position == 2 ? "Todos os livros" :
+                        position == 1 ? "Novo Testamento" : "Antigo Testamento";
                 feedback.setText(name + " selecionado. " + count + " livros. Ative Escolher livro.");
                 feedback.announceForAccessibility(feedback.getText());
             }
             @Override public void onNothingSelected(AdapterView<?> parent) { }
         });
         root.addView(actionButton("Escolher livro", "Abrir os livros do testamento selecionado",
-                () -> populateBookScreen(testament.getSelectedItemPosition() == 1)));
+                () -> populateBookScreen(testament.getSelectedItemPosition())));
         setContentView(root);
-        focusForTalkBack(testament, "Escolha Antigo ou Novo Testamento.");
+        focusForTalkBack(testament, "Escolha Antigo Testamento, Novo Testamento ou Todos os livros.");
     }
 
     /** Recria a lista de livros sem alterar o padrão de foco da tela. */
-    private void populateBookScreen(boolean newTestament) {
-        LinearLayout root = screen("Livros — " +
-                (newTestament ? "Novo Testamento" : "Antigo Testamento"), this::showBooks);
+    private void populateBookScreen(int scope) {
+        String sectionName = scope == 2 ? "Todos os livros" :
+                scope == 1 ? "Novo Testamento" : "Antigo Testamento";
+        LinearLayout root = screen("Livros — " + sectionName, this::showBooks);
         root.addView(actionButton("Modo culto", "Abrir pesquisa rápida do Modo culto", this::showWorshipModeFromReading));
-        List<Models.Book> books = bible.books(translationId, newTestament);
-        root.addView(paragraph((newTestament ? "Novo Testamento" : "Antigo Testamento") +
-                " selecionado. " + books.size() + " livros. Escolha o livro com cima e baixo e ative para abrir."));
-        ListView list = listView(books);
-        list.setContentDescription("Livros do " + (newTestament ? "Novo" : "Antigo") + " Testamento");
+        List<Models.Book> books = scope == 2 ? bible.books(translationId) : bible.books(translationId, scope == 1);
+        root.addView(paragraph(sectionName + " selecionado. " + books.size() +
+                " livros. Pesquise pelo nome ou escolha com cima e baixo."));
+        EditText search = editText("Pesquisar livro", false);
+        root.addView(search);
+        TextView status = paragraph(books.size() + " livros exibidos.");
+        root.addView(status);
+        List<Models.Book> visible = new ArrayList<>(books);
+        ListView list = listView(visible);
+        list.setContentDescription("Livros de " + sectionName);
+        @SuppressWarnings("unchecked")
+        ArrayAdapter<Models.Book> adapter = (ArrayAdapter<Models.Book>) list.getAdapter();
+        Runnable filter = () -> {
+            String wanted = normalizeForSearch(search.getText().toString());
+            visible.clear();
+            for (Models.Book book : books) {
+                if (wanted.isEmpty() || normalizeForSearch(book.name).contains(wanted)) visible.add(book);
+            }
+            adapter.notifyDataSetChanged();
+            status.setText(visible.size() + " livro ou livros encontrados.");
+            status.announceForAccessibility(status.getText());
+            if (!visible.isEmpty()) {
+                list.setSelection(0);
+                focusForTalkBack(list, visible.size() + " resultados. Primeiro: " + visible.get(0).name + ".");
+            } else {
+                search.setError("Nenhum livro encontrado.");
+                search.requestFocus();
+            }
+        };
+        search.setOnEditorActionListener((view, actionId, event) -> {
+            filter.run();
+            return true;
+        });
+        root.addView(actionButton("Pesquisar livro", "Filtrar livros pelo nome", filter));
         list.setOnItemClickListener((parent, view, position, id) -> {
-            selectedBook = books.get(position);
+            selectedBook = (Models.Book) parent.getItemAtPosition(position);
             selectedChapter = 1;
             selectVerse("1");
             savePosition();
             showChapters();
         });
         list.setOnItemLongClickListener((parent, view, position, id) -> {
-            selectedBook = books.get(position);
+            selectedBook = (Models.Book) parent.getItemAtPosition(position);
             showBookActions();
             return true;
         });
         root.addView(list, fill());
-        root.addView(actionButton("Trocar testamento", "Escolher Antigo ou Novo Testamento", this::showBooks));
+        root.addView(actionButton("Trocar seção de livros",
+                "Escolher Antigo Testamento, Novo Testamento ou Todos os livros", this::showBooks));
         root.addView(paragraph("Toque duas vezes para abrir capítulos. Toque e segure para Aplicações."));
         setContentView(root);
-        int index = Math.max(0, books.indexOf(selectedBook));
+        int index = Math.max(0, visible.indexOf(selectedBook));
         list.setSelection(index);
         focusForTalkBack(list, "Escolha o livro.");
     }
@@ -371,6 +403,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout root = screen("Estudos — Teólogo de IA", this::showMoreOptions);
         root.addView(paragraph("Escolha uma categoria. A pergunta sugerida poderá ser editada antes do envio. " +
                 "A resposta usa a passagem atual e exige sua chave do Google Gemini."));
+        root.addView(actionButton("Temas para estudo — 2.000 opções",
+                "Pesquisar e escolher entre dois mil temas bíblicos", this::showStudyThemes));
         root.addView(actionButton("Resumir o capítulo atual",
                 "Gerar resumo de " + currentChapterReference(), () ->
                         runAi("Resumo de " + currentChapterReference(),
@@ -394,6 +428,48 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(list, fill());
         setContentView(root);
         focusForTalkBack(list, "Categorias de estudo.");
+    }
+
+    /** Oferece pesquisa e seleção acessíveis entre dois mil temas do Teólogo de IA. */
+    private void showStudyThemes() {
+        LinearLayout root = screen("Teólogo de IA — Temas para estudo", this::showStudies);
+        root.addView(paragraph("Pesquise um assunto, como amor, posso beber ou fruto do Espírito. " +
+                "Deixe vazio para mostrar todos os 2.000 temas."));
+        EditText search = editText("Pesquisar temas para estudo", false);
+        root.addView(search);
+        TextView status = paragraph("2.000 temas disponíveis.");
+        root.addView(status);
+        List<AiStudyCatalog.Topic> visible = AiStudyCatalog.searchThemes(this, "");
+        ListView list = listView(visible);
+        list.setContentDescription("Temas para estudo do Teólogo de IA");
+        @SuppressWarnings("unchecked")
+        ArrayAdapter<AiStudyCatalog.Topic> adapter = (ArrayAdapter<AiStudyCatalog.Topic>) list.getAdapter();
+        Runnable filter = () -> {
+            List<AiStudyCatalog.Topic> matches = AiStudyCatalog.searchThemes(this, search.getText().toString());
+            visible.clear();
+            visible.addAll(matches);
+            adapter.notifyDataSetChanged();
+            status.setText(matches.size() + " temas encontrados.");
+            status.announceForAccessibility(status.getText());
+            if (!matches.isEmpty()) {
+                list.setSelection(0);
+                focusForTalkBack(list, matches.size() + " temas encontrados. Primeiro: " +
+                        matches.get(0).label + ".");
+            } else {
+                search.setError("Nenhum tema encontrado. Tente outras palavras.");
+                search.requestFocus();
+            }
+        };
+        search.setOnEditorActionListener((view, actionId, event) -> {
+            filter.run();
+            return true;
+        });
+        root.addView(actionButton("Pesquisar temas", "Filtrar os temas para estudo", filter));
+        list.setOnItemClickListener((parent, view, position, id) ->
+                showAiStudyComposer((AiStudyCatalog.Topic) parent.getItemAtPosition(position), this::showStudyThemes));
+        root.addView(list, fill());
+        setContentView(root);
+        focusForTalkBack(search, "Pesquisar entre dois mil temas para estudo.");
     }
 
     /** Abre um campo editável com a pergunta sugerida e o texto bíblico usado como contexto. */
@@ -949,7 +1025,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "voz escolhida. Se a voz estiver desligada, o TalkBack anuncia novamente o texto.\n\n" +
                 "HARPA, QUIZ E MODO CULTO\n\nA Harpa Cristã possui 640 hinos pesquisáveis e funciona " +
                 "offline. O quiz possui 298 perguntas e cada uma conta somente uma vez. Recomeçar quiz do zero, " +
-                "em Status do quiz, é a única forma de liberar tudo novamente. Traduções e testamentos usam caixas de combinação com feedback. " +
+                "em Status do quiz, é a única forma de liberar tudo novamente. Traduções e testamentos usam caixas de combinação com feedback; Livros também oferece Todos os livros e pesquisa por nome. " +
+                "No Teólogo de IA, Temas para estudo permite pesquisar entre 2.000 opções e editar a pergunta antes de enviar. " +
                 "Comparar traduções separa origem e destino e permite inverter as duas. No Modo " +
                 "culto, digite uma passagem e confirme: o texto aparece imediatamente, sem precisar tocar " +
                 "em Ler versículo. A Rádio Gospel toca pela internet os louvores publicados no site. " +
@@ -2049,6 +2126,12 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "").replaceAll("[^A-Za-z0-9 _-]", "").trim();
         return normalized.isEmpty() ? "devocional" : normalized;
+    }
+
+    /** Normaliza nomes para as pesquisas locais tolerarem acentos e maiúsculas. */
+    private String normalizeForSearch(String value) {
+        return Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).trim();
     }
 
     @Override public void onBackPressed() {

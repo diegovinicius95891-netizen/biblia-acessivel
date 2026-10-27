@@ -125,6 +125,14 @@ final class BibleRepository implements AutoCloseable {
         return result;
     }
 
+    /** Lista os 66 livros em ordem canônica, sem separar testamentos. */
+    List<Models.Book> books(String translationId) {
+        List<Models.Book> result = new ArrayList<>();
+        result.addAll(books(translationId, false));
+        result.addAll(books(translationId, true));
+        return result;
+    }
+
     Models.Book findBook(String translationId, String query) {
         List<Models.Book> matches = matchingBooks(translationId, query);
         return matches.size() == 1 ? matches.get(0) : null;
@@ -133,7 +141,7 @@ final class BibleRepository implements AutoCloseable {
     /** Localiza nomes, códigos, ordinais falados e famílias ambíguas como "Pedro". */
     List<Models.Book> matchingBooks(String translationId, String query) {
         List<Models.Book> available = new ArrayList<>();
-        for (boolean nt : new boolean[]{false, true}) available.addAll(books(translationId, nt));
+        available.addAll(books(translationId));
         return matchBookCandidates(available, query);
     }
 

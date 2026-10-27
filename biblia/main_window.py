@@ -43,7 +43,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .database import BibleDatabase
+from .database import BibleDatabase, _normalize
 from .dialogs import (
     AccessibleResultDialog,
     AccessibleTextDialog,
@@ -228,6 +228,7 @@ class MainWindow(QMainWindow):
 
     OLD_TESTAMENT = 0
     NEW_TESTAMENT = 1
+    ALL_TESTAMENTS = 2
 
     def __init__(
         self,
@@ -371,8 +372,22 @@ class MainWindow(QMainWindow):
         self.testament_label.setAccessibleName("Testamento exibido")
         books_layout.addWidget(self.testament_label)
         books_layout.addWidget(
-            QLabel("Cima/baixo navegam; esquerda/direita trocam Antigo e Novo Testamento.")
+            QLabel("Cima/baixo navegam; esquerda/direita trocam Antigo e Novo Testamento. "
+                   "Use Todos os livros ou pesquise pelo nome quando preferir.")
         )
+        book_search_row = QHBoxLayout()
+        self.book_search = QLineEdit()
+        self.book_search.setAccessibleName("Pesquisar livro")
+        self.book_search.setPlaceholderText("Digite o nome do livro")
+        self.book_search.returnPressed.connect(self.search_books)
+        book_search_row.addWidget(self.book_search, 1)
+        self.book_search_button = AccessibleButton("&Pesquisar livro")
+        self.book_search_button.clicked.connect(self.search_books)
+        book_search_row.addWidget(self.book_search_button)
+        self.all_books_button = AccessibleButton("&Todos os livros")
+        self.all_books_button.clicked.connect(self.show_all_books)
+        book_search_row.addWidget(self.all_books_button)
+        books_layout.addLayout(book_search_row)
         self.book_list = BookList()
         self.book_list.setAccessibleName("Seção Livros")
         self.book_list.setAccessibleDescription(
@@ -851,7 +866,7 @@ class MainWindow(QMainWindow):
             "Na tela principal, cima e baixo percorrem Livros, Capítulos, Versículos e Mais opções. "
             "Alt+1 abre Livros, Alt+2 abre Capítulos, Alt+3 abre Versículos e Alt+4 abre Mais opções. "
             "Cada área abre sozinha em uma nova tela; Escape retorna ao menu principal. O texto bíblico fica diretamente em Versículos. Cima e baixo navegam dentro da seção atual. "
-            "Em Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo, anunciando a seleção e a quantidade de livros. Enter em Livros leva aos capítulos; Enter em "
+            "Em Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo. Todos os livros reúne os 66 livros, e Pesquisar livro filtra pelo nome. Enter em Livros leva aos capítulos; Enter em "
             "Capítulos abre os versículos. Mais opções abre cada recurso numa tela limpa. Escape volta "
             "ao menu principal da Bíblia.\n\n"
             "INTELIGÊNCIA ARTIFICIAL\n"
@@ -866,7 +881,7 @@ class MainWindow(QMainWindow):
             "do dia, leitura do plano, reflexão, prática, oração e histórico. O Diário de oração possui filtros "
             "para pedidos em oração, respondidos e arquivados.\n\n"
             "RECURSOS LOCAIS\n"
-            "Mais opções também contém planos de leitura, favoritos com categorias, histórico, temas, "
+            "Mais opções também contém Estudos — Teólogo de IA com 2.000 temas pesquisáveis, planos de leitura, favoritos com categorias, histórico, temas, "
             "informações sobre livros, personagens, memorização, Harpa Cristã com 640 hinos, quiz com "
             "298 perguntas, Status do quiz, comparação de traduções, estatísticas, Modo culto, Rádio Gospel e backup. "
             "Cada pergunta conta uma vez; somente Recomeçar quiz do zero libera todas novamente. A Rádio "
@@ -1184,13 +1199,46 @@ class MainWindow(QMainWindow):
         self.testament_label.setText(message)
         self._announce_for(self.book_list, message)
 
-    def _populate_books(self, preferred_code=None, preferred_chapter=1):
-        """Preenche somente os 39 ou 27 livros do testamento ativo."""
+    def show_all_books(self):
+        """Exibe os 66 livros sem alterar as setas antigas de testamento."""
+        self.testament = self.ALL_TESTAMENTS
+        self.settings.setValue("position/testament", self.testament)
+        self.book_search.clear()
+        self._populate_books()
+        self.book_list.setFocus()
+        self._announce_for(self.book_list, "Todos os livros selecionados. 66 livros. Escolha o livro.")
+
+    def search_books(self):
+        """Pesquisa em todos os livros e mantém resultados na própria lista acessível."""
+        query = self.book_search.text().strip()
+        self._populate_books(query=query)
+        if self.book_list.count():
+            self.book_list.setFocus()
+            self._announce_for(
+                self.book_list,
+                f"{self.book_list.count()} livro ou livros encontrados. Primeiro resultado: "
+                f"{self.book_list.item(0).text()}.",
+            )
+        else:
+            self.book_search.setFocus()
+            self._announce_for(self.book_search, "Nenhum livro encontrado. Tente outro nome.")
+
+    def _populate_books(self, preferred_code=None, preferred_chapter=1, query=""):
+        """Preenche o testamento ativo, todos os livros ou resultados pesquisados."""
         books = self.db.books(self.current_translation_id())
-        visible = [
-            book for book in books
-            if (int(book["book_number"]) <= 39) == (self.testament == self.OLD_TESTAMENT)
-        ]
+        if query:
+            normalized = _normalize(query)
+            visible = [
+                book for book in books
+                if normalized in _normalize(book["book_name"])
+            ]
+        elif self.testament == self.ALL_TESTAMENTS:
+            visible = list(books)
+        else:
+            visible = [
+                book for book in books
+                if (int(book["book_number"]) <= 39) == (self.testament == self.OLD_TESTAMENT)
+            ]
         self._loading = True
         self.book_list.clear()
         selected_row = 0
@@ -1201,14 +1249,23 @@ class MainWindow(QMainWindow):
             self.book_list.addItem(item)
             if book["book_code"] == preferred_code:
                 selected_row = index
-        self.book_list.setCurrentRow(selected_row)
-        self.testament_label.setText(
-            "Antigo Testamento selecionado. 39 livros. Escolha o livro."
-            if self.testament == self.OLD_TESTAMENT
-            else "Novo Testamento selecionado. 27 livros. Escolha o livro."
-        )
+        if self.book_list.count():
+            self.book_list.setCurrentRow(selected_row)
+        if query:
+            self.testament_label.setText(f"Pesquisa em todos os livros. {len(visible)} resultados.")
+        elif self.testament == self.ALL_TESTAMENTS:
+            self.testament_label.setText("Todos os livros selecionados. 66 livros. Escolha o livro.")
+        else:
+            self.testament_label.setText(
+                "Antigo Testamento selecionado. 39 livros. Escolha o livro."
+                if self.testament == self.OLD_TESTAMENT
+                else "Novo Testamento selecionado. 27 livros. Escolha o livro."
+            )
         self._loading = False
-        self._populate_chapters(preferred_chapter)
+        if self.book_list.count():
+            self._populate_chapters(preferred_chapter)
+        else:
+            self.chapter_list.clear()
 
     def _book_highlighted(self, _current=None, _previous=None):
         """Atualiza capítulos quando a pessoa muda o livro com as setas."""
@@ -2156,6 +2213,38 @@ class MainWindow(QMainWindow):
         threading.Thread(
             target=self._run_ai_request,
             args=(self.api_key, self.ai_model, task_instruction, bible_text, self.ai_detail),
+            daemon=True,
+        ).start()
+
+    def generate_ai_study(self, theme, source_widget):
+        """Gera um estudo temático usando o capítulo atual como contexto verificável."""
+        if self._ai_busy:
+            self._announce_for(source_widget, "Aguarde a solicitação de IA atual terminar.")
+            return
+        if not self.api_key:
+            self._warn(
+                "Chave necessária",
+                "Configure e salve sua chave da API do Google Gemini em Mais opções, Configurações.",
+            )
+            return
+        rows = self.db.chapter(
+            self.current_translation_id(), self.active_book_code, self.active_chapter
+        )
+        bible_text = "\n".join(f"{row['verse']}. {row['text']}" for row in rows)
+        instruction = (
+            "Atue como assistente de estudo bíblico cuidadoso, não como autoridade pastoral. "
+            f"Tema escolhido: {theme.label}. {theme.prompt} "
+            f"Use {self.active_book_name}, capítulo {self.active_chapter}, como contexto inicial, "
+            "mas relacione outras passagens bíblicas pertinentes. Diferencie texto, contexto e "
+            "interpretação, reconheça leituras cristãs diferentes quando existirem, não invente "
+            "citações e conclua em até 650 palavras."
+        )
+        self._ai_result_title = f"Estudo: {theme.label}"
+        self._ai_busy = True
+        self._announce_for(source_widget, "Gerando estudo com o Google Gemini. Aguarde alguns instantes.")
+        threading.Thread(
+            target=self._run_ai_request,
+            args=(self.api_key, self.ai_model, instruction, bible_text, self.ai_detail),
             daemon=True,
         ).start()
 

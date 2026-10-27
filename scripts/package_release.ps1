@@ -27,6 +27,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $projectRoot 'data\biblia.db') -Destination (Join-Path $bundleRoot 'data')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'data\harpa_crista.json') -Destination (Join-Path $bundleRoot 'data')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'data\quiz_questions.tsv') -Destination (Join-Path $bundleRoot 'data')
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'data\ai_study_topics.txt') -Destination (Join-Path $bundleRoot 'data')
 
     Compress-Archive -LiteralPath $bundleRoot -DestinationPath $destination -CompressionLevel Optimal -Force
 }

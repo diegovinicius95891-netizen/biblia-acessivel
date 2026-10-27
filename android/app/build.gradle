@@ -14,8 +14,8 @@ android {
         applicationId 'com.bibliaacessivel.app'
         minSdk 26
         targetSdk 35
-        versionCode 19
-        versionName '4.4.0'
+        versionCode 20
+        versionName '4.5.0'
     }
 
     compileOptions {
@@ -57,7 +57,7 @@ android {
 
 def syncSharedContent = tasks.register('syncSharedContent', Copy) {
     from rootProject.file('../data')
-    include 'biblia.db', 'harpa_crista.json', 'quiz_questions.tsv'
+    include 'biblia.db', 'harpa_crista.json', 'quiz_questions.tsv', 'ai_study_topics.txt'
     from rootProject.file('..')
     include 'THIRD_PARTY_NOTICES.md'
     into layout.buildDirectory.dir('generated/bibleAssets')
