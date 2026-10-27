@@ -24,9 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.5.1\n\n" +
-            "Temas para estudo agora traz uma seleção menor e mais útil de assuntos cotidianos, como relacionamento cristão, oração, fé, perdão, álcool e adoração.\n\n" +
-            "Antes de escolher o tema, você decide se a IA deve partir do texto bíblico aberto agora ou estudar o assunto com foco na Bíblia toda.\n\n" +
+            "Novidades da versão Android 4.5.2\n\n" +
+            "A entrada agora se chama Estudar e pesquisar temas com IA. A escolha entre o texto atual e a Bíblia toda aparece somente depois de abrir essa opção.\n\n" +
+            "Os temas aparecem em ordem alfabética, e o botão de envio anuncia o nome do tema em vez do livro aberto.\n\n" +
             "As melhorias de foco do TalkBack, o Modo culto e o gesto de dois dedos para trocar capítulos continuam preservados.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 

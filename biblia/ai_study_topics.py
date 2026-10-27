@@ -24,10 +24,13 @@ def _normalize(value: str) -> str:
 
 def load_study_themes(path: Path) -> tuple[StudyTheme, ...]:
     """Carrega a lista curta de assuntos úteis no cotidiano."""
-    subjects = tuple(
-        line.strip() for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
-    )
+    subjects = tuple(sorted(
+        (
+            line.strip() for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ),
+        key=_normalize,
+    ))
     return tuple(
         StudyTheme(
             subject,

@@ -3,7 +3,7 @@
 from pathlib import Path
 import unittest
 
-from biblia.ai_study_topics import load_study_themes, search_study_themes
+from biblia.ai_study_topics import _normalize, load_study_themes, search_study_themes
 
 
 class AiStudyTopicTests(unittest.TestCase):
@@ -17,6 +17,10 @@ class AiStudyTopicTests(unittest.TestCase):
     def test_catalog_contains_curated_unique_themes(self):
         self.assertEqual(72, len(self.themes))
         self.assertEqual(72, len({theme.label for theme in self.themes}))
+        self.assertEqual(
+            [theme.label for theme in self.themes],
+            sorted((theme.label for theme in self.themes), key=_normalize),
+        )
 
     def test_practical_and_biblical_topics_are_searchable(self):
         self.assertEqual(1, len(search_study_themes(self.themes, "alcool")))

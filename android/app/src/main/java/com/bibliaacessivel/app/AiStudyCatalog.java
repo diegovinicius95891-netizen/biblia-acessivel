@@ -57,6 +57,8 @@ final class AiStudyCatalog {
         } catch (Exception error) {
             throw new IllegalStateException("Não foi possível preparar os temas para estudo.", error);
         }
+        result.sort((first, second) ->
+                normalize(first.label).compareTo(normalize(second.label)));
         studyThemes = Collections.unmodifiableList(result);
         return studyThemes;
     }

@@ -403,8 +403,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout root = screen("Estudos — Teólogo de IA", this::showMoreOptions);
         root.addView(paragraph("Escolha uma categoria. A pergunta sugerida poderá ser editada antes do envio. " +
                 "A resposta usa a passagem atual e exige sua chave do Google Gemini."));
-        root.addView(actionButton("Temas para estudo",
-                "Escolher o alcance e pesquisar temas práticos do dia a dia", this::showStudyThemeScope));
+        root.addView(actionButton("Estudar e pesquisar temas com IA",
+                "Estudar e pesquisar temas com inteligência artificial", this::showStudyThemeScope));
         root.addView(actionButton("Resumir o capítulo atual",
                 "Gerar resumo de " + currentChapterReference(), () ->
                         runAi("Resumo de " + currentChapterReference(),
@@ -501,7 +501,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         question.setMinLines(3);
         question.setText(topic.suggestedQuestion);
         root.addView(question, fill());
-        root.addView(actionButton("Perguntar à IA", "Enviar pergunta sobre " + currentReference(), () -> {
+        root.addView(actionButton("Perguntar à IA", "Enviar pergunta sobre o tema " + topic.label, () -> {
             try {
                 String instruction = AiStudyCatalog.instruction(
                         topic, question.getText().toString(), scope) +

@@ -1,10 +1,10 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.5.1
+CURRENT_CHANGELOG = """Novidades da versão 4.5.2
 
-Temas para estudo agora apresenta uma seleção menor e mais útil de assuntos do dia a dia, como relacionamento cristão, oração, fé, perdão, álcool e adoração.
+Os temas para estudo com IA agora aparecem em ordem alfabética para facilitar a navegação e a pesquisa.
 
-Antes da lista, você escolhe se a explicação será baseada no texto bíblico aberto agora ou focada na Bíblia toda.
+No Android, a entrada foi simplificada para Estudar e pesquisar temas com IA. A escolha entre o texto atual e a Bíblia toda aparece somente depois de abrir essa opção.
 
-A pesquisa de temas continua acessível pelo teclado, e o Teólogo de IA deixa claro o alcance escolhido em cada resposta.
+O botão de envio agora anuncia o nome do tema, sem apresentar uma referência bíblica como se ela fosse o assunto escolhido.
 """

@@ -1,6 +1,6 @@
 # Bíblia AGB (Audio Games Brasil)
 
-Versões atuais: **4.5.1 para Windows** e **4.5.1 para Android**.
+Versões atuais: **4.5.2 para Windows** e **4.5.2 para Android**.
 
 Em Mais opções, **Devocionais novos do site** consulta diariamente os textos publicados em
 `audiogames.com.br/diego/devocionais`, mantém o histórico para leitura offline e avisa somente
