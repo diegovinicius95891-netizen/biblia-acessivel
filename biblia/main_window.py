@@ -881,7 +881,7 @@ class MainWindow(QMainWindow):
             "do dia, leitura do plano, reflexão, prática, oração e histórico. O Diário de oração possui filtros "
             "para pedidos em oração, respondidos e arquivados.\n\n"
             "RECURSOS LOCAIS\n"
-            "Mais opções também contém Estudos — Teólogo de IA com 2.000 temas pesquisáveis, planos de leitura, favoritos com categorias, histórico, temas, "
+            "Mais opções também contém Estudos — Teólogo de IA com temas cotidianos pesquisáveis e escolha entre o texto atual e a Bíblia toda, planos de leitura, favoritos com categorias, histórico, temas, "
             "informações sobre livros, personagens, memorização, Harpa Cristã com 640 hinos, quiz com "
             "298 perguntas, Status do quiz, comparação de traduções, estatísticas, Modo culto, Rádio Gospel e backup. "
             "Cada pergunta conta uma vez; somente Recomeçar quiz do zero libera todas novamente. A Rádio "
@@ -2216,8 +2216,8 @@ class MainWindow(QMainWindow):
             daemon=True,
         ).start()
 
-    def generate_ai_study(self, theme, source_widget):
-        """Gera um estudo temático usando o capítulo atual como contexto verificável."""
+    def generate_ai_study(self, theme, source_widget, scope="current"):
+        """Gera um estudo pelo texto atual ou pela Bíblia toda, conforme a escolha."""
         if self._ai_busy:
             self._announce_for(source_widget, "Aguarde a solicitação de IA atual terminar.")
             return
@@ -2227,19 +2227,35 @@ class MainWindow(QMainWindow):
                 "Configure e salve sua chave da API do Google Gemini em Mais opções, Configurações.",
             )
             return
-        rows = self.db.chapter(
-            self.current_translation_id(), self.active_book_code, self.active_chapter
-        )
-        bible_text = "\n".join(f"{row['verse']}. {row['text']}" for row in rows)
+        if scope == "whole":
+            bible_text = (
+                "Escopo solicitado: toda a Bíblia. Não há uma única passagem como base. "
+                f"Tema escolhido: {theme.label}."
+            )
+            scope_instruction = (
+                "Desenvolva o tema considerando a Bíblia toda. Use passagens representativas e "
+                "contextualizadas do Antigo e do Novo Testamento quando forem pertinentes, sem "
+                "forçar relação com o capítulo atualmente aberto."
+            )
+            title_scope = "Bíblia toda"
+        else:
+            rows = self.db.chapter(
+                self.current_translation_id(), self.active_book_code, self.active_chapter
+            )
+            bible_text = "\n".join(f"{row['verse']}. {row['text']}" for row in rows)
+            scope_instruction = (
+                f"Parta do texto de {self.active_book_name}, capítulo {self.active_chapter}, "
+                "explique como ele se relaciona com o tema e complemente com outras passagens "
+                "pertinentes. Se a relação não for direta, diga isso com clareza."
+            )
+            title_scope = "texto atual"
         instruction = (
             "Atue como assistente de estudo bíblico cuidadoso, não como autoridade pastoral. "
-            f"Tema escolhido: {theme.label}. {theme.prompt} "
-            f"Use {self.active_book_name}, capítulo {self.active_chapter}, como contexto inicial, "
-            "mas relacione outras passagens bíblicas pertinentes. Diferencie texto, contexto e "
-            "interpretação, reconheça leituras cristãs diferentes quando existirem, não invente "
-            "citações e conclua em até 650 palavras."
+            f"Tema escolhido: {theme.label}. {theme.prompt} {scope_instruction} "
+            "Diferencie texto, contexto e interpretação, reconheça leituras cristãs diferentes "
+            "quando existirem, não invente citações e conclua em até 650 palavras."
         )
-        self._ai_result_title = f"Estudo: {theme.label}"
+        self._ai_result_title = f"Estudo: {theme.label} — {title_scope}"
         self._ai_busy = True
         self._announce_for(source_widget, "Gerando estudo com o Google Gemini. Aguarde alguns instantes.")
         threading.Thread(

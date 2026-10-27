@@ -403,8 +403,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout root = screen("Estudos — Teólogo de IA", this::showMoreOptions);
         root.addView(paragraph("Escolha uma categoria. A pergunta sugerida poderá ser editada antes do envio. " +
                 "A resposta usa a passagem atual e exige sua chave do Google Gemini."));
-        root.addView(actionButton("Temas para estudo — 2.000 opções",
-                "Pesquisar e escolher entre dois mil temas bíblicos", this::showStudyThemes));
+        root.addView(actionButton("Temas para estudo",
+                "Escolher o alcance e pesquisar temas práticos do dia a dia", this::showStudyThemeScope));
         root.addView(actionButton("Resumir o capítulo atual",
                 "Gerar resumo de " + currentChapterReference(), () ->
                         runAi("Resumo de " + currentChapterReference(),
@@ -430,16 +430,28 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         focusForTalkBack(list, "Categorias de estudo.");
     }
 
-    /** Oferece pesquisa e seleção acessíveis entre dois mil temas do Teólogo de IA. */
-    private void showStudyThemes() {
-        LinearLayout root = screen("Teólogo de IA — Temas para estudo", this::showStudies);
-        root.addView(paragraph("Pesquise um assunto, como amor, posso beber ou fruto do Espírito. " +
-                "Deixe vazio para mostrar todos os 2.000 temas."));
+    /** Pergunta primeiro se o tema partirá do texto atual ou da Bíblia toda. */
+    private void showStudyThemeScope() {
+        String[] choices = {
+                "Com base no texto bíblico que estou lendo agora",
+                "Focado na Bíblia toda"
+        };
+        showChoiceDialog("Temas para estudo", "Escolha como a IA deve abordar o tema.",
+                choices, which -> showStudyThemes(which == 0));
+    }
+
+    /** Oferece pesquisa e seleção acessíveis entre temas cotidianos do Teólogo de IA. */
+    private void showStudyThemes(boolean useCurrentText) {
+        String scopeLabel = useCurrentText ? "texto bíblico atual" : "Bíblia toda";
+        LinearLayout root = screen("Teólogo de IA — Temas para estudo", this::showStudyThemeScope);
+        root.addView(paragraph("Escopo escolhido: " + scopeLabel + ". Pesquise um assunto, como " +
+                "oração, relacionamento cristão, fé, perdão, álcool ou adoração. " +
+                "Deixe vazio para mostrar todos os temas."));
         EditText search = editText("Pesquisar temas para estudo", false);
         root.addView(search);
-        TextView status = paragraph("2.000 temas disponíveis.");
-        root.addView(status);
         List<AiStudyCatalog.Topic> visible = AiStudyCatalog.searchThemes(this, "");
+        TextView status = paragraph(visible.size() + " temas disponíveis.");
+        root.addView(status);
         ListView list = listView(visible);
         list.setContentDescription("Temas para estudo do Teólogo de IA");
         @SuppressWarnings("unchecked")
@@ -466,16 +478,25 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         });
         root.addView(actionButton("Pesquisar temas", "Filtrar os temas para estudo", filter));
         list.setOnItemClickListener((parent, view, position, id) ->
-                showAiStudyComposer((AiStudyCatalog.Topic) parent.getItemAtPosition(position), this::showStudyThemes));
+                showAiStudyComposer((AiStudyCatalog.Topic) parent.getItemAtPosition(position),
+                        () -> showStudyThemes(useCurrentText), useCurrentText));
         root.addView(list, fill());
         setContentView(root);
-        focusForTalkBack(search, "Pesquisar entre dois mil temas para estudo.");
+        focusForTalkBack(search, "Pesquisar temas para estudo. Escopo: " + scopeLabel + ".");
     }
 
     /** Abre um campo editável com a pergunta sugerida e o texto bíblico usado como contexto. */
     private void showAiStudyComposer(AiStudyCatalog.Topic topic, Runnable back) {
+        showAiStudyComposer(topic, back, true);
+    }
+
+    /** Abre a pergunta usando o alcance explicitamente escolhido pelo usuário. */
+    private void showAiStudyComposer(AiStudyCatalog.Topic topic, Runnable back, boolean useCurrentText) {
         LinearLayout root = screen("Teólogo de IA — " + topic.label, back);
-        root.addView(paragraph("Passagem atual: " + currentReference() + ". " + selectedVerse.text));
+        String scope = useCurrentText ? currentReference() : "toda a Bíblia";
+        root.addView(paragraph(useCurrentText
+                ? "Passagem atual: " + currentReference() + ". " + selectedVerse.text
+                : "Escopo selecionado: Bíblia toda."));
         EditText question = editText("Pergunta para o Teólogo de IA", true);
         question.setMinLines(3);
         question.setText(topic.suggestedQuestion);
@@ -483,12 +504,18 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(actionButton("Perguntar à IA", "Enviar pergunta sobre " + currentReference(), () -> {
             try {
                 String instruction = AiStudyCatalog.instruction(
-                        topic, question.getText().toString(), currentReference());
-                runAi(topic.label + " — " + currentReference(), instruction,
-                        () -> currentReference() + " — " + selectedVerse.text +
+                        topic, question.getText().toString(), scope) +
+                        (useCurrentText
+                                ? " Parta do texto fornecido e diga claramente se a relação com o tema não for direta."
+                                : " Desenvolva o tema considerando a Bíblia toda, com passagens representativas " +
+                                "e contextualizadas do Antigo e do Novo Testamento quando pertinentes.");
+                runAi(topic.label + " — " + (useCurrentText ? "texto atual" : "Bíblia toda"), instruction,
+                        useCurrentText
+                                ? () -> currentReference() + " — " + selectedVerse.text +
                                 "\n\nContexto completo do capítulo:\n" +
-                                bible.chapterText(translationId, selectedBook.code, selectedChapter),
-                        () -> showAiStudyComposer(topic, back));
+                                bible.chapterText(translationId, selectedBook.code, selectedChapter)
+                                : () -> "Escopo solicitado: toda a Bíblia. Tema: " + topic.label + ".",
+                        () -> showAiStudyComposer(topic, back, useCurrentText));
             } catch (IllegalArgumentException error) {
                 question.setError(error.getMessage());
                 question.requestFocus();
@@ -1026,7 +1053,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "HARPA, QUIZ E MODO CULTO\n\nA Harpa Cristã possui 640 hinos pesquisáveis e funciona " +
                 "offline. O quiz possui 298 perguntas e cada uma conta somente uma vez. Recomeçar quiz do zero, " +
                 "em Status do quiz, é a única forma de liberar tudo novamente. Traduções e testamentos usam caixas de combinação com feedback; Livros também oferece Todos os livros e pesquisa por nome. " +
-                "No Teólogo de IA, Temas para estudo permite pesquisar entre 2.000 opções e editar a pergunta antes de enviar. " +
+                "No Teólogo de IA, Temas para estudo permite escolher entre o texto atual e a Bíblia toda, pesquisar temas cotidianos e editar a pergunta antes de enviar. " +
                 "Comparar traduções separa origem e destino e permite inverter as duas. No Modo " +
                 "culto, digite uma passagem e confirme: o texto aparece imediatamente, sem precisar tocar " +
                 "em Ler versículo. A Rádio Gospel toca pela internet os louvores publicados no site. " +

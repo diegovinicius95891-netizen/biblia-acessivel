@@ -1,12 +1,10 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.5.0
+CURRENT_CHANGELOG = """Novidades da versão 4.5.1
 
-Mais opções agora contém Estudos — Teólogo de IA, com 2.000 temas pesquisáveis e selecionáveis.
+Temas para estudo agora apresenta uma seleção menor e mais útil de assuntos do dia a dia, como relacionamento cristão, oração, fé, perdão, álcool e adoração.
 
-Os temas incluem questões práticas, como Posso beber?, além de amor, fruto do Espírito, doutrinas, família, emoções, igreja e vida cristã.
+Antes da lista, você escolhe se a explicação será baseada no texto bíblico aberto agora ou focada na Bíblia toda.
 
-A seção Livros ganhou pesquisa por nome e a opção Todos os livros, sem retirar as setas antigas para Antigo e Novo Testamento.
-
-Cada tema usa o capítulo atual como ponto de partida e permite à IA relacionar outras passagens pertinentes com contexto e equilíbrio.
+A pesquisa de temas continua acessível pelo teclado, e o Teólogo de IA deixa claro o alcance escolhido em cada resposta.
 """

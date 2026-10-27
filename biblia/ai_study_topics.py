@@ -7,23 +7,9 @@ from pathlib import Path
 import unicodedata
 
 
-STUDY_ANGLES = (
-    ("visão bíblica", "Explique o que a Bíblia ensina sobre {topic}, citando referências relevantes e respeitando o contexto."),
-    ("textos principais", "Apresente e explique os principais textos bíblicos relacionados a {topic}."),
-    ("Antigo e Novo Testamento", "Mostre como {topic} aparece no Antigo e no Novo Testamento e como as duas partes se relacionam."),
-    ("contexto histórico", "Explique {topic} considerando os contextos históricos e culturais dos textos bíblicos relevantes."),
-    ("teologia bíblica", "Desenvolva uma teologia bíblica de {topic}, acompanhando o tema ao longo das Escrituras."),
-    ("interpretações cristãs", "Apresente com equilíbrio as principais interpretações cristãs sobre {topic}, indicando concordâncias e diferenças."),
-    ("aplicação prática", "Explique como aplicar com responsabilidade o ensino bíblico sobre {topic} na vida atual."),
-    ("erros comuns", "Mostre erros comuns ao ensinar ou aplicar {topic} e como evitá-los à luz do contexto bíblico."),
-    ("roteiro de estudo", "Crie um roteiro de estudo bíblico sobre {topic}, com introdução, passagens, perguntas e conclusão."),
-    ("perguntas para reflexão", "Prepare uma explicação bíblica de {topic} seguida de perguntas pessoais e comunitárias para reflexão."),
-)
-
-
 @dataclass(frozen=True)
 class StudyTheme:
-    """Um assunto combinado com uma abordagem específica de estudo."""
+    """Um assunto cotidiano pronto para receber o escopo escolhido."""
 
     label: str
     prompt: str
@@ -37,17 +23,20 @@ def _normalize(value: str) -> str:
 
 
 def load_study_themes(path: Path) -> tuple[StudyTheme, ...]:
-    """Expande 200 assuntos em 2.000 estudos pesquisáveis."""
+    """Carrega a lista curta de assuntos úteis no cotidiano."""
     subjects = tuple(
         line.strip() for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     )
-    themes = []
-    for subject in subjects:
-        for angle, template in STUDY_ANGLES:
-            label = f"{subject} — {angle}"
-            themes.append(StudyTheme(label, template.format(topic=subject), _normalize(label)))
-    return tuple(themes)
+    return tuple(
+        StudyTheme(
+            subject,
+            f"Explique biblicamente o tema {subject}, cite e contextualize passagens relevantes, "
+            "apresente aplicações responsáveis e reconheça interpretações cristãs diferentes quando existirem.",
+            _normalize(subject),
+        )
+        for subject in subjects
+    )
 
 
 def search_study_themes(themes: tuple[StudyTheme, ...], query: str) -> tuple[StudyTheme, ...]:

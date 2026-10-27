@@ -14,23 +14,6 @@ import java.util.Locale;
 
 /** Catálogo estável de estudos oferecidos pelo Teólogo de IA. */
 final class AiStudyCatalog {
-    private static final String[] STUDY_ANGLE_LABELS = {
-            "visão bíblica", "textos principais", "Antigo e Novo Testamento", "contexto histórico",
-            "teologia bíblica", "interpretações cristãs", "aplicação prática", "erros comuns",
-            "roteiro de estudo", "perguntas para reflexão"
-    };
-    private static final String[] STUDY_ANGLE_PROMPTS = {
-            "Explique o que a Bíblia ensina sobre %s, citando referências relevantes e respeitando o contexto.",
-            "Apresente e explique os principais textos bíblicos relacionados a %s.",
-            "Mostre como %s aparece no Antigo e no Novo Testamento e como as duas partes se relacionam.",
-            "Explique %s considerando os contextos históricos e culturais dos textos bíblicos relevantes.",
-            "Desenvolva uma teologia bíblica de %s, acompanhando o tema ao longo das Escrituras.",
-            "Apresente com equilíbrio as principais interpretações cristãs sobre %s, indicando concordâncias e diferenças.",
-            "Explique como aplicar com responsabilidade o ensino bíblico sobre %s na vida atual.",
-            "Mostre erros comuns ao ensinar ou aplicar %s e como evitá-los à luz do contexto bíblico.",
-            "Crie um roteiro de estudo bíblico sobre %s, com introdução, passagens, perguntas e conclusão.",
-            "Prepare uma explicação bíblica de %s seguida de perguntas pessoais e comunitárias para reflexão."
-    };
     private static List<Topic> studyThemes;
     static final List<Topic> TOPICS = Collections.unmodifiableList(Arrays.asList(
             new Topic("Exegese do texto",
@@ -56,7 +39,7 @@ final class AiStudyCatalog {
         // Classe utilitária: o catálogo é imutável e não possui estado.
     }
 
-    /** Lê 200 assuntos compartilhados e os expande em 2.000 estudos. */
+    /** Lê a lista compartilhada de temas cotidianos, sem duplicações artificiais. */
     static synchronized List<Topic> studyThemes(Context context) {
         if (studyThemes != null) return studyThemes;
         List<Topic> result = new ArrayList<>();
@@ -66,11 +49,10 @@ final class AiStudyCatalog {
             while ((line = reader.readLine()) != null) {
                 String subject = line.trim();
                 if (subject.isEmpty() || subject.startsWith("#")) continue;
-                for (int index = 0; index < STUDY_ANGLE_LABELS.length; index++) {
-                    result.add(new Topic(
-                            subject + " — " + STUDY_ANGLE_LABELS[index],
-                            String.format(Locale.ROOT, STUDY_ANGLE_PROMPTS[index], subject)));
-                }
+                result.add(new Topic(subject,
+                        "Explique biblicamente o tema " + subject + ", contextualize as passagens " +
+                                "citadas, apresente aplicações responsáveis e reconheça interpretações " +
+                                "cristãs diferentes quando existirem."));
             }
         } catch (Exception error) {
             throw new IllegalStateException("Não foi possível preparar os temas para estudo.", error);
@@ -109,7 +91,7 @@ final class AiStudyCatalog {
             throw new IllegalArgumentException("Digite uma pergunta para o Teólogo de IA.");
         }
         return "Atue como um assistente de estudo bíblico cuidadoso, não como autoridade pastoral. " +
-                "Categoria: " + topic.label + ". Passagem: " + reference + ". " +
+                "Categoria: " + topic.label + ". Escopo bíblico: " + reference + ". " +
                 "Pergunta do usuário: " + cleanQuestion + " " +
                 "Baseie a resposta no texto fornecido, diferencie texto, contexto e interpretação, " +
                 "indique quando existirem leituras cristãs diferentes, não invente citações e responda " +

@@ -24,9 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.5.0\n\n" +
-            "O Teólogo de IA ganhou Temas para estudo, com 2.000 opções pesquisáveis, incluindo questões práticas, doutrinas, família, emoções e vida cristã.\n\n" +
-            "A seção Livros agora permite pesquisar pelo nome e escolher Antigo Testamento, Novo Testamento ou Todos os livros.\n\n" +
+            "Novidades da versão Android 4.5.1\n\n" +
+            "Temas para estudo agora traz uma seleção menor e mais útil de assuntos cotidianos, como relacionamento cristão, oração, fé, perdão, álcool e adoração.\n\n" +
+            "Antes de escolher o tema, você decide se a IA deve partir do texto bíblico aberto agora ou estudar o assunto com foco na Bíblia toda.\n\n" +
             "As melhorias de foco do TalkBack, o Modo culto e o gesto de dois dedos para trocar capítulos continuam preservados.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
