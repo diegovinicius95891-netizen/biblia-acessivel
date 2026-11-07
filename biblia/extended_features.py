@@ -10,8 +10,7 @@ import threading
 from datetime import date, timedelta
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QSettings, QTimer, Qt, QUrl, QUrlQuery, Signal
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QObject, QSettings, QTimer, Qt, QUrl, Signal
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
     QComboBox,
@@ -118,7 +117,6 @@ class ExtendedFeatures:
 
     def _build_pages(self):
         """Constrói todas as áreas sem guias e com uma rota de foco linear."""
-        self._build_home()
         self._build_plans()
         self._build_prayers()
         self._build_online_devotionals()
@@ -128,7 +126,6 @@ class ExtendedFeatures:
         self._build_history()
         self._build_ai_studies()
         self._build_topics()
-        self._build_books_info()
         self._build_characters()
         self._build_memorization()
         self._build_hymnal()
@@ -141,7 +138,6 @@ class ExtendedFeatures:
     def _append_menu_options(self):
         """Acrescenta recursos a Mais opções sem alterar as cinco seções principais."""
         entries = (
-            ("Início e resumo do dia", "dashboard"),
             ("Planos de leitura", "plans"),
             ("Diário de oração", "prayers"),
             ("Meu momento com Deus", "daily_devotional"),
@@ -151,7 +147,6 @@ class ExtendedFeatures:
             ("Histórico de leitura", "history"),
             ("Estudos — Teólogo de IA", "ai_studies"),
             ("Temas bíblicos", "topics"),
-            ("Informações sobre livros", "books_info"),
             ("Personagens", "characters"),
             ("Memorização de versículos", "memorization"),
             ("Harpa Cristã", "hymnal"),
@@ -434,47 +429,7 @@ class ExtendedFeatures:
                 "Não foi possível tocar o louvor. Confira sua conexão e tente novamente.",
             )
 
-    # Início -----------------------------------------------------------
-    def _build_home(self):
-        """Cria o painel inicial resumido e ativável pelo teclado."""
-        section, _layout, self.dashboard_list = self._list_section(
-            "Início", "Use cima e baixo. Espaço ou Enter abre o item escolhido."
-        )
-        self.dashboard_list.selectionRequested.connect(self._open_dashboard_item)
-        self._register("dashboard", "Início", section, self.dashboard_list)
-
-    def refresh_dashboard(self):
-        """Resume verso diário, posição, planos e orações sem sobrecarregar a tela."""
-        self.dashboard_list.clear()
-        reference, _text = self.daily_verse()
-        active = [state for state in self.data.plan_states().values() if state["status"] == "Ativo"]
-        prayers = self.data.prayer_statistics()
-        items = (
-            (f"Versículo do dia: {reference}", "daily_verse"),
-            (f"Continuar leitura: {self.host.active_book_name} {self.host.active_chapter}:"
-             f"{self.host._current_verse_key()[3] if self.host._current_verse_key() else '1'}", "continue"),
-            (f"Planos de leitura: {len(active)} ativos", "plans"),
-            ("Meu momento com Deus", "daily_devotional"),
-            (f"Diário de oração: {prayers['Orando']} em oração; {prayers['Respondida']} respondidas", "prayers"),
-            ("Busca bíblica", "search"),
-            ("Ir para passagem", "reference"),
-        )
-        for label, action in items:
-            item = QListWidgetItem(label)
-            item.setData(Qt.UserRole, action)
-            self.dashboard_list.addItem(item)
-        self.dashboard_list.setCurrentRow(0)
-
-    def _open_dashboard_item(self, item):
-        """Direciona o item resumido para sua página ou para a leitura."""
-        action = item.data(Qt.UserRole)
-        if action == "daily_verse":
-            self.show_daily_verse()
-        elif action == "continue":
-            self.host.open_reader_section("reader_verses")
-        else:
-            self.host.open_more_option(action)
-
+    # Versículo do dia ------------------------------------------------
     def daily_verse(self):
         """Escolhe uma referência determinística; ela não muda durante o mesmo dia."""
         index = date.today().toordinal() % len(self.DAILY_REFERENCES)
@@ -484,36 +439,6 @@ class ExtendedFeatures:
             return reference, "Texto indisponível nesta tradução."
         _book, _parsed, rows = resolved
         return reference, " ".join(row["text"] for row in rows)
-
-    def show_daily_verse(self):
-        """Oferece leitura, cópia, favorito e abertura do capítulo completo."""
-        reference, text = self.daily_verse()
-        action = ApplicationsDialog.choose(self.host, f"Versículo do dia — {reference}", (
-            ("Ler versículo", "read"), ("Copiar versículo", "copy"), ("Compartilhar", "share"),
-            ("Adicionar aos favoritos", "favorite"), ("Abrir capítulo completo", "open"),
-        ))
-        if action == "read":
-            AccessibleTextDialog(self.host, reference, f"Versículo do dia {reference}", text).exec()
-        elif action == "copy":
-            QApplication.clipboard().setText(f"{reference} — {text}")
-        elif action == "share":
-            url = QUrl("mailto:")
-            query = QUrlQuery()
-            query.addQueryItem("subject", f"Versículo do dia — {reference}")
-            query.addQueryItem("body", f"{reference} — {text}")
-            url.setQuery(query)
-            if not QDesktopServices.openUrl(url):
-                QApplication.clipboard().setText(f"{reference} — {text}")
-                self.host._announce_for(self.dashboard_list, "Não foi possível abrir o compartilhamento. O texto foi copiado.")
-        elif action in {"favorite", "open"}:
-            if not self.open_reference(reference):
-                return
-            key = self.host._current_verse_key()
-            # Alternar o marcador removeria um favorito já existente; aqui só se adiciona.
-            if action == "favorite" and key and not self.data.is_bookmarked(*key):
-                self.host.toggle_bookmark()
-            elif action == "favorite":
-                self.host.statusBar().showMessage("Este versículo já está nos favoritos.")
 
     # Referências ------------------------------------------------------
     def resolve_reference(self, text: str):
@@ -774,9 +699,6 @@ class ExtendedFeatures:
         self.moment_plan.setAccessibleName("Leitura do plano bíblico para hoje")
         self.moment_plan.setWordWrap(True)
         layout.addRow(self.moment_plan)
-        open_plan = AccessibleButton("Abrir &leitura do plano")
-        open_plan.clicked.connect(lambda: self.host.open_more_option("plans"))
-        layout.addRow(open_plan)
         self.moment_verse = QLineEdit(); self.moment_verse.setAccessibleName("Versículo do dia ou outra referência")
         self.moment_learned = QPlainTextEdit(); self.moment_learned.setAccessibleName("O que Deus falou comigo hoje"); self.moment_learned.setTabChangesFocus(True)
         self.moment_practice = QPlainTextEdit(); self.moment_practice.setAccessibleName("O que quero colocar em prática"); self.moment_practice.setTabChangesFocus(True)
@@ -789,7 +711,6 @@ class ExtendedFeatures:
         layout.addRow("&Anotação pessoal:", self.moment_note)
         save = AccessibleButton("&Concluir e salvar devocional"); save.clicked.connect(self.save_moment); layout.addRow(save)
         history = AccessibleButton("Abrir &histórico de devocionais"); history.clicked.connect(self.show_devotional_history); layout.addRow(history)
-        prayers = AccessibleButton("Abrir &Diário de oração"); prayers.clicked.connect(lambda: self.host.open_more_option("prayers")); layout.addRow(prayers)
         self._register("daily_devotional", "Meu momento com Deus", section, self.moment_verse)
 
     def prepare_moment(self):
@@ -1097,19 +1018,6 @@ class ExtendedFeatures:
         chosen = ApplicationsDialog.choose(self.host, f"Tema {item.text()}",
                                             tuple((reference, reference) for reference in data["references"]))
         if chosen: self.open_reference(chosen)
-
-    def _build_books_info(self):
-        """Cria a lista canônica para a opção Sobre este livro."""
-        section, _layout, self.books_info_list = self._list_section("Informações sobre livros", "Ative um livro para ouvir contexto, autoria e resumo.")
-        self.books_info_list.selectionRequested.connect(self.open_book_info)
-        self._register("books_info", "Informações sobre livros", section, self.books_info_list)
-
-    def refresh_books_info(self):
-        """Recarrega nomes conforme a tradução atualmente marcada."""
-        self.books_info_list.clear()
-        for book in self.db.books(self.host.current_translation_id()):
-            item = QListWidgetItem(book["book_name"]); item.setData(Qt.UserRole, dict(book)); self.books_info_list.addItem(item)
-        if self.books_info_list.count(): self.books_info_list.setCurrentRow(0)
 
     def open_book_info(self, item):
         """Apresenta autoria, período, contexto, tema e capítulos."""
@@ -1505,11 +1413,11 @@ class ExtendedFeatures:
     def prepare_page(self, page_id: str):
         """Atualiza somente a página aberta e mantém o foco previsível."""
         refreshers = {
-            "dashboard": self.refresh_dashboard, "plans": self.refresh_plans,
+            "plans": self.refresh_plans,
             "prayers": self.refresh_prayers, "daily_devotional": self.prepare_moment,
             "favorites": self.refresh_favorites, "history": self.refresh_history,
             "ai_studies": self.prepare_ai_studies,
-            "books_info": self.refresh_books_info, "memorization": self.refresh_memory,
+            "memorization": self.refresh_memory,
             "hymnal": self.refresh_hymnal, "quiz": self.refresh_quiz,
             "quiz_status": self.refresh_quiz_status, "statistics": self.refresh_statistics,
             "online_devotionals": self.refresh_online_devotionals,

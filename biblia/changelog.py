@@ -1,6 +1,18 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.5.3
+CURRENT_CHANGELOG = """Novidades da versão 4.5.4
+
+Interface mais limpa: saíram as opções que levavam ao mesmo lugar por caminhos diferentes.
+
+Início e resumo do dia foi removido de Mais opções. O resumo continua na tela principal, junto de Continuar leitura.
+
+O menu principal agora tem Continuar leitura, Livros, Capítulos e Mais opções. O item Versículos saiu porque Continuar leitura já abre essa tela. O atalho Alt+3 continua funcionando.
+
+Informações sobre livros saiu de Mais opções. Para ler autoria, contexto e resumo, use Aplicações ou Shift+F10 em Livros e escolha Sobre este livro.
+
+Meu momento com Deus não repete mais os botões para Planos de leitura e Diário de oração, que continuam em Mais opções.
+
+Novidades da versão 4.5.3
 
 Escape agora volta para a tela de onde você veio, pelo mesmo caminho. Em Versículos, Escape leva a Capítulos; em Capítulos, a Livros; e assim até o menu principal. Recursos abertos por Mais opções voltam para Mais opções.
 

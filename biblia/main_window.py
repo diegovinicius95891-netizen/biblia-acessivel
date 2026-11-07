@@ -87,9 +87,9 @@ VOICE_OFF = "__off__"
 # Ordem única de Mais opções: leitura, estudo, devoção, quiz e, por último, sistema.
 # "Sair do aplicativo" fica sempre no fim para não ser ativado por engano no meio da lista.
 MORE_OPTIONS_ORDER = (
-    "reference", "search", "translations", "comparison", "dashboard", "plans", "history",
+    "reference", "search", "translations", "comparison", "plans", "history",
     "favorites", "worship",
-    "ai_studies", "topics", "books_info", "characters", "memorization",
+    "ai_studies", "topics", "characters", "memorization",
     "daily_devotional", "devotional", "notes", "prayers", "online_devotionals", "radio_gospel",
     "hymnal",
     "quiz", "quiz_status", "statistics",
@@ -306,7 +306,7 @@ class MainWindow(QMainWindow):
         self.update_controller = UpdateController(self, self.app_data_dir, self.install_dir)
         self.reader_menu.setFocus()
         self.statusBar().showMessage(
-            "Pronto. Escolha Livros, Capítulos, Versículos ou Mais opções. Alt+1 até Alt+4 abrem as telas."
+            "Pronto. Escolha Continuar leitura, Livros, Capítulos ou Mais opções. Alt+1 até Alt+4 abrem as telas."
         )
 
     # Interface ---------------------------------------------------------
@@ -370,14 +370,14 @@ class MainWindow(QMainWindow):
         self.reader_menu = ActivatableList()
         self.reader_menu.setAccessibleName("Menu principal da Bíblia")
         self.reader_menu.setAccessibleDescription(
-            "Continuar de onde parou, Livros Alt mais 1, Capítulos Alt mais 2, "
-            "Versículos Alt mais 3 e Mais opções Alt mais 4."
+            "Continuar de onde parou Alt mais 3, Livros Alt mais 1, Capítulos Alt mais 2 "
+            "e Mais opções Alt mais 4."
         )
+        # Versículos não aparece como item próprio: Continuar leitura já abre essa tela.
         for label, page_id in (
             ("Continuar leitura — carregando posição", "continue_reading"),
             ("Livros — Alt+1", "reader_books"),
             ("Capítulos — Alt+2", "reader_chapters"),
-            ("Versículos — Alt+3", "reader_verses"),
             ("Mais opções — Alt+4", "reader_more"),
         ):
             item = QListWidgetItem(label)
@@ -724,7 +724,7 @@ class MainWindow(QMainWindow):
             self._refresh_start_summary()
         self._restore_accessible_focus(
             self.reader_menu,
-            "Menu principal da Bíblia. Continuar leitura, Livros, Capítulos, Versículos e Mais opções.",
+            "Menu principal da Bíblia. Continuar leitura, Livros, Capítulos e Mais opções.",
         )
 
     def request_exit(self, focus_widget=None):
@@ -927,8 +927,9 @@ class MainWindow(QMainWindow):
         self.help_text.set_text(
             "BÍBLIA AGB (AUDIO GAMES BRASIL)\n\n"
             "NAVEGAÇÃO POR SEÇÕES\n"
-            "Na tela principal, cima e baixo percorrem Continuar leitura, Livros, Capítulos, Versículos e Mais opções. "
-            "Alt+1 abre Livros, Alt+2 abre Capítulos, Alt+3 abre Versículos e Alt+4 abre Mais opções. "
+            "Na tela principal, cima e baixo percorrem Continuar leitura, Livros, Capítulos e Mais opções. "
+            "Continuar leitura abre os Versículos na posição salva. "
+            "Alt+1 abre Livros, Alt+2 abre Capítulos, Alt+3 continua a leitura e Alt+4 abre Mais opções. "
             "O caminho natural é Livros, depois Capítulos, depois Versículos: Enter em Livros leva aos capítulos "
             "e Enter em Capítulos abre o texto. Em Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo. "
             "Todos os livros reúne os 66 livros, e Pesquisar livro filtra pelo nome.\n\n"
@@ -942,7 +943,7 @@ class MainWindow(QMainWindow):
             "e Sair do aplicativo.\n\n"
             "INTELIGÊNCIA ARTIFICIAL\n"
             "Aplicações ou Shift+F10 abre uma lista acessível. Cima e baixo navegam; Espaço ou "
-            "Enter executa. Em Livros há resumo do livro; em Capítulos, resumo do capítulo; e "
+            "Enter executa. Em Livros há resumo do livro e Sobre este livro, com autoria e contexto; em Capítulos, resumo do capítulo; e "
             "em Versículos, explicação do número selecionado. Os resumos têm tamanho controlado para "
             "concluir sem gerar um texto excessivo. O mesmo menu permite criar uma anotação.\n\n"
             "DEVOCIONAIS E ANOTAÇÕES\n"
@@ -953,7 +954,7 @@ class MainWindow(QMainWindow):
             "para pedidos em oração, respondidos e arquivados.\n\n"
             "RECURSOS LOCAIS\n"
             "Mais opções também contém Estudos — Teólogo de IA com temas cotidianos pesquisáveis e escolha entre o texto atual e a Bíblia toda, planos de leitura, favoritos com categorias, histórico, temas, "
-            "informações sobre livros, personagens, memorização, Harpa Cristã com 640 hinos, quiz com "
+            "personagens, memorização, Harpa Cristã com 640 hinos, quiz com "
             "298 perguntas, Status do quiz, comparação de traduções, estatísticas, Modo culto, Rádio Gospel e backup. "
             "Cada pergunta conta uma vez; somente Recomeçar quiz do zero libera todas novamente. A Rádio "
             "Gospel toca pela internet os louvores publicados no site e oferece controles acessíveis. "
@@ -1130,7 +1131,7 @@ class MainWindow(QMainWindow):
             key = self._current_verse_key()
             verse = key[3] if key else "1"
         self.reader_menu.item(0).setText(
-            f"Continuar em {self.active_book_name}, capítulo {self.active_chapter}, versículo {verse}"
+            f"Continuar em {self.active_book_name}, capítulo {self.active_chapter}, versículo {verse} — Alt+3"
         )
 
     def _update_window_title(self):

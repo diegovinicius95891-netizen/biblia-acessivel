@@ -1,4 +1,4 @@
-BÍBLIA ACESSÍVEL PARA WINDOWS
+BÍBLIA AGB (AUDIO GAMES BRASIL) PARA WINDOWS
 
 COMO ABRIR
 
@@ -8,9 +8,10 @@ COMO ABRIR
 
 NAVEGAÇÃO PRINCIPAL
 
-Na abertura, cima e baixo percorrem Livros, Capítulos, Versículos e Mais opções. Espaço ou Enter abre a tela escolhida.
-Alt+1 abre Livros. Alt+2 abre Capítulos. Alt+3 abre Versículos. Alt+4 abre Mais opções.
-Cada área aparece sozinha. Escape volta ao menu principal.
+Na abertura, cima e baixo percorrem Continuar leitura, Livros, Capítulos e Mais opções. Espaço ou Enter abre a tela escolhida.
+Continuar leitura abre os Versículos na posição salva.
+Alt+1 abre Livros. Alt+2 abre Capítulos. Alt+3 continua a leitura. Alt+4 abre Mais opções.
+Cada área aparece sozinha. Escape volta para a tela de onde você veio, pelo mesmo caminho.
 Nos Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo Testamento.
 Ao trocar, o aplicativo anuncia o testamento selecionado, a quantidade de livros e o próximo passo.
 Espaço ou Enter ativa o item atual. A tecla Aplicações ou Shift+F10 abre as ações do item.
@@ -24,13 +25,14 @@ Se encontrar um banco antigo, ele migra as notas e cria uma cópia de segurança
 
 RECURSOS PESSOAIS E DE ESTUDO
 
-Mais opções contém busca inteligente, 17 planos de leitura, Diário de oração, Meu momento com Deus, devocionais do site, favoritos com categorias, histórico, temas, informações dos livros, personagens, memorização, Harpa Cristã com 640 hinos, Rádio Gospel, quiz com 298 perguntas, Status do quiz, estatísticas, Modo culto, ideias e suporte e backup.
+Mais opções contém busca inteligente, 17 planos de leitura, Diário de oração, Meu momento com Deus, devocionais do site, favoritos com categorias, histórico, temas, personagens, memorização, Harpa Cristã com 640 hinos, Rádio Gospel, quiz com 298 perguntas, Status do quiz, estatísticas, Modo culto, ideias e suporte e backup.
 Comparar traduções permite escolher origem e destino, ler as duas seções e inverter as traduções. Traduções usa uma caixa de combinação para definir a edição padrão.
 Cada pergunta do quiz conta somente uma vez. Em Status do quiz, Recomeçar quiz do zero apaga os resultados, mediante confirmação, e libera as perguntas novamente.
-Todas essas áreas funcionam pelo teclado. Espaço ou Enter abre o item destacado e Escape volta à Bíblia.
+Todas essas áreas funcionam pelo teclado. Espaço ou Enter abre o item destacado e Escape volta à tela anterior.
+Para ler autoria, contexto e resumo de um livro, use Aplicações ou Shift+F10 em Livros e escolha Sobre este livro.
 No Modo culto, digite João 3:16, Pedro 2 5 ou Pedro 2 5 15 e pressione Enter. Se o nome puder indicar mais de um livro, escolha a opção desejada.
-Na tela Versículos, use Capítulo anterior, Próximo capítulo ou Voltar ao menu principal. Esquerda e direita continuam trocando capítulos e o leitor de tela anuncia o destino.
-Mais opções contém Sair do aplicativo e pede confirmação antes de fechar.
+Na tela Versículos, use Capítulo anterior, Próximo capítulo ou Voltar. Esquerda e direita continuam trocando capítulos e o leitor de tela anuncia o destino.
+Sair do aplicativo é o último item de Mais opções e pede confirmação antes de fechar.
 
 ATALHOS
 
@@ -51,7 +53,7 @@ Quando a voz interna estiver desativada, Enter no versículo pede ao leitor de t
 INTELIGÊNCIA ARTIFICIAL
 
 Os recursos de IA são opcionais, exigem internet e uma chave própria do Google Gemini.
-Em Configurações, informe a chave, escolha o modelo e salve. A chave fica criptografada para a conta atual do Windows.
+Em Configurações, informe a chave e escolha o modelo; cada escolha é salva na hora. A chave fica criptografada para a conta atual do Windows.
 O programa limita o tamanho dos resumos para evitar respostas enormes ou cortadas.
 
 RÁDIO GOSPEL E CONTATO

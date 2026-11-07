@@ -57,11 +57,11 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertFalse(hasattr(window, "tabs"))
         self.assertIs(window.page_stack, window.centralWidget())
         self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
-        self.assertEqual(5, window.reader_menu.count())
+        self.assertEqual(4, window.reader_menu.count())
         labels = [window.reader_menu.item(index).text() for index in range(window.reader_menu.count())]
         self.assertTrue(labels[0].startswith("Continuar em "))
         self.assertEqual(
-            ["Livros — Alt+1", "Capítulos — Alt+2", "Versículos — Alt+3", "Mais opções — Alt+4"],
+            ["Livros — Alt+1", "Capítulos — Alt+2", "Mais opções — Alt+4"],
             labels[1:],
         )
         self.assertIn(window.active_book_name, window.windowTitle())
@@ -82,7 +82,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(window.secondary_pages["reader_chapters"][0], window.page_stack.currentIndex())
         window._handle_escape()
-        self.assertEqual(30, window.more_options.count())
+        self.assertEqual(28, window.more_options.count())
         labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
         self.assertIn("Harpa Cristã", labels)
         self.assertIn("Status do quiz", labels)
@@ -207,15 +207,26 @@ class GuiSmokeTests(unittest.TestCase):
         window.close()
 
     def test_more_options_are_grouped_with_exit_last(self):
-        """Mantém os 30 recursos agrupados e Sair do aplicativo sempre no fim."""
+        """Mantém os 28 recursos agrupados e Sair do aplicativo sempre no fim."""
         window = self.make_window()
         ids = [window.more_options.item(i).data(Qt.UserRole) for i in range(window.more_options.count())]
-        self.assertEqual(30, len(ids))
+        self.assertEqual(28, len(ids))
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual("exit", ids[-1])
         self.assertEqual("reference", ids[0])
         self.assertLess(ids.index("search"), ids.index("hymnal"))
         self.assertLess(ids.index("settings"), ids.index("help"))
+        # Rotas duplicadas foram removidas: o resumo já está na tela inicial e
+        # Sobre este livro continua no menu Aplicações de Livros.
+        for removed in ("dashboard", "books_info"):
+            self.assertNotIn(removed, ids)
+            self.assertNotIn(removed, window.secondary_pages)
+        menu_ids = [window.reader_menu.item(i).data(Qt.UserRole) for i in range(window.reader_menu.count())]
+        self.assertNotIn("reader_verses", menu_ids)
+        with patch("biblia.main_window.ApplicationsDialog.choose", return_value="about_book"), \
+                patch("biblia.extended_features.AccessibleTextDialog.exec") as shown:
+            window.show_book_menu()
+        shown.assert_called_once()
         window.close()
 
     def test_end_of_book_is_announced_and_does_not_cross_books(self):
@@ -233,8 +244,8 @@ class GuiSmokeTests(unittest.TestCase):
         """Abre cada novo recurso e valida nomes, foco e busca temática local."""
         window = self.make_window()
         page_ids = (
-            "dashboard", "plans", "prayers", "daily_devotional", "online_devotionals", "radio_gospel", "favorites",
-            "history", "ai_studies", "topics", "books_info", "characters", "memorization",
+            "plans", "prayers", "daily_devotional", "online_devotionals", "radio_gospel", "favorites",
+            "history", "ai_studies", "topics", "characters", "memorization",
             "hymnal", "quiz", "quiz_status", "statistics", "worship", "backup",
         )
         for page_id in page_ids:
