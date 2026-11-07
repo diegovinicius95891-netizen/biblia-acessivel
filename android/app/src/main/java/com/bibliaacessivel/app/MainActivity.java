@@ -242,11 +242,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 this::confirmBookChoice));
         root.addView(actionButton("Mais opções", "Abrir traduções, pesquisa, notas e configurações",
                 this::showMoreOptions));
-        // A Play exige o faturamento dela para doações; o Pix aparece só na versão do GitHub.
-        if (BuildConfig.GITHUB_UPDATES) {
-            root.addView(actionButton("Apoie a Bíblia AGB com uma doação",
-                    "Copiar a chave Pix e doar o valor que quiser", this::showDonation));
-        }
+        root.addView(actionButton("Apoie a Bíblia AGB com uma doação",
+                "Copiar a chave Pix e doar o valor que quiser", this::showDonation));
         setContentView(root);
         focusForTalkBack(root.getChildAt(2), "Continuar leitura em " + currentReference());
     }
