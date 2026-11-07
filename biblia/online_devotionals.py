@@ -13,6 +13,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from .version import APP_VERSION
+
 
 DEVOTIONALS_FEED_URL = "https://audiogames.com.br/diego/devocionais/posts.json"
 _MAX_FEED_BYTES = 5 * 1024 * 1024
@@ -91,7 +93,7 @@ class OnlineDevotionalService:
 
     def fetch(self, timeout: float = 15.0) -> list[OnlineDevotional]:
         """Consulta o site, limita o tamanho e atualiza o cache atomicamente."""
-        request = Request(self.feed_url, headers={"User-Agent": "BibliaAcessivel/4.0"})
+        request = Request(self.feed_url, headers={"User-Agent": f"BibliaAGB-Windows/{APP_VERSION}"})
         try:
             with urlopen(request, timeout=timeout) as response:
                 final = urlparse(response.geturl())

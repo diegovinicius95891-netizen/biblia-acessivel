@@ -506,9 +506,14 @@ class ExtendedFeatures:
                 QApplication.clipboard().setText(f"{reference} — {text}")
                 self.host._announce_for(self.dashboard_list, "Não foi possível abrir o compartilhamento. O texto foi copiado.")
         elif action in {"favorite", "open"}:
-            self.open_reference(reference)
-            if action == "favorite":
+            if not self.open_reference(reference):
+                return
+            key = self.host._current_verse_key()
+            # Alternar o marcador removeria um favorito já existente; aqui só se adiciona.
+            if action == "favorite" and key and not self.data.is_bookmarked(*key):
                 self.host.toggle_bookmark()
+            elif action == "favorite":
+                self.host.statusBar().showMessage("Este versículo já está nos favoritos.")
 
     # Referências ------------------------------------------------------
     def resolve_reference(self, text: str):
@@ -748,13 +753,17 @@ class ExtendedFeatures:
         form.addRow("&Observações:", notes)
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         buttons.accepted.connect(dialog.accept); buttons.rejected.connect(dialog.reject); form.addRow(buttons)
-        if dialog.exec() == QDialog.Accepted and answer.toPlainText().strip():
-            try:
-                date.fromisoformat(answered.text().strip())
-            except ValueError:
-                self.host._warn("Data inválida", "Use o formato ano-mês-dia, por exemplo 2026-10-15.")
-                return
-            self.data.answer_prayer(prayer["id"], answered.text().strip(), answer.toPlainText(), notes.toPlainText())
+        if dialog.exec() != QDialog.Accepted:
+            return
+        if not answer.toPlainText().strip():
+            self.host._warn("Resposta vazia", "Descreva como Deus respondeu para marcar a oração como respondida.")
+            return
+        try:
+            date.fromisoformat(answered.text().strip())
+        except ValueError:
+            self.host._warn("Data inválida", "Use o formato ano-mês-dia, por exemplo 2026-10-15.")
+            return
+        self.data.answer_prayer(prayer["id"], answered.text().strip(), answer.toPlainText(), notes.toPlainText())
 
     # Meu momento com Deus --------------------------------------------
     def _build_daily_devotional(self):
@@ -909,6 +918,7 @@ class ExtendedFeatures:
                                parsed.chapter, parsed.verse_start or "*", kind,
                                parsed.chapter, parsed.verse_end)
         self.refresh_favorites()
+        self.host._announce_for(self.favorites_list, "Passagem adicionada aos favoritos.")
 
     def open_favorite(self, item):
         """Abre, recategoriza ou remove o favorito selecionado."""
@@ -1428,6 +1438,8 @@ class ExtendedFeatures:
     def change_worship_chapter(self, direction: int):
         """Abre o capítulo vizinho sem passar pela tela comum de leitura."""
         if self._worship_book is None or self._worship_chapter is None:
+            self.host._announce_for(self.worship_edit, "Digite uma passagem e pressione Enter primeiro.")
+            self.worship_edit.setFocus()
             return
         target = self._worship_chapter + direction
         maximum = self.db.chapter_count(
@@ -1483,7 +1495,11 @@ class ExtendedFeatures:
             for key, value in setting_values.items(): settings.setValue(key, value)
         except (OSError, ValueError, json.JSONDecodeError) as error:
             self.host._warn("Não foi possível importar", str(error)); return
-        QMessageBox.information(self.host, "Backup restaurado", "Os dados foram restaurados com sucesso.")
+        QMessageBox.information(
+            self.host, "Backup restaurado",
+            "Os dados foram restaurados com sucesso. Feche e abra o aplicativo para aplicar "
+            "também as configurações restauradas, como fonte, voz e posição de leitura.",
+        )
 
     # Ciclo das páginas e utilidades ----------------------------------
     def prepare_page(self, page_id: str):

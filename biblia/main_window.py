@@ -84,6 +84,17 @@ UPDATE_AUTOMATIC_OPTIONS = (("Ativada", True), ("Desativada", False))
 UPDATE_NOTIFICATION_OPTIONS = (("Ativada", True), ("Desativada", False))
 EXIT_CONFIRMATION_OPTIONS = (("Pedir confirmação", True), ("Fechar diretamente", False))
 VOICE_OFF = "__off__"
+# Ordem única de Mais opções: leitura, estudo, devoção, quiz e, por último, sistema.
+# "Sair do aplicativo" fica sempre no fim para não ser ativado por engano no meio da lista.
+MORE_OPTIONS_ORDER = (
+    "reference", "search", "translations", "comparison", "dashboard", "plans", "history",
+    "favorites", "worship",
+    "ai_studies", "topics", "books_info", "characters", "memorization",
+    "daily_devotional", "devotional", "notes", "prayers", "online_devotionals", "radio_gospel",
+    "hymnal",
+    "quiz", "quiz_status", "statistics",
+    "settings", "backup", "ideas", "help", "legal", "exit",
+)
 APP_DISPLAY_NAME = "Bíblia AGB (Audio Games Brasil)"
 SHORTCUTS = {
     "search": "Ctrl+F", "reference": "Ctrl+G", "favorite": "Ctrl+D",
@@ -304,6 +315,9 @@ class MainWindow(QMainWindow):
         self.page_stack = QStackedWidget()
         self.page_stack.setAccessibleName("Telas do aplicativo")
         self.secondary_pages = {}
+        self._page_titles = {}
+        # Índices das telas visitadas; Escape e Voltar retornam pela mesma rota.
+        self._page_history = []
 
         self.sections_widget = self._build_reader_section()
         self.main_page_index = self.page_stack.addWidget(self.sections_widget)
@@ -332,7 +346,17 @@ class MainWindow(QMainWindow):
         # transformar esta janela em um arquivo ainda mais monolítico.
         from .extended_features import ExtendedFeatures
         self.extended = ExtendedFeatures(self)
+        self._sort_more_options()
         self.setCentralWidget(self.page_stack)
+
+    def _sort_more_options(self):
+        """Reordena Mais opções por assunto depois que os recursos extras são incluídos."""
+        position = {page_id: index for index, page_id in enumerate(MORE_OPTIONS_ORDER)}
+        items = [self.more_options.takeItem(0) for _ in range(self.more_options.count())]
+        items.sort(key=lambda item: position.get(item.data(Qt.UserRole), len(position)))
+        for item in items:
+            self.more_options.addItem(item)
+        self.more_options.setCurrentRow(0)
 
     def _build_reader_section(self):
         """Monta o menu inicial com a retomada e quatro destinos em telas próprias."""
@@ -445,11 +469,11 @@ class MainWindow(QMainWindow):
         )
         self.next_chapter_button.clicked.connect(self.next_chapter)
         chapter_controls.addWidget(self.next_chapter_button)
-        self.verses_back_button = AccessibleButton("&Voltar ao menu principal")
+        self.verses_back_button = AccessibleButton("&Voltar")
         self.verses_back_button.setAccessibleDescription(
-            "Fechar a tela de Versículos e voltar às quatro opções principais."
+            "Voltar à tela anterior, como a tecla Escape."
         )
-        self.verses_back_button.clicked.connect(self.show_main_page)
+        self.verses_back_button.clicked.connect(self.go_back)
         chapter_controls.addWidget(self.verses_back_button)
         verses_layout.addLayout(chapter_controls)
         self.verse_list = VerseList()
@@ -475,7 +499,7 @@ class MainWindow(QMainWindow):
         self.more_options = ActivatableList()
         self.more_options.setAccessibleName("Seção Mais opções")
         self.more_options.setAccessibleDescription(
-            "Cima e baixo navegam. Espaço ou Enter abre a opção em uma nova tela. Escape volta."
+            "Cima e baixo navegam. Espaço ou Enter abre a opção em uma nova tela. Escape volta à tela anterior."
         )
         options = (
             ("Traduções", "translations"),
@@ -508,7 +532,7 @@ class MainWindow(QMainWindow):
         if page_id not in {"reader_books", "reader_chapters", "reader_verses", "reader_more"}:
             return
         index, focus_widget = self.secondary_pages[page_id]
-        self.page_stack.setCurrentIndex(index)
+        self._navigate_to(index)
         if isinstance(focus_widget, QListWidget) and focus_widget.count():
             focus_widget.setCurrentRow(max(0, focus_widget.currentRow()))
         title = {
@@ -526,7 +550,7 @@ class MainWindow(QMainWindow):
                 + (f":{verse}." if verse is not None else ".")
             )
         else:
-            message = f"Tela {title}. Pressione Escape para voltar ao menu principal."
+            message = f"Tela {title}. Escape volta à tela anterior."
         self._restore_accessible_focus(focus_widget, message)
 
     def _build_translation_section(self):
@@ -612,10 +636,11 @@ class MainWindow(QMainWindow):
         font.setPointSize(font.pointSize() + 3)
         heading.setFont(font)
         layout.addWidget(heading)
-        layout.addWidget(QLabel("Pressione Escape para voltar ao menu principal da Bíblia."))
+        layout.addWidget(QLabel("Pressione Escape para voltar à tela anterior."))
         layout.addWidget(content, 1)
         index = self.page_stack.addWidget(page)
         self.secondary_pages[page_id] = (index, focus_widget)
+        self._page_titles[page_id] = re.sub(r" — Alt\+\d$", "", title)
 
     def open_more_option(self, item_or_id):
         """Abre a opção destacada como única tela visível do aplicativo."""
@@ -650,17 +675,53 @@ class MainWindow(QMainWindow):
         elif hasattr(self, "extended"):
             self.extended.prepare_page(page_id)
         index, focus_widget = self.secondary_pages[page_id]
-        self.page_stack.setCurrentIndex(index)
+        self._navigate_to(index)
         if isinstance(focus_widget, QListWidget) and focus_widget.count():
             focus_widget.setCurrentRow(max(0, focus_widget.currentRow()))
         self._restore_accessible_focus(
             focus_widget,
-            "Nova tela aberta. Pressione Escape para voltar à Bíblia.",
+            f"Tela {self._page_titles.get(page_id, 'aberta')}. Escape volta à tela anterior.",
         )
+
+    def _navigate_to(self, index: int):
+        """Troca de tela registrando a rota para que Escape volte exatamente por ela."""
+        current = self.page_stack.currentIndex()
+        if index == current:
+            return
+        if index == self.main_page_index:
+            self._page_history.clear()
+        elif index in self._page_history:
+            # Voltar a uma tela já visitada encurta a rota em vez de criar ciclos.
+            del self._page_history[self._page_history.index(index):]
+        else:
+            self._page_history.append(current)
+        self.page_stack.setCurrentIndex(index)
+
+    def go_back(self):
+        """Retorna à tela anterior da rota; sem histórico, volta ao menu principal."""
+        while self._page_history:
+            previous = self._page_history.pop()
+            if previous == self.main_page_index:
+                break
+            page_id = next(
+                (key for key, (index, _focus) in self.secondary_pages.items() if index == previous), None
+            )
+            if page_id is None:
+                continue
+            _index, focus_widget = self.secondary_pages[page_id]
+            self.page_stack.setCurrentIndex(previous)
+            self._restore_accessible_focus(
+                focus_widget, f"De volta à tela {self._page_titles.get(page_id, '')}."
+            )
+            return
+        self.show_main_page()
 
     def show_main_page(self):
         """Fecha a tela interna e devolve o foco ao menu das quatro áreas."""
+        self._page_history.clear()
         self.page_stack.setCurrentIndex(self.main_page_index)
+        if hasattr(self, "extended"):
+            self._refresh_start_summary()
         self._restore_accessible_focus(
             self.reader_menu,
             "Menu principal da Bíblia. Continuar leitura, Livros, Capítulos, Versículos e Mais opções.",
@@ -668,6 +729,8 @@ class MainWindow(QMainWindow):
 
     def request_exit(self, focus_widget=None):
         """Confirma o fechamento a partir da opção acessível de Mais opções."""
+        # Guarda o controle atual antes do diálogo para devolver o foco à mesma tela ao cancelar.
+        focus_widget = focus_widget or self.focusWidget()
         answer = QMessageBox.question(
             self,
             "Sair da Bíblia AGB",
@@ -824,7 +887,8 @@ class MainWindow(QMainWindow):
         section = QGroupBox("Seção &Configurações")
         layout = QVBoxLayout(section)
         layout.addWidget(
-            QLabel("Use cima e baixo para escolher. Pressione Espaço ou Enter para abrir.")
+            QLabel("Use cima e baixo para escolher. Pressione Espaço ou Enter para abrir. "
+                   "Cada escolha confirmada é salva na hora.")
         )
         self.settings_options = ActivatableList()
         self.settings_options.setAccessibleName("Opções de configurações")
@@ -861,14 +925,21 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(section)
         self.help_text = ReadingTextList("Ajuda e atalhos")
         self.help_text.set_text(
-            "BÍBLIA ACESSÍVEL\n\n"
+            "BÍBLIA AGB (AUDIO GAMES BRASIL)\n\n"
             "NAVEGAÇÃO POR SEÇÕES\n"
-            "Na tela principal, cima e baixo percorrem Livros, Capítulos, Versículos e Mais opções. "
+            "Na tela principal, cima e baixo percorrem Continuar leitura, Livros, Capítulos, Versículos e Mais opções. "
             "Alt+1 abre Livros, Alt+2 abre Capítulos, Alt+3 abre Versículos e Alt+4 abre Mais opções. "
-            "Cada área abre sozinha em uma nova tela; Escape retorna ao menu principal. O texto bíblico fica diretamente em Versículos. Cima e baixo navegam dentro da seção atual. "
-            "Em Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo. Todos os livros reúne os 66 livros, e Pesquisar livro filtra pelo nome. Enter em Livros leva aos capítulos; Enter em "
-            "Capítulos abre os versículos. Mais opções abre cada recurso numa tela limpa. Escape volta "
-            "ao menu principal da Bíblia.\n\n"
+            "O caminho natural é Livros, depois Capítulos, depois Versículos: Enter em Livros leva aos capítulos "
+            "e Enter em Capítulos abre o texto. Em Livros, esquerda mostra o Antigo Testamento e direita mostra o Novo. "
+            "Todos os livros reúne os 66 livros, e Pesquisar livro filtra pelo nome.\n\n"
+            "VOLTAR\n"
+            "Escape sempre volta para a tela de onde você veio, pelo mesmo caminho. Se a voz interna estiver lendo, "
+            "o primeiro Escape apenas interrompe a leitura. No menu principal, Escape pergunta se deseja sair. "
+            "O botão Voltar da tela Versículos faz o mesmo que Escape.\n\n"
+            "MAIS OPÇÕES\n"
+            "A lista está organizada por assunto: primeiro leitura e pesquisa, depois estudos, depois devoção e "
+            "oração, depois quiz e estatísticas e, por último, configurações, backup, suporte, ajuda, licenças "
+            "e Sair do aplicativo.\n\n"
             "INTELIGÊNCIA ARTIFICIAL\n"
             "Aplicações ou Shift+F10 abre uma lista acessível. Cima e baixo navegam; Espaço ou "
             "Enter executa. Em Livros há resumo do livro; em Capítulos, resumo do capítulo; e "
@@ -893,12 +964,12 @@ class MainWindow(QMainWindow):
             "Ctrl+L: planos de leitura. Ctrl+O: Diário de oração. Ctrl+H: histórico. "
             "Ctrl+Shift+D: Meu momento com Deus. Ctrl+Shift+C: copiar versículo. "
             "Ctrl+Seta esquerda/direita: capítulo anterior ou seguinte. F5: ouvir. "
-            "Ctrl+Alt+R: copiar referência e texto. Escape: voltar ou parar voz. F1: ajuda.\n\n"
+            "Ctrl+Alt+R: copiar referência e texto. Escape: parar a voz ou voltar à tela anterior. F1: ajuda.\n\n"
             "CONTINUIDADE E PRIVACIDADE\n"
             "A posição, os marcadores e as anotações permanecem locais. Em Configurações, cima e baixo navegam "
             "por chave, modelo, detalhamento, fonte, voz SAPI, velocidade e contraste. A voz pode ser "
-            "desativada; nesse modo, Enter repete o texto pelo leitor de tela. Espaço ou Enter abre a opção; "
-            "Tab leva aos botões e Espaço ou Enter os aciona. "
+            "desativada; nesse modo, Enter repete o texto pelo leitor de tela. Espaço ou Enter abre a opção, "
+            "e cada escolha confirmada é salva e aplicada na hora. "
             "A chave do Google é gravada criptografada para a conta atual do Windows."
         )
         self.help_text.setMinimumHeight(180)
@@ -1420,7 +1491,13 @@ class MainWindow(QMainWindow):
     def _show_location(self, book_code: str, chapter: int, verse=None, focus_reading=True):
         """Sincroniza tradução, testamento, livro, capítulo e leitura."""
         books = self.db.books(self.current_translation_id())
-        book = next(book for book in books if book["book_code"] == book_code)
+        book = next((book for book in books if book["book_code"] == book_code), None)
+        if book is None:
+            self._warn(
+                "Livro indisponível",
+                "Este livro não existe na tradução selecionada. Escolha outra tradução e tente novamente.",
+            )
+            return
         self.testament = self.OLD_TESTAMENT if int(book["book_number"]) <= 39 else self.NEW_TESTAMENT
         self._populate_books(preferred_code=book_code, preferred_chapter=chapter)
         self.open_selected_chapter(focus_verse=verse, focus_reading=focus_reading)
@@ -1433,7 +1510,7 @@ class MainWindow(QMainWindow):
             target = self.active_chapter - 1
             self._show_location(self.active_book_code, target, focus_reading=False)
             index, _focus = self.secondary_pages["reader_verses"]
-            self.page_stack.setCurrentIndex(index)
+            self._navigate_to(index)
             self._restore_accessible_focus(
                 self.verse_list,
                 f"Você voltou um capítulo. Agora em {self.active_book_name}, capítulo {target}.",
@@ -1453,7 +1530,7 @@ class MainWindow(QMainWindow):
             target = self.active_chapter + 1
             self._show_location(self.active_book_code, target, focus_reading=False)
             index, _focus = self.secondary_pages["reader_verses"]
-            self.page_stack.setCurrentIndex(index)
+            self._navigate_to(index)
             self._restore_accessible_focus(
                 self.verse_list,
                 f"Você foi para o próximo capítulo. Agora em {self.active_book_name}, capítulo {target}.",
@@ -2004,7 +2081,7 @@ class MainWindow(QMainWindow):
             key, accepted = ApiKeyDialog.get_key(self, self.pending_api_key)
             if accepted:
                 self.pending_api_key = key
-                self._refresh_settings_options()
+                self.save_ai_settings()
             return
         if option_id == "model":
             value, accepted = ModelDialog.get_model(self, self.pending_ai_model)
@@ -2069,7 +2146,8 @@ class MainWindow(QMainWindow):
                 self.pending_confirm_exit = bool(value)
             else:
                 self.pending_high_contrast = bool(value)
-            self._refresh_settings_options()
+            # Cada escolha confirmada vale na hora; sair da tela não descarta mais a alteração.
+            self.save_ai_settings()
 
     @staticmethod
     def _choice_label(options, current_value):
@@ -2372,12 +2450,13 @@ class MainWindow(QMainWindow):
         """Ajusta temporariamente o tamanho global dentro de limites utilizáveis."""
         self.font_size = max(8, min(28, int(self.font_size) + amount))
         self.pending_font_size = self.font_size
+        self.settings.setValue("accessibility/font_size", self.font_size)
         self._apply_accessibility_settings()
         self._refresh_settings_options()
         self.statusBar().showMessage(f"Tamanho do texto: {self.font_size} pontos.")
 
     def _focus_reference(self):
-        """Abre a tela de referência pelo Ctrl+L e seleciona seu conteúdo."""
+        """Abre a tela de referência pelo Ctrl+G e seleciona seu conteúdo."""
         self.open_more_option("reference")
         self.reference_edit.setFocus()
         self.reference_edit.selectAll()
@@ -2406,9 +2485,13 @@ class MainWindow(QMainWindow):
             self.update_controller.show_current_changelog()
 
     def _handle_escape(self):
-        """Volta das telas internas ou oferece sair quando já está no menu inicial."""
+        """Interrompe a voz, volta à tela anterior ou oferece sair no menu inicial."""
+        if self.tts and self.tts.state() == QTextToSpeech.State.Speaking:
+            self.stop_speech()
+            self.statusBar().showMessage("Leitura em voz alta interrompida.")
+            return
         if self.page_stack.currentIndex() != self.main_page_index:
-            self.show_main_page()
+            self.go_back()
         else:
             self.stop_speech()
             self.request_exit(self.reader_menu)

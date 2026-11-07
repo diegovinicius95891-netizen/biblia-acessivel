@@ -8,6 +8,8 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import quote, urljoin, urlparse
 from urllib.request import Request, urlopen
 
+from .version import APP_VERSION
+
 
 RADIO_FEED_URL = "https://audiogames.com.br/diego/louvores/louvores.json"
 RADIO_AUDIO_BASE_URL = "https://audiogames.com.br/diego/louvores/uploads/"
@@ -89,7 +91,7 @@ class OnlineRadioService:
         self.cache_path = cache_path
 
     def fetch(self) -> list[GospelTrack]:
-        request = Request(RADIO_FEED_URL, headers={"User-Agent": "BibliaAGB-Windows/4.5.2"})
+        request = Request(RADIO_FEED_URL, headers={"User-Agent": f"BibliaAGB-Windows/{APP_VERSION}"})
         try:
             with urlopen(request, timeout=20) as response:
                 final = urlparse(response.geturl())

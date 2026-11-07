@@ -1,10 +1,20 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.5.2
+CURRENT_CHANGELOG = """Novidades da versão 4.5.3
 
-Os temas para estudo com IA agora aparecem em ordem alfabética para facilitar a navegação e a pesquisa.
+Escape agora volta para a tela de onde você veio, pelo mesmo caminho. Em Versículos, Escape leva a Capítulos; em Capítulos, a Livros; e assim até o menu principal. Recursos abertos por Mais opções voltam para Mais opções.
 
-No Android, a entrada foi simplificada para Estudar e pesquisar temas com IA. A escolha entre o texto atual e a Bíblia toda aparece somente depois de abrir essa opção.
+Se a voz interna estiver lendo, o primeiro Escape apenas interrompe a leitura.
 
-O botão de envio agora anuncia o nome do tema, sem apresentar uma referência bíblica como se ela fosse o assunto escolhido.
+Mais opções foi reorganizado por assunto: leitura e pesquisa, estudos, devoção e oração, quiz e, por último, configurações, suporte, ajuda e Sair do aplicativo, que agora fica sempre no fim da lista.
+
+Cada escolha em Configurações é salva e aplicada na hora. Sair da tela sem apertar Salvar não descarta mais as alterações.
+
+Adicionar o versículo do dia aos favoritos não remove mais um favorito já existente.
+
+Marcar uma oração como respondida sem descrever a resposta agora mostra um aviso, em vez de não fazer nada.
+
+Abrir um favorito ou um item do histórico de um livro ausente na tradução atual mostra um aviso, em vez de uma falha.
+
+Ao cancelar a saída, o foco volta ao controle em que você estava.
 """

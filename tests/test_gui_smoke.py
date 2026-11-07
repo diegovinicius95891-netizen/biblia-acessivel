@@ -169,12 +169,53 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertIn("Open Translation Bible em português", legal_content)
         self.assertIn("NTLH não foi incluída", legal_content)
         self.assertGreater(window.help_text.count(), 1)
+        window.show_main_page()
         window.open_reader_section("reader_more")
         window.more_options.setCurrentRow(7)
         QTest.keyClick(window.more_options, Qt.Key_Space)
         self.assertNotEqual(window.main_page_index, window.page_stack.currentIndex())
         window._handle_escape()
+        self.assertEqual(window.secondary_pages["reader_more"][0], window.page_stack.currentIndex())
+        window._handle_escape()
         self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
+        window.close()
+
+    def test_escape_returns_along_the_same_route(self):
+        """Livros, Capítulos e Versículos voltam um passo por vez até o menu principal."""
+        window = self.make_window()
+        window.open_reader_section("reader_books")
+        window.focus_chapters()
+        window.open_selected_chapter()
+        self.assertEqual(window.secondary_pages["reader_verses"][0], window.page_stack.currentIndex())
+        window._handle_escape()
+        self.assertEqual(window.secondary_pages["reader_chapters"][0], window.page_stack.currentIndex())
+        self.assertIs(window.chapter_list, window.focusWidget())
+        window.verses_back_button.click()
+        self.assertEqual(window.secondary_pages["reader_books"][0], window.page_stack.currentIndex())
+        window._handle_escape()
+        self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
+
+        window.open_reader_section("continue_reading")
+        window._focus_search()
+        window._handle_escape()
+        self.assertEqual(window.secondary_pages["reader_verses"][0], window.page_stack.currentIndex())
+        window.open_reader_section("reader_books")
+        window.focus_chapters()
+        window.open_reader_section("reader_books")
+        window._handle_escape()
+        self.assertEqual(window.secondary_pages["reader_verses"][0], window.page_stack.currentIndex())
+        window.close()
+
+    def test_more_options_are_grouped_with_exit_last(self):
+        """Mantém os 30 recursos agrupados e Sair do aplicativo sempre no fim."""
+        window = self.make_window()
+        ids = [window.more_options.item(i).data(Qt.UserRole) for i in range(window.more_options.count())]
+        self.assertEqual(30, len(ids))
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertEqual("exit", ids[-1])
+        self.assertEqual("reference", ids[0])
+        self.assertLess(ids.index("search"), ids.index("hymnal"))
+        self.assertLess(ids.index("settings"), ids.index("help"))
         window.close()
 
     def test_end_of_book_is_announced_and_does_not_cross_books(self):
