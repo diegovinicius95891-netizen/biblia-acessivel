@@ -25,6 +25,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
+            "Corrigido o fechamento do aplicativo ao abrir textos longos: respostas da IA, lembrete, Ajuda, Licenças, " +
+            "devocionais e anotações.\n\n" +
             "Nova identidade visual da Áudio Games Brasil: abertura com o logo AGB e papel de parede em todas as telas, " +
             "com botões em azul e dourado e texto claro de alto contraste.\n\n" +
             "Novo ícone do aplicativo com o logo AGB.\n\n" +

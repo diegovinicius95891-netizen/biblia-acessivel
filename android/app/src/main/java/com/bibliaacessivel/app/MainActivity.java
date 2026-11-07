@@ -677,8 +677,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Mostra primeiro a origem e depois o destino, permitindo inverter as duas. */
     private void showComparisonResult(Models.Translation source, Models.Translation target) {
         LinearLayout root = screen("Comparação de " + currentReference(), this::showComparison);
-        String sourceText = verseText(source.id, selectedVerse.number);
-        String targetText = verseText(target.id, selectedVerse.number);
+        String number = selectedVerse == null ? "1" : selectedVerse.number;
+        String sourceText = verseText(source.id, number);
+        String targetText = verseText(target.id, number);
         root.addView(heading("Tradução de origem — " + source.name));
         TextView sourceView = paragraph(currentReference() + ". " + sourceText);
         sourceView.setFocusable(true);
@@ -2538,7 +2539,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Acompanha o versículo lido e passa ao próximo capítulo no fim. */
     private void continueReading(String utteranceId) {
-        if (!continuousActive) return;
+        if (!continuousActive || isFinishing() || isDestroyed() || bible == null) return;
         int index;
         try {
             index = Integer.parseInt(utteranceId.substring("continuo-".length()));
@@ -2571,7 +2572,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void stopContinuousReading(String message) {
         boolean wasActive = continuousActive;
         continuousActive = false;
-        if (ttsReady) tts.stop();
+        if (ttsReady) {
+            try { tts.stop(); } catch (Exception ignored) { }
+        }
         if (wasActive) {
             toast(message);
             if (!isFinishing() && !isDestroyed() && chapterSwipeEnabled) showVerses();
@@ -2838,10 +2841,12 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         TextView body = paragraph(text);
         body.setTextIsSelectable(true);
         body.setFocusable(true);
-        // Textos longos rolam dentro da tela; a barra visível ajuda quem usa ampliação.
-        body.setVerticalScrollBarEnabled(true);
-        body.setScrollbarFadingEnabled(false);
-        content.addView(body, fill());
+        // Texto longo dentro de um ScrollView, que já traz a barra de rolagem pronta. Ligar a barra
+        // direto num TextView criado por código fechava o app ao desenhar (ScrollBarDrawable nulo).
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.setScrollbarFadingEnabled(false);
+        scroll.addView(body);
+        content.addView(scroll, fill());
         content.addView(actionButton("Copiar texto", "Copiar todo o conteúdo", () -> copy(text)));
         showCustomScreen(title, content, back);
         focusForTalkBack(body, title + ". Texto disponível para leitura.");
@@ -3121,6 +3126,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     }
 
     @Override protected void onDestroy() {
+        continuousActive = false;
+        ttsReady = false;
         if (aiProgressDialog != null) {
             try { aiProgressDialog.dismiss(); } catch (Exception ignored) { }
             aiProgressDialog = null;

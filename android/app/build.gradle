@@ -18,8 +18,8 @@ android {
         applicationId playStoreBuild ? 'com.audiogamesbrasil.biblia' : 'com.bibliaacessivel.app'
         minSdk 26
         targetSdk 37
-        versionCode 25
-        versionName '4.7.0'
+        versionCode 26
+        versionName '4.7.1'
         buildConfigField 'boolean', 'GITHUB_UPDATES', (!playStoreBuild).toString()
     }
 

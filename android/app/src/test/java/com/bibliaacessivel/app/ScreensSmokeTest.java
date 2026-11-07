@@ -63,7 +63,9 @@ public final class ScreensSmokeTest {
             ShadowLooper.idleMainLooper();
         }
         assertNotNull("A Bíblia precisa carregar", field(activity, "bible"));
-        Thread.sleep(300);
+        // Espera a abertura (logo AGB) terminar, como no aparelho, antes de abrir outras telas.
+        Thread.sleep(MainActivity.SPLASH_MIN_MILLIS + 300);
+        ShadowLooper.idleMainLooper();
         ShadowLooper.idleMainLooper();
 
         String[][] screens = {

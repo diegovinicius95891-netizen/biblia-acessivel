@@ -57,7 +57,9 @@ public final class VisualPreviewTest {
             Thread.sleep(100);
             ShadowLooper.idleMainLooper();
         }
-        Thread.sleep(300);
+        // Espera a abertura (logo AGB) terminar, como no aparelho, antes de abrir outras telas.
+        Thread.sleep(MainActivity.SPLASH_MIN_MILLIS + 300);
+        ShadowLooper.idleMainLooper();
         for (String[] screen : new String[][]{{"showMainMenu", "2-menu"}, {"showVerses", "3-versiculos"},
                 {"showMoreOptions", "4-mais-opcoes"}, {"showPlans", "5-planos"}, {"showStudies", "6-estudos-ia"}}) {
             Method method = MainActivity.class.getDeclaredMethod(screen[0]);
