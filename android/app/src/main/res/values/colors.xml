@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cores do logo AGB: azul profundo e dourado. -->
+    <color name="agb_azul">#00285E</color>
+    <color name="agb_azul_escuro">#031633</color>
+    <color name="agb_dourado">#F4C95D</color>
+</resources>

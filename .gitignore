@@ -33,3 +33,6 @@ android/**/build/
 android/*.apk
 BibliaAcessivel-Android.apk
 BibliaAcessivel-Android.apk.sha256
+
+# Pacotes da Play: gerados, nunca versionados.
+play-store/*.aab

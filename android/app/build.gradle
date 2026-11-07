@@ -6,7 +6,7 @@ def playStoreBuild = providers.gradleProperty('playStore').orElse('false').get()
 
 android {
     namespace 'com.bibliaacessivel.app'
-    compileSdk 36
+    compileSdk 37
 
     buildFeatures {
         buildConfig true
@@ -15,9 +15,9 @@ android {
     defaultConfig {
         applicationId 'com.bibliaacessivel.app'
         minSdk 26
-        targetSdk playStoreBuild ? 36 : 35
-        versionCode 24
-        versionName '4.6.0'
+        targetSdk 37
+        versionCode 25
+        versionName '4.7.0'
         buildConfigField 'boolean', 'GITHUB_UPDATES', (!playStoreBuild).toString()
     }
 
@@ -32,7 +32,7 @@ android {
 
     sourceSets {
         main.manifest.srcFile playStoreBuild ? 'src/play/AndroidManifest.xml' : 'src/main/AndroidManifest.xml'
-        main.assets.srcDir layout.buildDirectory.dir('generated/bibleAssets')
+        main.assets.srcDir layout.buildDirectory.dir('generated/bibleAssets').get().asFile
         test.resources.srcDir rootProject.file('../data')
     }
 
@@ -59,7 +59,7 @@ android {
         }
     }
 
-    // Mantém androidx.core e WorkManager em versões já validadas com o TalkBack.
+    // As bibliotecas são atualizadas junto com o SDK; o aviso de versão nova não interrompe o build.
     lint {
         disable 'GradleDependency'
     }
@@ -78,9 +78,9 @@ tasks.named('preBuild').configure {
 }
 
 dependencies {
-    implementation 'androidx.core:core:1.13.1'
-    implementation 'androidx.work:work-runtime:2.9.1'
+    implementation 'androidx.core:core:1.19.1'
+    implementation 'androidx.work:work-runtime:2.12.0'
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'org.robolectric:robolectric:4.17'
     testImplementation 'org.json:json:20240303'
 }

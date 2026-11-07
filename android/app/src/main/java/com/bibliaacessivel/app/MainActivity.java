@@ -141,7 +141,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 hymnal = HymnalCatalog.load(this);
                 quizCatalog = QuizCatalog.load(this);
                 restorePosition();
-                runOnUiThread(() -> {
+                runOnUiThread(() -> afterSplash(() -> {
                     if (isFinishing() || isDestroyed()) return;
                     if (getIntent().getBooleanExtra(DevotionalNotifications.OPEN_DEVOTIONALS, false)) {
                         showOnlineDevotionals();
@@ -156,7 +156,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                     getWindow().getDecorView().postDelayed(this::ensureDevotionalNotificationPermission, 1200);
                     showLastCrashReport();
                     deliverPendingAi();
-                });
+                }));
             } catch (Exception error) {
                 runOnUiThread(() -> {
                     if (!isFinishing() && !isDestroyed()) showFatalError(error);
@@ -183,11 +183,41 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     }
 
     /** Mostra um estado simples enquanto o banco grande é copiado na primeira abertura. */
+    /** Momento em que a abertura apareceu; o menu espera um tempo mínimo para ela ser vista e ouvida. */
+    private long splashShownAt;
+    static final long SPLASH_MIN_MILLIS = 1800;
+
+    /** Abertura: logo AGB e a frase ÁUDIO GAMES BRASIL, enquanto a Bíblia é preparada. */
     private void showLoading() {
+        splashShownAt = System.currentTimeMillis();
         LinearLayout root = rootLayout();
-        TextView text = heading("Bíblia AGB. Preparando leitura offline, aguarde.");
-        root.addView(text);
+        root.setBackground(new WallpaperDrawable(getResources(), 60));
+        root.setGravity(Gravity.CENTER);
+        android.widget.ImageView logo = new android.widget.ImageView(this);
+        logo.setImageResource(R.drawable.logo_agb);
+        logo.setAdjustViewBounds(true);
+        logo.setContentDescription("Logo AGB: Bíblia aberta, cruz e bengala, símbolo de acessibilidade");
+        int size = Math.min(dp(280), getResources().getDisplayMetrics().widthPixels - dp(48));
+        root.addView(logo, new LinearLayout.LayoutParams(size, size));
+        TextView brand = heading("ÁUDIO GAMES BRASIL");
+        brand.setGravity(Gravity.CENTER);
+        brand.setTextColor(getColor(R.color.agb_dourado));
+        brand.setLetterSpacing(0.08f);
+        root.addView(brand);
+        TextView status = paragraph("Bíblia AGB. Preparando a leitura, aguarde.");
+        status.setGravity(Gravity.CENTER);
+        root.addView(status);
         setContentView(root);
+        root.announceForAccessibility("Áudio Games Brasil. Bíblia AGB.");
+    }
+
+    /** Executa a entrada no aplicativo respeitando o tempo mínimo da abertura. */
+    private void afterSplash(Runnable action) {
+        long remaining = SPLASH_MIN_MILLIS - (System.currentTimeMillis() - splashShownAt);
+        if (remaining <= 0) action.run();
+        else getWindow().getDecorView().postDelayed(() -> {
+            if (!isFinishing() && !isDestroyed()) action.run();
+        }, remaining);
     }
 
     /** Informa falha de inicialização de forma legível pelo TalkBack. */
@@ -2829,6 +2859,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout layout = new LinearLayout(this);
         layout.setFitsSystemWindows(true);
         layout.setOrientation(LinearLayout.VERTICAL);
+        // Papel de parede AGB em todas as telas, escurecido para o texto continuar legível.
+        layout.setBackground(new WallpaperDrawable(getResources(), 165));
         int padding = dp(16);
         layout.setPadding(padding, padding, padding, padding);
         return layout;
@@ -2875,6 +2907,15 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         button.setContentDescription(description);
         button.setAllCaps(false);
         button.setMinHeight(dp(52));
+        // Azul do logo com borda dourada; o efeito de toque continua o padrão do Android.
+        android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
+        shape.setColor(0xE600285E);
+        shape.setCornerRadius(dp(12));
+        shape.setStroke(dp(2), getColor(R.color.agb_dourado));
+        // A margem interna separa botões vizinhos sem mudar a área de toque.
+        button.setBackground(new android.graphics.drawable.InsetDrawable(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(0x55F4C95D), shape, null), 0, dp(4), 0, dp(4)));
+        button.setTextColor(0xFFFFFFFF);
         button.setOnClickListener(view -> action.run());
         return button;
     }
@@ -3036,6 +3077,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).trim();
     }
 
+    /** Só para Android 8 a 12: do 13 em diante, o OnBackInvokedCallback registrado no onCreate trata o voltar. */
+    @android.annotation.SuppressLint("GestureBackNavigation")
     @Override public void onBackPressed() {
         if (backAction != null) backAction.run();
         else super.onBackPressed();

@@ -25,17 +25,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
-            "O Teólogo de IA não fecha mais o aplicativo. A resposta espera você voltar se o celular bloquear durante o pedido, " +
-            "há um botão Cancelar, e as falhas do Google Gemini são explicadas em português. Se o modelo escolhido for desativado, " +
-            "a Bíblia escolhe outro sozinha.\n\n" +
-            "Devocionais novos do site são avisados em até 15 minutos, com notificação de prioridade alta.\n\n" +
-            "Novo Lembrete diário: no horário que você escolher, versículo do dia, leitura do plano e dias seguidos de leitura.\n\n" +
-            "Novidades vindas do Windows: Planos de leitura, Diário de oração, Meu momento com Deus, Favoritos, " +
-            "Histórico de leitura e Memorização de versículos.\n\n" +
-            "Ler em voz alta: em Versículos, a Bíblia lê o capítulo e segue para os próximos, com temporizador.\n\n" +
-            "Backup e restauração no mesmo formato do Windows, para levar seus dados do celular ao computador e de volta.\n\n" +
-            "Se o aplicativo fechar por algum erro, na próxima abertura ele mostra o relatório para você copiar e enviar.\n\n" +
-            "Mais opções foi organizado por assunto.\n\n" +
+            "Nova identidade visual da Áudio Games Brasil: abertura com o logo AGB e papel de parede em todas as telas, " +
+            "com botões em azul e dourado e texto claro de alto contraste.\n\n" +
+            "Novo ícone do aplicativo com o logo AGB.\n\n" +
+            "Atualizado para o Android 17 (SDK 37) e para as bibliotecas mais recentes.\n\n" +
+            "Da versão 4.6.0: Teólogo de IA estável, aviso de devocionais em até 15 minutos, lembrete diário, " +
+            "planos de leitura, Diário de oração, Meu momento com Deus, favoritos, histórico, memorização, " +
+            "leitura em voz alta e backup compatível com o Windows.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;

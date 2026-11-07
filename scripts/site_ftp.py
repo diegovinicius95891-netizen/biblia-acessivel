@@ -126,6 +126,7 @@ MUST_OPEN = (
     "", "devocionais/", "devocionais/?post=ninguem-viu-mas-deus-viu", "musicas/", "programas/",
     "sobre/", "contato/", "painel/", "sitemap.php", "biblia/", "assets/site.css", "assets/favicon.svg",
     "assets/og-diego-grando.jpg", "meu-jogo-paises/", "futebol-acessivel/", "devocionais/posts.json",
+    "biblia-agb/privacidade/",
 )
 MUST_BLOCK = ("meu-jogo-paises/dados_jogadores.json", "phpmailer/get_oauth_token.php", "contador.txt")
 
