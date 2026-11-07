@@ -2,14 +2,16 @@
 
 Repositório público de distribuição da Bíblia AGB (Audio Games Brasil).
 
-Versões atuais: **4.5.2 para Windows** e **4.5.3 para Android**.
+Versões atuais: **4.5.3 para Windows** e **4.5.3 para Android**.
 
 ## Downloads oficiais
 
-- Windows: https://github.com/diegovinicius95891-netizen/biblia-acessivel/releases/download/v4.5.2/BibliaAcessivel-Windows.zip
+- Windows: https://github.com/diegovinicius95891-netizen/biblia-acessivel/releases/download/v4.5.3/BibliaAcessivel-Windows.zip
 - Android: https://github.com/diegovinicius95891-netizen/biblia-acessivel/releases/download/android-v4.5.3/BibliaAcessivel-Android.apk
 
 A versão 4.5.2 organiza os temas de estudo com IA em ordem alfabética e deixa o fluxo do Android mais claro e acessível.
+
+A versão 4.5.3 para Windows faz o Escape voltar pelo mesmo caminho, organiza Mais opções por assunto e salva as configurações na hora.
 
 A versão 4.5.3 para Android dispensa a permissão do microfone, acompanha o tema escuro e economiza bateria na busca por devocionais.
 
