@@ -49,17 +49,17 @@ def connect(host: str, port: int, user: str, password: str):
     return plain, "FTP"
 
 
-def ask_password_window() -> str:
+def ask_password_window(title: str = "Publicar devocional — senha do FTP", ok_text: str = "Publicar") -> str:
     """Pede a senha numa janela nativa do Qt, legível pelo NVDA e pronta para digitar."""
     from PySide6.QtCore import Qt, QTimer
     from PySide6.QtWidgets import QApplication, QInputDialog, QLineEdit
 
     app = QApplication.instance() or QApplication([])
     dialog = QInputDialog()
-    dialog.setWindowTitle("Publicar devocional — senha do FTP")
+    dialog.setWindowTitle(title)
     dialog.setLabelText("Digite a senha do FTP do site e pressione Enter:")
     dialog.setTextEchoMode(QLineEdit.Password)
-    dialog.setOkButtonText("Publicar")
+    dialog.setOkButtonText(ok_text)
     dialog.setCancelButtonText("Cancelar")
     dialog.setWindowFlag(Qt.WindowStaysOnTopHint, True)
 
