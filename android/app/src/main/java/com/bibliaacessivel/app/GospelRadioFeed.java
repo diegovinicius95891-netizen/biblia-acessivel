@@ -84,7 +84,7 @@ final class GospelRadioFeed {
             connection.setConnectTimeout(15_000);
             connection.setReadTimeout(20_000);
             connection.setInstanceFollowRedirects(false);
-            connection.setRequestProperty("User-Agent", "BibliaAGB-Android/4.5.2");
+            connection.setRequestProperty("User-Agent", "BibliaAGB-Android/" + BuildConfig.VERSION_NAME);
             int status = connection.getResponseCode();
             if (status >= 300 && status < 400) {
                 String location = connection.getHeaderField("Location");

@@ -2,9 +2,11 @@ plugins {
     id 'com.android.application'
 }
 
+def playStoreBuild = providers.gradleProperty('playStore').orElse('false').get().toBoolean()
+
 android {
     namespace 'com.bibliaacessivel.app'
-    compileSdk 35
+    compileSdk 36
 
     buildFeatures {
         buildConfig true
@@ -13,9 +15,10 @@ android {
     defaultConfig {
         applicationId 'com.bibliaacessivel.app'
         minSdk 26
-        targetSdk 35
-        versionCode 22
-        versionName '4.5.2'
+        targetSdk playStoreBuild ? 36 : 35
+        versionCode 23
+        versionName '4.5.3'
+        buildConfigField 'boolean', 'GITHUB_UPDATES', (!playStoreBuild).toString()
     }
 
     compileOptions {
@@ -23,7 +26,12 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
+
     sourceSets {
+        main.manifest.srcFile playStoreBuild ? 'src/play/AndroidManifest.xml' : 'src/main/AndroidManifest.xml'
         main.assets.srcDir layout.buildDirectory.dir('generated/bibleAssets')
         test.resources.srcDir rootProject.file('../data')
     }
@@ -41,7 +49,9 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (!playStoreBuild || System.getenv('ANDROID_RELEASE_KEYSTORE')) {
+                signingConfig signingConfigs.release
+            }
             debuggable false
             minifyEnabled true
             shrinkResources true
@@ -49,7 +59,7 @@ android {
         }
     }
 
-    // Mantém a biblioteca FileProvider na linha compatível com compileSdk 35.
+    // Mantém androidx.core e WorkManager em versões já validadas com o TalkBack.
     lint {
         disable 'GradleDependency'
     }
@@ -71,5 +81,6 @@ dependencies {
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.work:work-runtime:2.9.1'
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
     testImplementation 'org.json:json:20240303'
 }

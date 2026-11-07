@@ -33,7 +33,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -61,7 +60,6 @@ import java.util.function.Supplier;
 public final class MainActivity extends Activity implements TextToSpeech.OnInitListener {
     private static final int CREATE_DEVOTIONAL = 7001;
     private static final int WORSHIP_VOICE_SEARCH = 7002;
-    private static final int WORSHIP_AUDIO_PERMISSION = 7003;
     private static final String VOICE_OFF = "__off__";
     private static final String[] AI_MODELS = {
             "gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"
@@ -108,7 +106,14 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (!AppIntegrity.hasExpectedSignature(this)) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, () -> {
+                        if (backAction != null) backAction.run();
+                        else finish();
+                    });
+        }
+        if (BuildConfig.GITHUB_UPDATES && !AppIntegrity.hasExpectedSignature(this)) {
             LinearLayout root = rootLayout();
             root.addView(heading("Não foi possível confirmar esta instalação"));
             root.addView(paragraph("A autenticidade do aplicativo não pôde ser confirmada. Baixe novamente pelo link oficial."));
@@ -118,27 +123,38 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         preferences = getSharedPreferences("settings", MODE_PRIVATE);
         userData = new UserDatabase(this);
         secureStore = new SecureStore(this);
-        updateManager = new UpdateManager(this, userData, preferences);
+        if (BuildConfig.GITHUB_UPDATES) updateManager = new UpdateManager(this, userData, preferences);
         tts = new TextToSpeech(this, this);
         showLoading();
         new Thread(() -> {
             try {
-                bible = new BibleRepository(this);
+                BibleRepository repository = new BibleRepository(this);
+                // Se a tela foi fechada durante a cópia do banco, o carregador fecha o próprio banco.
+                synchronized (this) {
+                    if (isDestroyed()) {
+                        repository.close();
+                        return;
+                    }
+                    bible = repository;
+                }
                 hymnal = HymnalCatalog.load(this);
                 quizCatalog = QuizCatalog.load(this);
                 restorePosition();
                 runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
                     if (getIntent().getBooleanExtra(DevotionalNotifications.OPEN_DEVOTIONALS, false)) {
                         showOnlineDevotionals();
                     } else {
                         showMainMenu();
                     }
-                    updateManager.onAppReady();
+                    if (BuildConfig.GITHUB_UPDATES) updateManager.onAppReady();
                     DevotionalNotifications.schedule(this);
                     getWindow().getDecorView().postDelayed(this::ensureDevotionalNotificationPermission, 1200);
                 });
             } catch (Exception error) {
-                runOnUiThread(() -> showFatalError(error));
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) showFatalError(error);
+                });
             }
         }).start();
     }
@@ -369,10 +385,13 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "Harpa Cristã", "Quiz bíblico", "Status do quiz", "Modo culto", "Atualizações",
                 "Configurações", "Ideias, sugestões e suporte", "Licenças, leis e justificativa", "Ajuda"
         };
-        ListView list = listView(Arrays.asList(options));
+        List<String> visibleOptions = new ArrayList<>(Arrays.asList(options));
+        if (!BuildConfig.GITHUB_UPDATES) { visibleOptions.remove(13); }
+        ListView list = listView(visibleOptions);
         list.setContentDescription("Mais opções");
         list.setOnItemClickListener((parent, view, position, id) -> {
-            switch (position) {
+            int option = !BuildConfig.GITHUB_UPDATES && position >= 13 ? position + 1 : position;
+            switch (option) {
                 case 0: showTranslations(); break;
                 case 1: showComparison(); break;
                 case 2: showReference(); break;
@@ -443,7 +462,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Oferece pesquisa e seleção acessíveis entre temas cotidianos do Teólogo de IA. */
     private void showStudyThemes(boolean useCurrentText) {
         String scopeLabel = useCurrentText ? "texto bíblico atual" : "Bíblia toda";
-        LinearLayout root = screen("Teólogo de IA — Temas para estudo", this::showStudyThemeScope);
+        LinearLayout root = screen("Teólogo de IA — Temas para estudo", this::showStudies);
         root.addView(paragraph("Escopo escolhido: " + scopeLabel + ". Pesquise um assunto, como " +
                 "oração, relacionamento cristão, fé, perdão, álcool ou adoração. " +
                 "Deixe vazio para mostrar todos os temas."));
@@ -838,6 +857,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 List<GospelRadioFeed.Track> tracks = GospelRadioFeed.fetch(this);
                 runOnUiThread(() -> {
                     if (isFinishing() || isDestroyed()) return;
+                    radioIndex = indexOfPlayingTrack(tracks);
                     radioTracks = tracks;
                     populateGospelRadio();
                     if (manual) toast("Lista da Rádio Gospel atualizada.");
@@ -850,6 +870,17 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 });
             }
         }, "gospel-radio-refresh").start();
+    }
+
+    /** Reencontra o louvor atual na lista nova para Anterior e Próximo não pularem de faixa. */
+    private int indexOfPlayingTrack(List<GospelRadioFeed.Track> tracks) {
+        if (radioIndex < 0 || radioIndex >= radioTracks.size()) return -1;
+        String playing = radioTracks.get(radioIndex).audioUrl;
+        for (int index = 0; index < tracks.size(); index++) {
+            if (tracks.get(index).audioUrl.equals(playing)) return index;
+        }
+        stopAndReleaseRadio();
+        return -1;
     }
 
     private void playRadio(int index) {
@@ -987,17 +1018,20 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "Abrir configurações de notificações do Android",
                 "Abrir configurações de acessibilidade do Android"
         };
-        ListView list = listView(Arrays.asList(options));
+        List<String> visibleOptions = new ArrayList<>(Arrays.asList(options));
+        if (!BuildConfig.GITHUB_UPDATES) { visibleOptions.remove(6); visibleOptions.remove(5); }
+        ListView list = listView(visibleOptions);
         list.setContentDescription("Opções de configurações");
         list.setOnItemClickListener((parent, view, position, id) -> {
-            switch (position) {
+            int option = !BuildConfig.GITHUB_UPDATES && position >= 5 ? position + 2 : position;
+            switch (option) {
                 case 0: editApiKey(); break;
                 case 1: openGoogleApiKeyPage(); break;
                 case 2: chooseModel(); break;
                 case 3: chooseVoice(); break;
                 case 4: chooseSpeechRate(); break;
-                case 5: updateManager.toggleAutomatic(); showSettings(); break;
-                case 6: updateManager.toggleNotifications(); showSettings(); break;
+                case 5: if (BuildConfig.GITHUB_UPDATES) updateManager.toggleAutomatic(); showSettings(); break;
+                case 6: if (BuildConfig.GITHUB_UPDATES) updateManager.toggleNotifications(); showSettings(); break;
                 case 7: toggleDevotionalNotifications(); break;
                 case 8: openNotificationSettings(); break;
                 default: startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
@@ -1039,9 +1073,10 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Explica comandos essenciais, gestos e privacidade. */
     private void showHelp() {
-        showTextScreen("Ajuda", "NAVEGAÇÃO\n\nNa tela principal, Continuar de onde parou abre " +
-                "o capítulo completo já posicionado no último versículo. Use também Livros, Capítulos, Versículos " +
-                "ou Mais opções. O texto bíblico é lido diretamente na lista de Versículos. Com o TalkBack ligado, deslize para a direita " +
+        showTextScreen("Ajuda", "NAVEGAÇÃO\n\nNa tela principal, o primeiro botão, Abrir capítulo, abre " +
+                "o capítulo completo já posicionado no último versículo lido. Use também Trocar de livro " +
+                "ou Mais opções. Na leitura, os botões Capítulo anterior e Próximo capítulo ficam no topo. " +
+                "O texto bíblico é lido diretamente na lista de Versículos. Com o TalkBack ligado, deslize para a direita " +
                 "para ouvir a próxima opção ou para a esquerda para ouvir a opção anterior. Toque duas vezes " +
                 "para abrir. O gesto Voltar do Android retorna à tela anterior. Ao ativar um versículo, " +
                 "o menu de ações abre sem precisar segurar.\n\nESTUDOS COM IA\n\nMais opções, Estudos " +
@@ -1057,11 +1092,15 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "Comparar traduções separa origem e destino e permite inverter as duas. No Modo " +
                 "culto, digite uma passagem e confirme: o texto aparece imediatamente, sem precisar tocar " +
                 "em Ler versículo. A Rádio Gospel toca pela internet os louvores publicados no site. " +
-                "Ideias, sugestões e suporte abre um e-mail para Diego.\n\nATUALIZAÇÕES\n\nA versão Android consulta somente releases android-v " +
-                "e baixa somente BibliaAcessivel-Android.apk com seu SHA-256. O Windows usa outro pacote. " +
-                "A consulta automática pode ser desligada nas Configurações.\n\nDEVOCIONAIS DO SITE\n\n" +
+                "Ideias, sugestões e suporte abre um e-mail para Diego.\n\n" +
+                (BuildConfig.GITHUB_UPDATES
+                        ? "ATUALIZAÇÕES\n\nA versão Android consulta somente releases android-v " +
+                        "e baixa somente BibliaAcessivel-Android.apk com seu SHA-256. O Windows usa outro pacote. " +
+                        "A consulta automática pode ser desligada nas Configurações.\n\n"
+                        : "ATUALIZAÇÕES\n\nAs novas versões chegam pela Google Play.\n\n") +
+                "DEVOCIONAIS DO SITE\n\n" +
                 "A seção Devocionais novos do site mostra todos os textos publicados por Diego e guarda a última " +
-                "cópia para leitura sem internet. O Android verifica periodicamente mesmo com o aplicativo " +
+                "cópia para leitura sem internet. O Android verifica duas vezes por dia, mesmo com o aplicativo " +
                 "fechado e avisa na barra de notificações quando encontra uma publicação realmente nova. " +
                 "A notificação pode ser desligada nas Configurações.\n\n" +
                 "PRIVACIDADE\n\nNotas e marcadores ficam somente no aparelho. A chave Gemini é protegida " +
@@ -1363,12 +1402,11 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                         (reference.endVerse == null ? "" : "-" + reference.endVerse));
     }
 
-    /** Abre o reconhecedor nativo; o texto reconhecido ainda passa pela mesma validação. */
+    /**
+     * Abre o reconhecedor nativo; o texto reconhecido ainda passa pela mesma validação.
+     * O microfone pertence ao aplicativo de voz do sistema, então a Bíblia não pede essa permissão.
+     */
     private void startWorshipVoiceSearch() {
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, WORSHIP_AUDIO_PERMISSION);
-            return;
-        }
         Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR");
@@ -1411,21 +1449,32 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Reúne verificação, novidades, APK pendente e preferências Android. */
     private void showUpdates() {
+        if (!BuildConfig.GITHUB_UPDATES) return;
         LinearLayout root = screen("Atualizações Android", this::showMoreOptions);
-        root.addView(paragraph("Versão instalada: " + BuildConfig.VERSION_NAME + ". " +
-                updateManager.settingsSummary()));
-        root.addView(actionButton("Verificar atualizações", "Consultar agora releases Android",
-                () -> updateManager.checkNow(true)));
+        TextView summary = paragraph("");
+        Runnable refreshSummary = () -> summary.setText("Versão instalada: " +
+                BuildConfig.VERSION_NAME + ". " + updateManager.settingsSummary());
+        refreshSummary.run();
+        root.addView(summary);
+        Button check = actionButton("Verificar atualizações", "Consultar agora releases Android",
+                () -> updateManager.checkNow(true));
+        root.addView(check);
         root.addView(actionButton("Instalar atualização baixada",
                 "Abrir no instalador do Android o APK já validado", updateManager::installPending));
         root.addView(actionButton("Novidades da versão", "Ler novidades disponíveis offline",
                 updateManager::showChangelog));
         root.addView(actionButton("Alternar atualizações automáticas",
-                "Ativar ou desativar a verificação diária", updateManager::toggleAutomatic));
+                "Ativar ou desativar a verificação diária", () -> {
+                    updateManager.toggleAutomatic();
+                    refreshSummary.run();
+                }));
         root.addView(actionButton("Alternar notificações",
-                "Ativar ou desativar avisos de nova versão", updateManager::toggleNotifications));
+                "Ativar ou desativar avisos de nova versão", () -> {
+                    updateManager.toggleNotifications();
+                    refreshSummary.run();
+                }));
         setContentView(root);
-        focusForTalkBack(root.getChildAt(2), "Verificar atualizações.");
+        focusForTalkBack(check, "Verificar atualizações.");
     }
 
     /** Mantém a IA como primeira ação do livro. */
@@ -1918,18 +1967,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         }
     }
 
-    /** Continua a pesquisa por voz assim que a permissão solicitada for concedida. */
-    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == WORSHIP_AUDIO_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                startWorshipVoiceSearch();
-            } else {
-                toast("Sem permissão para o microfone. Você ainda pode pesquisar por texto.");
-            }
-        }
-    }
-
     /** Cria tela textual rolável com foco inicial no conteúdo. */
     private void showTextScreen(String title, String text, Runnable back) {
         LinearLayout content = new LinearLayout(this);
@@ -1937,6 +1974,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         TextView body = paragraph(text);
         body.setTextIsSelectable(true);
         body.setFocusable(true);
+        // Textos longos rolam dentro da tela; a barra visível ajuda quem usa ampliação.
+        body.setVerticalScrollBarEnabled(true);
+        body.setScrollbarFadingEnabled(false);
         content.addView(body, fill());
         content.addView(actionButton("Copiar texto", "Copiar todo o conteúdo", () -> copy(text)));
         showCustomScreen(title, content, back);
@@ -1953,6 +1993,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Cria raiz vertical com espaçamento confortável para toque. */
     private LinearLayout rootLayout() {
         LinearLayout layout = new LinearLayout(this);
+        layout.setFitsSystemWindows(true);
         layout.setOrientation(LinearLayout.VERTICAL);
         int padding = dp(16);
         layout.setPadding(padding, padding, padding, padding);
@@ -2180,7 +2221,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             tts.stop();
             tts.shutdown();
         }
-        if (bible != null) bible.close();
+        synchronized (this) {
+            if (bible != null) bible.close();
+        }
         if (userData != null) userData.close();
         super.onDestroy();
     }

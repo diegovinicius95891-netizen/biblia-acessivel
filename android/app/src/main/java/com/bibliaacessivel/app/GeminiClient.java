@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +25,15 @@ final class GeminiClient {
         URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/" +
                 model + ":generateContent");
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        try {
+            return request(connection, key, instruction, bibleText);
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private static String request(HttpURLConnection connection, String key, String instruction,
+                                  String bibleText) throws Exception {
         connection.setRequestMethod("POST");
         connection.setConnectTimeout(30_000);
         connection.setReadTimeout(120_000);
@@ -45,7 +55,9 @@ final class GeminiClient {
         payload.put("generationConfig", new JSONObject()
                 .put("maxOutputTokens", 3072)
                 .put("temperature", 0.3));
-        connection.getOutputStream().write(payload.toString().getBytes(StandardCharsets.UTF_8));
+        try (OutputStream output = connection.getOutputStream()) {
+            output.write(payload.toString().getBytes(StandardCharsets.UTF_8));
+        }
 
         int status = connection.getResponseCode();
         InputStream stream = status >= 200 && status < 300
@@ -61,7 +73,7 @@ final class GeminiClient {
         }
         JSONObject candidate = candidates.getJSONObject(0);
         if ("MAX_TOKENS".equals(candidate.optString("finishReason"))) {
-            throw new IllegalStateException("O resumo atingiu o limite. Tente novamente com um texto menor.");
+            throw new IllegalStateException("A resposta atingiu o limite de tamanho. Tente novamente com um texto menor ou um pedido mais curto.");
         }
         JSONArray parts = candidate.getJSONObject("content").getJSONArray("parts");
         StringBuilder result = new StringBuilder();

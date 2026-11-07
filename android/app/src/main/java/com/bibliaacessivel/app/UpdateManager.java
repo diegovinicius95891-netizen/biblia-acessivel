@@ -24,10 +24,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** Coordena atualização Android sem misturar APKs ou regras da versão Windows. */
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
-            "Novidades da versão Android 4.5.2\n\n" +
-            "A entrada agora se chama Estudar e pesquisar temas com IA. A escolha entre o texto atual e a Bíblia toda aparece somente depois de abrir essa opção.\n\n" +
-            "Os temas aparecem em ordem alfabética, e o botão de envio anuncia o nome do tema em vez do livro aberto.\n\n" +
-            "As melhorias de foco do TalkBack, o Modo culto e o gesto de dois dedos para trocar capítulos continuam preservados.\n\n" +
+            "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
+            "A pesquisa por voz do Modo culto não pede mais a permissão do microfone: quem escuta é o reconhecedor de voz do próprio Android.\n\n" +
+            "Os devocionais do site agora são verificados duas vezes por dia, economizando bateria e dados móveis.\n\n" +
+            "O aplicativo acompanha o tema escuro do Android, e os textos longos mostram a barra de rolagem.\n\n" +
+            "Na tela de Atualizações, o foco inicial vai direto para Verificar atualizações, e o resumo muda na hora ao alternar as opções.\n\n" +
+            "A Rádio Gospel não pula mais de louvor quando a lista é atualizada durante a reprodução.\n\n" +
+            "A Ajuda foi revisada, e os erros longos do Teólogo de IA ficaram mais claros.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;

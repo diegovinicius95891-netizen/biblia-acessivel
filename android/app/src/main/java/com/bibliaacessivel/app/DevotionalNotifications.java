@@ -13,20 +13,19 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.work.Constraints;
-import androidx.work.ExistingWorkPolicy;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
-import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
 import java.util.concurrent.TimeUnit;
 
-/** Agenda a verificação diária e publica avisos nativos sem expor dados pessoais. */
+/** Agenda a verificação duas vezes ao dia e publica avisos nativos sem expor dados pessoais. */
 final class DevotionalNotifications {
     static final String OPEN_DEVOTIONALS = "open_devotionals";
     static final String CHANNEL_ID = "new_devotionals";
     private static final String PERIODIC_NAME = "daily-devotional-check";
+    static final long CHECK_INTERVAL_HOURS = 12;
 
     private DevotionalNotifications() {}
 
@@ -40,13 +39,13 @@ final class DevotionalNotifications {
         }
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED).build();
+        // Duas consultas por dia bastam para devocionais e poupam bateria e dados móveis.
         PeriodicWorkRequest periodic = new PeriodicWorkRequest.Builder(
-                DevotionalWorker.class, 15, TimeUnit.MINUTES)
+                DevotionalWorker.class, CHECK_INTERVAL_HOURS, TimeUnit.HOURS)
                 .setConstraints(constraints).build();
         manager.enqueueUniquePeriodicWork(PERIODIC_NAME, ExistingPeriodicWorkPolicy.UPDATE, periodic);
-        manager.enqueueUniqueWork(PERIODIC_NAME + "-now", ExistingWorkPolicy.REPLACE,
-                new OneTimeWorkRequest.Builder(DevotionalWorker.class)
-                        .setConstraints(constraints).build());
+        // Remove a consulta imediata que versões anteriores disparavam a cada abertura.
+        manager.cancelUniqueWork(PERIODIC_NAME + "-now");
     }
 
     static void createChannel(Context context) {

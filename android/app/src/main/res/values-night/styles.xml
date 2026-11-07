@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Acompanha o tema escuro do Android, com acento claro para manter contraste alto. -->
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#9FA8DA</item>
+        <item name="android:navigationBarColor">#000000</item>
+    </style>
+</resources>
