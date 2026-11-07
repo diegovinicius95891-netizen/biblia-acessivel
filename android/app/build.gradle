@@ -13,7 +13,9 @@ android {
     }
 
     defaultConfig {
-        applicationId 'com.bibliaacessivel.app'
+        // Na Play o app foi registrado como com.audiogamesbrasil.biblia; o APK do GitHub mantém o pacote antigo
+        // para continuar atualizando os aparelhos que já o têm.
+        applicationId playStoreBuild ? 'com.audiogamesbrasil.biblia' : 'com.bibliaacessivel.app'
         minSdk 26
         targetSdk 37
         versionCode 25

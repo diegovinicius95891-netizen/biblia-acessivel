@@ -55,5 +55,5 @@ Mais opções → Configurações → Colar ou alterar chave do Google Gemini.
 
 - Sem o atualizador do GitHub: as atualizações chegam pela própria Play.
 - Sem a permissão de instalar outros aplicativos.
-- O pacote é `com.bibliaacessivel.app`, o mesmo do APK do GitHub. Como as assinaturas são diferentes,
-  quem tem o APK do GitHub precisa **exportar o backup, desinstalar** e instalar pela Play (e importar o backup).
+- O pacote da Play é `com.audiogamesbrasil.biblia` (o APK do GitHub continua `com.bibliaacessivel.app`).
+  São apps separados: quem quiser trocar pode exportar o backup no APK do GitHub e importar na versão da Play.
