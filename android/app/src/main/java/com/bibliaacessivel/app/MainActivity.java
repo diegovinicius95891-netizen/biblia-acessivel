@@ -242,8 +242,34 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 this::confirmBookChoice));
         root.addView(actionButton("Mais opções", "Abrir traduções, pesquisa, notas e configurações",
                 this::showMoreOptions));
+        // A Play exige o faturamento dela para doações; o Pix aparece só na versão do GitHub.
+        if (BuildConfig.GITHUB_UPDATES) {
+            root.addView(actionButton("Apoie a Bíblia AGB com uma doação",
+                    "Copiar a chave Pix e doar o valor que quiser", this::showDonation));
+        }
         setContentView(root);
         focusForTalkBack(root.getChildAt(2), "Continuar leitura em " + currentReference());
+    }
+
+    static final String PIX_KEY = "diego@audiogames.com.br";
+
+    /** Mostra a chave Pix para doações de qualquer valor. */
+    private void showDonation() {
+        LinearLayout root = screen("Apoie a Bíblia AGB", this::showMainMenu);
+        root.addView(paragraph("A Bíblia AGB é gratuita, sem anúncios e feita para ser acessível. " +
+                "Se ela abençoa a sua vida, você pode ajudar a manter o projeto com uma doação " +
+                "pelo Pix, do valor que quiser."));
+        root.addView(paragraph("Chave Pix (e-mail): " + PIX_KEY + ". Recebedor: Diego, no Nubank."));
+        root.addView(actionButton("Copiar chave Pix", "Copiar " + PIX_KEY + " para colar no app do banco", () -> {
+            ((ClipboardManager) getSystemService(CLIPBOARD_SERVICE))
+                    .setPrimaryClip(ClipData.newPlainText("Chave Pix", PIX_KEY));
+            toast("Chave Pix copiada. Abra o app do seu banco, escolha Pix, Pagar com chave, e cole.");
+        }));
+        root.addView(paragraph("Como doar: copie a chave, abra o aplicativo do seu banco, escolha " +
+                "Pix, depois Transferir ou Pagar com chave, cole a chave e digite o valor. " +
+                "Confira se o nome do recebedor é Diego antes de confirmar. Que Deus abençoe!"));
+        setContentView(root);
+        focusForTalkBack(root.getChildAt(2), "Apoie a Bíblia AGB");
     }
 
     /** Confirma se a pessoa deseja trocar o livro ou retomar exatamente a posição salva. */

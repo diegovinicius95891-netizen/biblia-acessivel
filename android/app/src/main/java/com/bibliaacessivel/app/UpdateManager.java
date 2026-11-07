@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
+            "Nova opção Apoie a Bíblia AGB, no menu principal: copie a chave Pix e doe o valor que quiser.\n\n" +
             "Corrigido o fechamento do aplicativo ao abrir textos longos: respostas da IA, lembrete, Ajuda, Licenças, " +
             "devocionais e anotações.\n\n" +
             "Nova identidade visual da Áudio Games Brasil: abertura com o logo AGB e papel de parede em todas as telas, " +
