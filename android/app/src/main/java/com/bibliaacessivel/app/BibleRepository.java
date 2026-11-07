@@ -138,6 +138,18 @@ final class BibleRepository implements AutoCloseable {
         return matches.size() == 1 ? matches.get(0) : null;
     }
 
+    /**
+     * Para nomes gravados pelo próprio aplicativo (planos, favoritos, versículo do dia), o nome exato
+     * vale mais que a família: "João" é o Evangelho, e não uma pergunta entre João e as cartas.
+     */
+    Models.Book findExactBook(String translationId, String name) {
+        String wanted = normalizeBookQuery(name);
+        for (Models.Book book : books(translationId)) {
+            if (normalizeBookQuery(book.name).equals(wanted)) return book;
+        }
+        return findBook(translationId, name);
+    }
+
     /** Localiza nomes, códigos, ordinais falados e famílias ambíguas como "Pedro". */
     List<Models.Book> matchingBooks(String translationId, String query) {
         List<Models.Book> available = new ArrayList<>();

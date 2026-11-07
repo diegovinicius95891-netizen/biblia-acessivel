@@ -16,8 +16,8 @@ android {
         applicationId 'com.bibliaacessivel.app'
         minSdk 26
         targetSdk playStoreBuild ? 36 : 35
-        versionCode 23
-        versionName '4.5.3'
+        versionCode 24
+        versionName '4.6.0'
         buildConfigField 'boolean', 'GITHUB_UPDATES', (!playStoreBuild).toString()
     }
 

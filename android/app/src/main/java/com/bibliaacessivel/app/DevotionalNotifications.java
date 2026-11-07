@@ -20,12 +20,15 @@ import androidx.work.WorkManager;
 
 import java.util.concurrent.TimeUnit;
 
-/** Agenda a verificação duas vezes ao dia e publica avisos nativos sem expor dados pessoais. */
+/** Agenda a verificação a cada 15 minutos e publica avisos nativos sem expor dados pessoais. */
 final class DevotionalNotifications {
     static final String OPEN_DEVOTIONALS = "open_devotionals";
-    static final String CHANNEL_ID = "new_devotionals";
+    // Canal novo com prioridade alta: o antigo não pode ter a importância alterada depois de criado.
+    static final String CHANNEL_ID = "new_devotionals_alert";
+    private static final String OLD_CHANNEL_ID = "new_devotionals";
     private static final String PERIODIC_NAME = "daily-devotional-check";
-    static final long CHECK_INTERVAL_HOURS = 12;
+    /** O menor intervalo que o Android permite para verificações em segundo plano. */
+    static final long CHECK_INTERVAL_MINUTES = 15;
 
     private DevotionalNotifications() {}
 
@@ -39,9 +42,9 @@ final class DevotionalNotifications {
         }
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED).build();
-        // Duas consultas por dia bastam para devocionais e poupam bateria e dados móveis.
+        // O aviso de devocional novo deve chegar rápido: a consulta leva poucos bytes.
         PeriodicWorkRequest periodic = new PeriodicWorkRequest.Builder(
-                DevotionalWorker.class, CHECK_INTERVAL_HOURS, TimeUnit.HOURS)
+                DevotionalWorker.class, CHECK_INTERVAL_MINUTES, TimeUnit.MINUTES)
                 .setConstraints(constraints).build();
         manager.enqueueUniquePeriodicWork(PERIODIC_NAME, ExistingPeriodicWorkPolicy.UPDATE, periodic);
         // Remove a consulta imediata que versões anteriores disparavam a cada abertura.
@@ -51,8 +54,9 @@ final class DevotionalNotifications {
     static void createChannel(Context context) {
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) return;
+        manager.deleteNotificationChannel(OLD_CHANNEL_ID);
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                "Novos devocionais", NotificationManager.IMPORTANCE_DEFAULT);
+                "Novos devocionais", NotificationManager.IMPORTANCE_HIGH);
         channel.setDescription("Avisa quando Diego publica um novo devocional no site.");
         manager.createNotificationChannel(channel);
     }
@@ -74,7 +78,7 @@ final class DevotionalNotifications {
                 .setContentTitle(count == 1 ? "Novo devocional" : "Novos devocionais")
                 .setContentText(text)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
-                .setContentIntent(pending).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_DEFAULT);
+                .setContentIntent(pending).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH);
         manager.notify(4001, notification.build());
     }
 }

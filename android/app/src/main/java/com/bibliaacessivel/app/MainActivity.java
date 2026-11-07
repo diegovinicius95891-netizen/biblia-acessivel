@@ -106,6 +106,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        CrashLog.install(this);
         if (Build.VERSION.SDK_INT >= 33) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                     android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, () -> {
@@ -144,12 +145,17 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                     if (isFinishing() || isDestroyed()) return;
                     if (getIntent().getBooleanExtra(DevotionalNotifications.OPEN_DEVOTIONALS, false)) {
                         showOnlineDevotionals();
+                    } else if (getIntent().getBooleanExtra(Reminders.OPEN_PLANS, false)) {
+                        openActivePlan();
                     } else {
                         showMainMenu();
                     }
                     if (BuildConfig.GITHUB_UPDATES) updateManager.onAppReady();
                     DevotionalNotifications.schedule(this);
+                    Reminders.schedule(this);
                     getWindow().getDecorView().postDelayed(this::ensureDevotionalNotificationPermission, 1200);
+                    showLastCrashReport();
+                    deliverPendingAi();
                 });
             } catch (Exception error) {
                 runOnUiThread(() -> {
@@ -358,7 +364,14 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         navigation.addView(actionButton("Próximo capítulo",
                 nextChapterDescription(), () -> changeReadingChapter(1)), weighted());
         root.addView(navigation);
+        root.addView(continuousActive
+                ? actionButton("Parar leitura em voz alta", "Interromper a leitura contínua",
+                        () -> stopContinuousReading("Leitura em voz alta encerrada."))
+                : actionButton("Ler em voz alta", "Ler o capítulo a partir do versículo atual, com temporizador opcional",
+                        this::chooseContinuousReading));
         List<Models.Verse> verses = bible.chapter(translationId, selectedBook.code, selectedChapter);
+        userData.recordReading(translationId, selectedBook, selectedChapter,
+                selectedVerse == null ? "1" : selectedVerse.number);
         ListView list = listView(verses);
         list.setContentDescription("Versículos de " + currentChapterReference() +
                 ". Deslize com dois dedos para a esquerda para voltar o capítulo ou para a direita para avançar.");
@@ -373,48 +386,53 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(paragraph("Ative um versículo para abrir suas ações. Também há botões e gesto de dois dedos para trocar de capítulo."));
         setContentView(root);
         list.setSelection(verseIndex(verses, selectedVerse == null ? "1" : selectedVerse.number));
-        focusForTalkBack(list, "Versículos de " + currentChapterReference() + ".");
+        // Durante a leitura contínua, a voz já anuncia o capítulo; o TalkBack não fala por cima.
+        focusForTalkBack(list, continuousActive ? "" : "Versículos de " + currentChapterReference() + ".");
     }
 
     /** Reúne recursos secundários numa lista nativa navegável. */
     private void showMoreOptions() {
-        LinearLayout root = screen("Mais opções", this::showMainMenu);
-        String[] options = {
-                "Traduções", "Comparar traduções", "Ir para uma referência", "Pesquisar na Bíblia", "Estudos — Teólogo de IA",
-                "Fazer devocional", "Devocionais novos do site", "Rádio Gospel", "Anotações por dia",
-                "Harpa Cristã", "Quiz bíblico", "Status do quiz", "Modo culto", "Atualizações",
-                "Configurações", "Ideias, sugestões e suporte", "Licenças, leis e justificativa", "Ajuda"
-        };
-        List<String> visibleOptions = new ArrayList<>(Arrays.asList(options));
-        if (!BuildConfig.GITHUB_UPDATES) { visibleOptions.remove(13); }
-        ListView list = listView(visibleOptions);
-        list.setContentDescription("Mais opções");
-        list.setOnItemClickListener((parent, view, position, id) -> {
-            int option = !BuildConfig.GITHUB_UPDATES && position >= 13 ? position + 1 : position;
-            switch (option) {
-                case 0: showTranslations(); break;
-                case 1: showComparison(); break;
-                case 2: showReference(); break;
-                case 3: showSearch(); break;
-                case 4: showStudies(); break;
-                case 5: showDevotional(); break;
-                case 6: showOnlineDevotionals(); break;
-                case 7: showGospelRadio(); break;
-                case 8: showNotes(); break;
-                case 9: showHymnal(); break;
-                case 10: showQuiz(); break;
-                case 11: showQuizStatus(); break;
-                case 12: showWorshipMode(); break;
-                case 13: showUpdates(); break;
-                case 14: showSettings(); break;
-                case 15: openIdeasEmail(); break;
-                case 16: showLegal(); break;
-                default: showHelp();
-            }
-        });
+        // Agrupado por assunto, como no Windows: leitura, estudo, devoção, quiz e sistema.
+        Map<String, Runnable> options = new LinkedHashMap<>();
+        options.put("Ir para uma referência", this::showReference);
+        options.put("Pesquisar na Bíblia", this::showSearch);
+        options.put("Traduções", this::showTranslations);
+        options.put("Comparar traduções", this::showComparison);
+        options.put("Planos de leitura", this::showPlans);
+        options.put("Histórico de leitura", this::showReadingHistory);
+        options.put("Favoritos", this::showFavorites);
+        options.put("Modo culto", this::showWorshipMode);
+        options.put("Estudos — Teólogo de IA", this::showStudies);
+        options.put("Memorização de versículos", this::showMemorization);
+        options.put("Meu momento com Deus", this::showMoment);
+        options.put("Fazer devocional", this::showDevotional);
+        options.put("Anotações por dia", this::showNotes);
+        options.put("Diário de oração", this::showPrayers);
+        options.put("Devocionais novos do site", this::showOnlineDevotionals);
+        options.put("Rádio Gospel", this::showGospelRadio);
+        options.put("Harpa Cristã", this::showHymnal);
+        options.put("Quiz bíblico", this::showQuiz);
+        options.put("Status do quiz", this::showQuizStatus);
+        options.put("Lembrete diário", this::showReminderSettings);
+        options.put("Configurações", this::showSettings);
+        options.put("Backup e restauração", this::showBackup);
+        if (BuildConfig.GITHUB_UPDATES) options.put("Atualizações", this::showUpdates);
+        options.put("Ideias, sugestões e suporte", this::openIdeasEmail);
+        options.put("Ajuda", this::showHelp);
+        options.put("Licenças, leis e justificativa", this::showLegal);
+        showMenuScreen("Mais opções", this::showMainMenu, options);
+    }
+
+    /** Tela de lista em que cada item tem uma ação própria; evita índices frágeis. */
+    private void showMenuScreen(String title, Runnable back, Map<String, Runnable> options) {
+        LinearLayout root = screen(title, back);
+        List<String> labels = new ArrayList<>(options.keySet());
+        ListView list = listView(labels);
+        list.setContentDescription(title);
+        list.setOnItemClickListener((parent, view, position, id) -> options.get(labels.get(position)).run());
         root.addView(list, fill());
         setContentView(root);
-        focusForTalkBack(list, "Mais opções.");
+        focusForTalkBack(list, title + ".");
     }
 
     /** Lista categorias prontas e a pergunta livre do Teólogo de IA. */
@@ -424,20 +442,22 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "A resposta usa a passagem atual e exige sua chave do Google Gemini."));
         root.addView(actionButton("Estudar e pesquisar temas com IA",
                 "Estudar e pesquisar temas com inteligência artificial", this::showStudyThemeScope));
+        final String translation = translationId;
+        final String bookCode = selectedBook.code;
+        final int chapter = selectedChapter;
         root.addView(actionButton("Resumir o capítulo atual",
                 "Gerar resumo de " + currentChapterReference(), () ->
                         runAi("Resumo de " + currentChapterReference(),
                                 "Resuma o capítulo em no máximo 320 palavras, destaque sua mensagem " +
                                         "central e conclua completamente.",
-                                () -> bible.chapterText(
-                                        translationId, selectedBook.code, selectedChapter),
+                                () -> bible.chapterText(translation, bookCode, chapter),
                                 this::showStudies)));
         root.addView(actionButton("Resumir o livro atual",
                 "Gerar resumo de " + selectedBook.name, () ->
                         runAi("Resumo de " + selectedBook.name,
                                 "Resuma o livro em no máximo 550 palavras, apresente estrutura, temas " +
                                         "principais e conclusão completa.",
-                                () -> bible.bookText(translationId, selectedBook.code),
+                                () -> bible.bookText(translation, bookCode),
                                 this::showStudies)));
         List<AiStudyCatalog.Topic> topics = AiStudyCatalog.TOPICS;
         ListView list = listView(topics);
@@ -511,10 +531,21 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Abre a pergunta usando o alcance explicitamente escolhido pelo usuário. */
     private void showAiStudyComposer(AiStudyCatalog.Topic topic, Runnable back, boolean useCurrentText) {
+        if (useCurrentText && selectedVerse == null) {
+            toast("Abra um capítulo antes de estudar o texto atual. Usando a Bíblia toda.");
+            useCurrentText = false;
+        }
+        final boolean currentText = useCurrentText;
+        final Models.Verse verse = selectedVerse;
         LinearLayout root = screen("Teólogo de IA — " + topic.label, back);
-        String scope = useCurrentText ? currentReference() : "toda a Bíblia";
-        root.addView(paragraph(useCurrentText
-                ? "Passagem atual: " + currentReference() + ". " + selectedVerse.text
+        String scope = currentText ? currentReference() : "toda a Bíblia";
+        // Fotografa a passagem agora: o pedido roda em segundo plano e a leitura pode mudar.
+        final String reference = currentReference();
+        final String translation = translationId;
+        final String bookCode = selectedBook.code;
+        final int chapter = selectedChapter;
+        root.addView(paragraph(currentText
+                ? "Passagem atual: " + reference + ". " + verse.text
                 : "Escopo selecionado: Bíblia toda."));
         EditText question = editText("Pergunta para o Teólogo de IA", true);
         question.setMinLines(3);
@@ -524,17 +555,17 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             try {
                 String instruction = AiStudyCatalog.instruction(
                         topic, question.getText().toString(), scope) +
-                        (useCurrentText
+                        (currentText
                                 ? " Parta do texto fornecido e diga claramente se a relação com o tema não for direta."
                                 : " Desenvolva o tema considerando a Bíblia toda, com passagens representativas " +
                                 "e contextualizadas do Antigo e do Novo Testamento quando pertinentes.");
-                runAi(topic.label + " — " + (useCurrentText ? "texto atual" : "Bíblia toda"), instruction,
-                        useCurrentText
-                                ? () -> currentReference() + " — " + selectedVerse.text +
+                runAi(topic.label + " — " + (currentText ? "texto atual" : "Bíblia toda"), instruction,
+                        currentText
+                                ? () -> reference + " — " + verse.text +
                                 "\n\nContexto completo do capítulo:\n" +
-                                bible.chapterText(translationId, selectedBook.code, selectedChapter)
+                                bible.chapterText(translation, bookCode, chapter)
                                 : () -> "Escopo solicitado: toda a Bíblia. Tema: " + topic.label + ".",
-                        () -> showAiStudyComposer(topic, back, useCurrentText));
+                        () -> showAiStudyComposer(topic, back, currentText));
             } catch (IllegalArgumentException error) {
                 question.setError(error.getMessage());
                 question.requestFocus();
@@ -1002,44 +1033,36 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Exibe opções persistentes de IA, voz, velocidade e contraste do sistema. */
     private void showSettings() {
-        LinearLayout root = screen("Configurações", this::showMoreOptions);
-        String[] options = {
-                "Colar ou alterar chave do Google Gemini",
-                "Obter chave da API do Google",
-                "Escolher modelo de inteligência artificial",
-                "Escolher voz do Android ou desativar",
-                "Velocidade da voz",
-                "Alternar atualizações automáticas. " +
-                        (preferences.getBoolean("updates_automatic", true) ? "Ativadas" : "Desativadas"),
-                "Alternar notificações de atualização. " +
-                        (preferences.getBoolean("updates_notify", true) ? "Ativadas" : "Desativadas"),
-                "Alternar notificações de novos devocionais. " +
-                        (preferences.getBoolean("devotionals_notify", true) ? "Ativadas" : "Desativadas"),
-                "Abrir configurações de notificações do Android",
-                "Abrir configurações de acessibilidade do Android"
-        };
-        List<String> visibleOptions = new ArrayList<>(Arrays.asList(options));
-        if (!BuildConfig.GITHUB_UPDATES) { visibleOptions.remove(6); visibleOptions.remove(5); }
-        ListView list = listView(visibleOptions);
-        list.setContentDescription("Opções de configurações");
-        list.setOnItemClickListener((parent, view, position, id) -> {
-            int option = !BuildConfig.GITHUB_UPDATES && position >= 5 ? position + 2 : position;
-            switch (option) {
-                case 0: editApiKey(); break;
-                case 1: openGoogleApiKeyPage(); break;
-                case 2: chooseModel(); break;
-                case 3: chooseVoice(); break;
-                case 4: chooseSpeechRate(); break;
-                case 5: if (BuildConfig.GITHUB_UPDATES) updateManager.toggleAutomatic(); showSettings(); break;
-                case 6: if (BuildConfig.GITHUB_UPDATES) updateManager.toggleNotifications(); showSettings(); break;
-                case 7: toggleDevotionalNotifications(); break;
-                case 8: openNotificationSettings(); break;
-                default: startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-            }
-        });
-        root.addView(list, fill());
-        setContentView(root);
-        focusForTalkBack(list, "Configurações.");
+        Map<String, Runnable> options = new LinkedHashMap<>();
+        options.put("Colar ou alterar chave do Google Gemini", this::editApiKey);
+        options.put("Obter chave da API do Google", this::openGoogleApiKeyPage);
+        options.put("Escolher modelo de inteligência artificial. Atual: " +
+                preferences.getString("ai_model", AI_MODELS[0]), this::chooseModel);
+        options.put("Escolher voz do Android ou desativar", this::chooseVoice);
+        options.put("Velocidade da voz", this::chooseSpeechRate);
+        if (BuildConfig.GITHUB_UPDATES) {
+            options.put("Alternar atualizações automáticas. " +
+                    (preferences.getBoolean("updates_automatic", true) ? "Ativadas" : "Desativadas"), () -> {
+                updateManager.toggleAutomatic();
+                showSettings();
+            });
+            options.put("Alternar notificações de atualização. " +
+                    (preferences.getBoolean("updates_notify", true) ? "Ativadas" : "Desativadas"), () -> {
+                updateManager.toggleNotifications();
+                showSettings();
+            });
+        }
+        options.put("Alternar avisos de novos devocionais. " +
+                (preferences.getBoolean("devotionals_notify", true) ? "Ativados" : "Desativados"),
+                this::toggleDevotionalNotifications);
+        options.put("Lembrete diário de leitura. " + (Reminders.enabled(preferences)
+                ? "Ativado às " + Reminders.timeLabel(preferences) : "Desativado"), this::showReminderSettings);
+        options.put("Permitir notificações da Bíblia" + (notificationsAllowed() ? ". Já permitidas" : ""),
+                () -> ensureNotificationPermission(true));
+        options.put("Abrir configurações de notificações do Android", this::openNotificationSettings);
+        options.put("Abrir configurações de acessibilidade do Android",
+                () -> startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+        showMenuScreen("Configurações", this::showMoreOptions, options);
     }
 
     /** Converte o HTML jurídico do banco em texto selecionável e acessível. */
@@ -1100,9 +1123,18 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                         : "ATUALIZAÇÕES\n\nAs novas versões chegam pela Google Play.\n\n") +
                 "DEVOCIONAIS DO SITE\n\n" +
                 "A seção Devocionais novos do site mostra todos os textos publicados por Diego e guarda a última " +
-                "cópia para leitura sem internet. O Android verifica duas vezes por dia, mesmo com o aplicativo " +
-                "fechado e avisa na barra de notificações quando encontra uma publicação realmente nova. " +
-                "A notificação pode ser desligada nas Configurações.\n\n" +
+                "cópia para leitura sem internet. O Android verifica a cada 15 minutos, mesmo com o aplicativo " +
+                "fechado, e avisa na barra de notificações assim que encontra uma publicação nova. " +
+                "O aviso pode ser desligado nas Configurações.\n\n" +
+                "PLANOS, LEMBRETE E LEITURA EM VOZ ALTA\n\nPlanos de leitura tem os mesmos 17 planos do Windows. " +
+                "O Lembrete diário avisa, no horário escolhido, o versículo do dia, a leitura do plano ativo e quantos " +
+                "dias seguidos você leu. Em Versículos, Ler em voz alta lê o capítulo e continua nos seguintes, " +
+                "com temporizador para parar no fim do capítulo ou depois de 15, 30 ou 60 minutos.\n\n" +
+                "ORAÇÃO, FAVORITOS E MEMORIZAÇÃO\n\nO Diário de oração guarda pedidos e respostas. Meu momento com Deus " +
+                "reúne versículo do dia, reflexão, prática e oração. Favoritos e Histórico de leitura abrem a passagem " +
+                "com um toque. Na Memorização, pratique completando o versículo com palavras escondidas.\n\n" +
+                "BACKUP\n\nBackup e restauração usa o mesmo arquivo da versão Windows: exporte no celular e importe " +
+                "no computador, ou o contrário.\n\n" +
                 "PRIVACIDADE\n\nNotas e marcadores ficam somente no aparelho. A chave Gemini é protegida " +
                 "pelo Android Keystore. A IA é opcional e exige internet.", this::showMoreOptions);
     }
@@ -1122,20 +1154,46 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Explica e pede a permissão do Android 13 ou superior uma única vez. */
     private void ensureDevotionalNotificationPermission() {
-        if (Build.VERSION.SDK_INT < 33 || !preferences.getBoolean("devotionals_notify", true) ||
-                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED ||
-                BuildConfig.VERSION_NAME.equals(preferences.getString(
-                        "devotionals_permission_prompt_version", ""))) return;
-        new AlertDialog.Builder(this).setTitle("Avisos de novos devocionais")
-                .setMessage("Permita as notificações para receber o aviso na barra do Android mesmo quando a Bíblia estiver fechada. A Bíblia continuará funcionando se você não permitir.")
-                .setPositiveButton("Continuar", (dialog, which) -> {
-                    preferences.edit().putString("devotionals_permission_prompt_version",
-                            BuildConfig.VERSION_NAME).apply();
-                    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 4002);
+        ensureNotificationPermission(false);
+    }
+
+    /** Verdadeiro quando o Android vai mostrar as notificações da Bíblia. */
+    private boolean notificationsAllowed() {
+        boolean permission = Build.VERSION.SDK_INT < 33 ||
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        return permission && androidx.core.app.NotificationManagerCompat.from(this).areNotificationsEnabled();
+    }
+
+    /**
+     * Pede a permissão de notificações para devocionais e lembretes. Na abertura, pergunta uma vez
+     * por versão; pelo botão das telas (manual), pergunta sempre e, se o Android já bloqueou o
+     * pedido, leva direto às configurações de notificação da Bíblia.
+     */
+    private void ensureNotificationPermission(boolean manual) {
+        boolean wanted = preferences.getBoolean("devotionals_notify", true) || Reminders.enabled(preferences);
+        if (!wanted || notificationsAllowed()) {
+            if (manual) toast("As notificações da Bíblia já estão permitidas.");
+            return;
+        }
+        if (!manual && BuildConfig.VERSION_NAME.equals(preferences.getString(
+                "devotionals_permission_prompt_version", ""))) return;
+        preferences.edit().putString("devotionals_permission_prompt_version", BuildConfig.VERSION_NAME).apply();
+        boolean canAsk = Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+                (!preferences.getBoolean("notification_permission_requested", false) ||
+                        shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS));
+        new AlertDialog.Builder(this).setTitle("Permitir notificações")
+                .setMessage("Permita as notificações para saber na hora quando sair um devocional novo e para " +
+                        "receber o lembrete diário de leitura, mesmo com a Bíblia fechada.")
+                .setPositiveButton(canAsk ? "Permitir" : "Abrir configurações", (dialog, which) -> {
+                    if (canAsk) {
+                        preferences.edit().putBoolean("notification_permission_requested", true).apply();
+                        requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 4002);
+                    } else {
+                        openNotificationSettings();
+                    }
                 })
-                .setNegativeButton("Agora não", (dialog, which) ->
-                        preferences.edit().putString("devotionals_permission_prompt_version",
-                                BuildConfig.VERSION_NAME).apply())
+                .setNegativeButton("Agora não", null)
                 .show();
     }
 
@@ -1482,20 +1540,26 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         showChoiceDialog("Menu do livro " + selectedBook.name, "Escolha uma ação.",
                 new String[]{"Gerar resumo do livro com IA"}, which -> {
                     int words = 550;
-                    runAi("Resumo de " + selectedBook.name,
-                            "Resuma " + selectedBook.name + " em no máximo " + words +
+                    final String translation = translationId;
+                    final Models.Book book = selectedBook;
+                    runAi("Resumo de " + book.name,
+                            "Resuma " + book.name + " em no máximo " + words +
                                     " palavras, em poucos parágrafos, e conclua completamente.",
-                            () -> bible.bookText(translationId, selectedBook.code));
+                            () -> bible.bookText(translation, book.code));
                 });
     }
 
     /** Mantém a IA como primeira ação do capítulo. */
     private void showChapterActions() {
         showChoiceDialog("Menu do capítulo " + selectedChapter, "Escolha uma ação.",
-                new String[]{"Gerar resumo do capítulo com IA"}, which ->
-                        runAi("Resumo de " + currentChapterReference(),
-                                "Resuma o capítulo em no máximo 320 palavras e conclua completamente.",
-                                () -> bible.chapterText(translationId, selectedBook.code, selectedChapter)));
+                new String[]{"Gerar resumo do capítulo com IA"}, which -> {
+                    final String translation = translationId;
+                    final String bookCode = selectedBook.code;
+                    final int chapter = selectedChapter;
+                    runAi("Resumo de " + currentChapterReference(),
+                            "Resuma o capítulo em no máximo 320 palavras e conclua completamente.",
+                            () -> bible.chapterText(translation, bookCode, chapter));
+                });
     }
 
     /** Oferece IA, estudos, anotação, cópia, marcador e voz para o texto atual. */
@@ -1507,16 +1571,19 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "Gerar explicação do versículo com IA", "Teólogo de IA — exegese, hermenêutica e estudos",
                 "Criar anotação", "Copiar texto",
                 "Copiar referência e texto", marked ? "Remover marcador" : "Adicionar marcador",
-                "Ouvir ou repetir pelo leitor de tela"
+                "Ouvir ou repetir pelo leitor de tela", "Ler em voz alta a partir daqui",
+                "Adicionar ou remover da memorização"
         };
         showChoiceDialog("Menu do versículo " + currentReference(), "Escolha uma ação.",
                 actions, which -> {
                     switch (which) {
-                        case 0:
+                        case 0: {
+                            final String verseText = selectedVerse.toString();
                             runAi("Explicação de " + currentReference(),
                                     "Explique " + currentReference() + " em linguagem simples, em no máximo 280 palavras.",
-                                    () -> selectedVerse.toString());
+                                    () -> verseText);
                             break;
+                        }
                         case 1: showVerseAiStudies(); break;
                         case 2: createNote(); break;
                         case 3: copy(selectedVerse.text); break;
@@ -1524,8 +1591,18 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                         case 5:
                             boolean nowMarked = userData.toggleBookmark(
                                     translationId, selectedBook.code, selectedChapter, selectedVerse.number);
-                            toast(nowMarked ? "Marcador adicionado." : "Marcador removido.");
+                            if (nowMarked) {
+                                userData.setBookmarkBookName(translationId, selectedBook.code, selectedChapter,
+                                        selectedVerse.number, selectedBook.name);
+                            }
+                            toast(nowMarked ? "Adicionado aos favoritos." : "Removido dos favoritos.");
                             break;
+                        case 7: chooseContinuousReading(); break;
+                        case 8: {
+                            boolean added = userData.toggleMemorized(translationId, selectedBook, selectedChapter, selectedVerse);
+                            toast(added ? "Adicionado à memorização." : "Removido da memorização.");
+                            break;
+                        }
                         default:
                             speakOrAnnounce(getWindow().getDecorView(), selectedVerse.toString());
                     }
@@ -1578,9 +1655,35 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         runAi(title, instruction, textSupplier, this::showMainMenu);
     }
 
+    /**
+     * Resultado da IA guardado fora da tela: se o Android fechar ou recriar a atividade enquanto
+     * o Gemini responde (tela bloqueada, troca de app, tema escuro), a resposta é mostrada na
+     * próxima vez que a Bíblia estiver visível, em vez de derrubar o aplicativo.
+     */
+    private static final class AiOutcome {
+        final String title;
+        final String text;
+        final boolean failed;
+
+        AiOutcome(String title, String text, boolean failed) {
+            this.title = title;
+            this.text = text;
+            this.failed = failed;
+        }
+    }
+
+    private static volatile AiOutcome pendingAiOutcome;
+    private static volatile int aiRequestId;
+    private static volatile boolean aiBusy;
+    private AlertDialog aiProgressDialog;
+
     /** Executa a IA e mantém uma rota de retorno adequada à tela que iniciou o estudo. */
     private void runAi(String title, String instruction, Supplier<String> textSupplier,
                        Runnable resultBack) {
+        if (aiBusy) {
+            toast("A inteligência artificial ainda está respondendo o pedido anterior. Aguarde.");
+            return;
+        }
         String apiKey = secureStore.loadApiKey();
         if (apiKey.isEmpty()) {
             new AlertDialog.Builder(this).setTitle("Chave necessária")
@@ -1590,20 +1693,83 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                     .setNegativeButton("Cancelar", null).show();
             return;
         }
-        View source = getWindow().getDecorView();
-        source.announceForAccessibility("Gerando conteúdo com inteligência artificial. Aguarde.");
-        toast("Gerando conteúdo com IA. Aguarde.");
         String model = preferences.getString("ai_model", AI_MODELS[0]);
+        int requestId = ++aiRequestId;
+        aiBusy = true;
+        aiResultBack = resultBack;
+        aiProgressDialog = new AlertDialog.Builder(this)
+                .setTitle("Gerando com inteligência artificial")
+                .setMessage(title + ". Aguarde; isso pode levar alguns segundos.")
+                .setNegativeButton("Cancelar", (dialog, which) -> {
+                    aiRequestId++;
+                    aiBusy = false;
+                    toast("Pedido à inteligência artificial cancelado.");
+                })
+                .setCancelable(false)
+                .create();
+        aiProgressDialog.show();
+        getWindow().getDecorView().announceForAccessibility(
+                "Gerando conteúdo com inteligência artificial. Aguarde.");
         new Thread(() -> {
+            AiOutcome outcome;
             try {
-                String result = GeminiClient.generate(apiKey, model, instruction, textSupplier.get());
-                runOnUiThread(() -> showTextScreen(title, result, resultBack));
-            } catch (Exception error) {
-                runOnUiThread(() -> new AlertDialog.Builder(this)
-                        .setTitle("Falha na inteligência artificial")
-                        .setMessage(error.getMessage()).setPositiveButton("OK", null).show());
+                String context = textSupplier.get();
+                String text;
+                try {
+                    text = GeminiClient.generate(apiKey, model, instruction, context);
+                } catch (GeminiClient.AiException modelError) {
+                    // O Google aposenta modelos de tempos em tempos: escolhe outro disponível e tenta uma vez.
+                    String replacement = modelError.getMessage() != null &&
+                            modelError.getMessage().startsWith("O modelo escolhido")
+                            ? bestAvailableModel(GeminiClient.listModels(apiKey)) : null;
+                    if (replacement == null) throw modelError;
+                    preferences.edit().putString("ai_model", replacement).apply();
+                    text = GeminiClient.generate(apiKey, replacement, instruction, context);
+                }
+                outcome = new AiOutcome(title, text, false);
+            } catch (GeminiClient.AiException error) {
+                outcome = new AiOutcome(title, error.getMessage(), true);
+            } catch (Throwable error) {
+                outcome = new AiOutcome(title,
+                        "Algo deu errado ao preparar o pedido. Tente novamente; se continuar, " +
+                                "escolha um capítulo em vez do livro inteiro.", true);
             }
-        }).start();
+            if (requestId != aiRequestId) return;
+            pendingAiOutcome = outcome;
+            aiBusy = false;
+            runOnUiThread(this::deliverPendingAi);
+        }, "gemini-request").start();
+    }
+
+    private Runnable aiResultBack;
+
+    /** Prefere modelos estáveis e rápidos: flash-lite, depois flash, depois qualquer outro. */
+    static String bestAvailableModel(List<String> models) {
+        String[] order = {"flash-lite", "flash", "pro", ""};
+        for (String wanted : order) {
+            for (String model : models) {
+                if (model.contains(wanted) && !model.contains("preview") && !model.contains("exp")) return model;
+            }
+        }
+        return models.isEmpty() ? null : models.get(0);
+    }
+
+    /** Mostra a resposta guardada somente quando esta tela ainda existe e está pronta. */
+    private void deliverPendingAi() {
+        if (isFinishing() || isDestroyed() || bible == null) return;
+        AiOutcome outcome = pendingAiOutcome;
+        if (outcome == null) return;
+        pendingAiOutcome = null;
+        if (aiProgressDialog != null && aiProgressDialog.isShowing()) {
+            try { aiProgressDialog.dismiss(); } catch (Exception ignored) { }
+        }
+        aiProgressDialog = null;
+        if (outcome.failed) {
+            new AlertDialog.Builder(this).setTitle("Falha na inteligência artificial")
+                    .setMessage(outcome.text).setPositiveButton("OK", null).show();
+        } else {
+            showTextScreen(outcome.title, outcome.text, aiResultBack != null ? aiResultBack : this::showMainMenu);
+        }
     }
 
     /** Edita a chave em campo protegido e salva pelo Android Keystore. */
@@ -1636,18 +1802,41 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         }
     }
 
-    /** Escolhe um dos modelos já suportados pelo cliente. */
+    /** Consulta os modelos ativos da chave; sem internet ou sem chave, usa a lista padrão. */
     private void chooseModel() {
+        String apiKey = secureStore.loadApiKey();
+        if (apiKey.isEmpty()) {
+            showModelChoices(new ArrayList<>(Arrays.asList(AI_MODELS)));
+            return;
+        }
+        toast("Consultando os modelos disponíveis para sua chave.");
+        new Thread(() -> {
+            List<String> models;
+            try {
+                models = GeminiClient.listModels(apiKey);
+            } catch (Exception error) {
+                models = new ArrayList<>();
+            }
+            if (models.isEmpty()) models = new ArrayList<>(Arrays.asList(AI_MODELS));
+            final List<String> choices = models;
+            runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed()) showModelChoices(choices);
+            });
+        }, "gemini-models").start();
+    }
+
+    private void showModelChoices(List<String> models) {
         String current = preferences.getString("ai_model", AI_MODELS[0]);
-        int checked = 0;
-        for (int i = 0; i < AI_MODELS.length; i++) if (AI_MODELS[i].equals(current)) checked = i;
+        String[] items = models.toArray(new String[0]);
+        int checked = Math.max(0, models.indexOf(current));
         AlertDialog modelDialog = new AlertDialog.Builder(this).setTitle("Modelo da inteligência artificial")
-                .setSingleChoiceItems(AI_MODELS, checked, (choiceDialog, which) -> {
-                    preferences.edit().putString("ai_model", AI_MODELS[which]).apply();
+                .setSingleChoiceItems(items, checked, (choiceDialog, which) -> {
+                    preferences.edit().putString("ai_model", items[which]).apply();
                     choiceDialog.dismiss();
-                    toast("Modelo selecionado: " + AI_MODELS[which]);
+                    toast("Modelo selecionado: " + items[which]);
                 }).setNegativeButton("Cancelar", null).create();
-        showDialogWithChoiceFocus(modelDialog, "Escolha o modelo da inteligência artificial.");
+        showDialogWithChoiceFocus(modelDialog, "Escolha o modelo da inteligência artificial. " +
+                items.length + " modelos disponíveis.");
     }
 
     /** Lista vozes instaladas pelo Android e inclui a desativação. */
@@ -1716,7 +1905,647 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     @Override public void onInit(int status) {
         ttsReady = status == TextToSpeech.SUCCESS;
-        if (ttsReady) applyVoice();
+        if (ttsReady) {
+            applyVoice();
+            tts.setOnUtteranceProgressListener(new android.speech.tts.UtteranceProgressListener() {
+                @Override public void onStart(String utteranceId) { }
+
+                @Override public void onDone(String utteranceId) {
+                    if (utteranceId != null && utteranceId.startsWith("continuo-")) {
+                        runOnUiThread(() -> continueReading(utteranceId));
+                    }
+                }
+
+                @Override public void onError(String utteranceId) {
+                    runOnUiThread(() -> stopContinuousReading("A leitura em voz alta foi interrompida."));
+                }
+            });
+        }
+    }
+
+    // Abrir referências --------------------------------------------------------
+    /** Abre "Livro capítulo" ou "Livro capítulo:versículo" na tela de Versículos. */
+    private boolean openReading(String reference) {
+        try {
+            BibleReference parsed = BibleReference.parse(reference);
+            Models.Book book = bible.findExactBook(translationId, parsed.book);
+            if (book == null || parsed.chapter < 1 || parsed.chapter > bible.chapterCount(translationId, book.code)) {
+                toast("Não encontrei " + reference + " nesta tradução.");
+                return false;
+            }
+            selectedBook = book;
+            selectedChapter = parsed.chapter;
+            selectVerse(parsed.startVerse == null ? "1" : parsed.startVerse);
+            savePosition();
+            showVerses();
+            return true;
+        } catch (Exception error) {
+            toast("Não consegui abrir " + reference + ".");
+            return false;
+        }
+    }
+
+    // Planos de leitura --------------------------------------------------------
+    private Map<String, ReadingPlans.Plan> plans() {
+        return ReadingPlans.build(bible, translationId);
+    }
+
+    private void showPlans() {
+        Map<String, ReadingPlans.Plan> catalog = plans();
+        LinearLayout root = screen("Planos de leitura", this::showMoreOptions);
+        root.addView(paragraph("Escolha um plano para iniciar, ler o dia ou marcar como concluído. " +
+                "O lembrete diário avisa a leitura do plano ativo."));
+        List<String> labels = new ArrayList<>();
+        List<ReadingPlans.Plan> order = new ArrayList<>(catalog.values());
+        for (ReadingPlans.Plan plan : order) {
+            android.content.ContentValues state = userData.planState(plan.id);
+            if (state == null) {
+                labels.add(plan.name + ". Não iniciado. " + plan.days() + " dias.");
+            } else {
+                int completed = userData.planCompletedDays(plan.id).size();
+                labels.add(plan.name + ". " + state.getAsString("status") + ". " + completed + " de " + plan.days() +
+                        " dias concluídos, " + Math.round(100.0 * completed / plan.days()) + " por cento. Dia atual: " +
+                        state.getAsInteger("current_day") + ".");
+            }
+        }
+        ListView list = listView(labels);
+        list.setContentDescription("Planos de leitura");
+        list.setOnItemClickListener((parent, view, position, id) -> showPlanActions(order.get(position)));
+        root.addView(list, fill());
+        setContentView(root);
+        focusForTalkBack(list, "Planos de leitura.");
+    }
+
+    private void showPlanActions(ReadingPlans.Plan plan) {
+        android.content.ContentValues state = userData.planState(plan.id);
+        List<String> labels = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        labels.add("Ouvir descrição e progresso");
+        actions.add(() -> {
+            int completed = state == null ? 0 : userData.planCompletedDays(plan.id).size();
+            String started = state == null ? "ainda não iniciado" : state.getAsString("started_at").substring(0, 10);
+            showTextScreen(plan.name, plan.description + "\n\nDuração: " + plan.days() + " dias.\n\nConcluídos: " +
+                    completed + ".\n\nInício: " + started + ".", this::showPlans);
+        });
+        if (state == null || "Concluído".equals(state.getAsString("status"))) {
+            labels.add(state == null ? "Iniciar plano" : "Recomeçar plano");
+            actions.add(() -> {
+                userData.startPlan(plan.id, state != null);
+                toast("Plano iniciado. Bom começo!");
+                showPlans();
+            });
+        } else {
+            int day = state.getAsInteger("current_day");
+            labels.add("Ler o dia " + day + ": " + String.join(", ", plan.day(day)));
+            actions.add(() -> chooseReading(plan, day));
+            labels.add("Marcar o dia " + day + " como lido");
+            actions.add(() -> {
+                boolean marked = userData.togglePlanDay(plan.id, day, plan.days());
+                toast(marked ? "Dia " + day + " concluído." : "Dia " + day + " desmarcado.");
+                showPlans();
+            });
+            boolean paused = "Pausado".equals(state.getAsString("status"));
+            labels.add(paused ? "Continuar plano" : "Pausar plano");
+            actions.add(() -> {
+                userData.setPlanStatus(plan.id, paused ? "Ativo" : "Pausado");
+                toast(paused ? "Plano retomado." : "Plano pausado.");
+                showPlans();
+            });
+            labels.add("Recomeçar do dia 1");
+            actions.add(() -> confirm("Recomeçar plano", "Apagar o progresso deste plano e começar de novo?", () -> {
+                userData.startPlan(plan.id, true);
+                showPlans();
+            }));
+            labels.add("Abandonar plano");
+            actions.add(() -> confirm("Abandonar plano", "Remover este plano e todo o progresso?", () -> {
+                userData.abandonPlan(plan.id);
+                showPlans();
+            }));
+        }
+        showChoiceDialog("Plano " + plan.name, "Escolha uma ação.", labels.toArray(new String[0]),
+                which -> actions.get(which).run());
+    }
+
+    private void chooseReading(ReadingPlans.Plan plan, int day) {
+        List<String> chapters = ReadingPlans.expand(plan.day(day));
+        if (chapters.size() == 1) {
+            openReading(chapters.get(0));
+            return;
+        }
+        showChoiceDialog("Leituras do dia " + day, "Escolha o capítulo para abrir.",
+                chapters.toArray(new String[0]), which -> openReading(chapters.get(which)));
+    }
+
+    /** Abre o plano ativo diretamente, a partir do lembrete. */
+    private void openActivePlan() {
+        List<android.content.ContentValues> active = userData.activePlans();
+        if (active.isEmpty()) {
+            showPlans();
+            return;
+        }
+        ReadingPlans.Plan plan = plans().get(active.get(0).getAsString("plan_id"));
+        if (plan == null) showPlans();
+        else chooseReading(plan, active.get(0).getAsInteger("current_day"));
+    }
+
+    private void confirm(String title, String message, Runnable action) {
+        new AlertDialog.Builder(this).setTitle(title).setMessage(message)
+                .setPositiveButton("Sim", (dialog, which) -> action.run())
+                .setNegativeButton("Não", null).show();
+    }
+
+    // Diário de oração ---------------------------------------------------------
+    private String prayerFilter = "Todas";
+
+    private void showPrayers() {
+        LinearLayout root = screen("Diário de oração", this::showMoreOptions);
+        List<android.content.ContentValues> prayers = userData.prayers(prayerFilter);
+        root.addView(actionButton("Novo pedido de oração", "Escrever um novo pedido", this::createPrayer));
+        root.addView(actionButton("Filtro: " + prayerFilter, "Mostrar Todas, Orando, Respondida ou Arquivada", () -> {
+            String[] filters = {"Todas", "Orando", "Respondida", "Arquivada"};
+            showChoiceDialog("Filtrar pedidos", "Escolha quais pedidos mostrar.", filters, which -> {
+                prayerFilter = filters[which];
+                showPrayers();
+            });
+        }));
+        List<String> labels = new ArrayList<>();
+        for (android.content.ContentValues prayer : prayers) {
+            labels.add(prayer.getAsString("title") + ". " + prayer.getAsString("status") + ". Criado em " +
+                    shortDay(prayer.getAsString("created_at")) + ".");
+        }
+        if (labels.isEmpty()) labels.add("Nenhum pedido neste filtro.");
+        ListView list = listView(labels);
+        list.setContentDescription("Pedidos de oração");
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            if (!prayers.isEmpty()) showPrayerActions(prayers.get(position));
+        });
+        root.addView(list, fill());
+        setContentView(root);
+        focusForTalkBack(list, "Diário de oração. " + prayers.size() + " pedidos.");
+    }
+
+    private void createPrayer() {
+        LinearLayout layout = rootLayout();
+        EditText title = editText("Título do pedido", false);
+        EditText request = editText("Pedido de oração", true);
+        EditText category = editText("Categoria, opcional", false);
+        layout.addView(title);
+        layout.addView(request);
+        layout.addView(category);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Novo pedido de oração").setView(layout)
+                .setPositiveButton("Salvar", null).setNegativeButton("Cancelar", null).create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            if (title.getText().toString().trim().isEmpty() || request.getText().toString().trim().isEmpty()) {
+                (title.getText().toString().trim().isEmpty() ? title : request).setError("Preencha este campo.");
+                return;
+            }
+            userData.addPrayer(title.getText().toString(), request.getText().toString(), category.getText().toString());
+            dialog.dismiss();
+            toast("Pedido de oração salvo.");
+            showPrayers();
+        }));
+        dialog.show();
+        focusForTalkBack(title, "Título do pedido.");
+    }
+
+    private void showPrayerActions(android.content.ContentValues prayer) {
+        long id = prayer.getAsLong("id");
+        String[] actions = {"Ler pedido completo", "Marcar como oração respondida", "Arquivar",
+                "Voltar para Orando", "Excluir pedido"};
+        showChoiceDialog("Pedido " + prayer.getAsString("title"), "Escolha uma ação.", actions, which -> {
+            switch (which) {
+                case 0: {
+                    String text = "Pedido: " + prayer.getAsString("request") + "\n\nStatus: " + prayer.getAsString("status") +
+                            "\n\nCategoria: " + (prayer.getAsString("category").isEmpty() ? "sem categoria" : prayer.getAsString("category"));
+                    if (prayer.getAsString("answered_at") != null) {
+                        text += "\n\nRespondida em " + shortDay(prayer.getAsString("answered_at")) +
+                                ".\n\nComo Deus respondeu: " + prayer.getAsString("answer_text");
+                    }
+                    showTextScreen(prayer.getAsString("title"), text, this::showPrayers);
+                    break;
+                }
+                case 1: {
+                    EditText answer = editText("Como Deus respondeu", true);
+                    AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Oração respondida").setView(answer)
+                            .setPositiveButton("Salvar", null).setNegativeButton("Cancelar", null).create();
+                    dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+                        if (answer.getText().toString().trim().isEmpty()) {
+                            answer.setError("Descreva como Deus respondeu.");
+                            return;
+                        }
+                        userData.answerPrayer(id, answer.getText().toString());
+                        dialog.dismiss();
+                        toast("Glória a Deus! Oração marcada como respondida.");
+                        showPrayers();
+                    }));
+                    dialog.show();
+                    focusForTalkBack(answer, "Como Deus respondeu.");
+                    break;
+                }
+                case 2: userData.setPrayerStatus(id, "Arquivada"); showPrayers(); break;
+                case 3: userData.setPrayerStatus(id, "Orando"); showPrayers(); break;
+                default: confirm("Excluir pedido", "Excluir este pedido de oração?", () -> {
+                    userData.deletePrayer(id);
+                    showPrayers();
+                });
+            }
+        });
+    }
+
+    private static String shortDay(String iso) {
+        if (iso == null || iso.length() < 10) return "";
+        try {
+            return LocalDate.parse(iso.substring(0, 10)).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        } catch (Exception error) {
+            return iso.substring(0, 10);
+        }
+    }
+
+    // Meu momento com Deus -----------------------------------------------------
+    private void showMoment() {
+        String today = LocalDate.now().toString();
+        android.content.ContentValues saved = userData.devotionalFor(today);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        String reference = saved != null ? saved.getAsString("verse_reference") : Reminders.dailyReference();
+        EditText verse = editText("Versículo do dia ou outra referência", false);
+        verse.setText(reference);
+        TextView verseText = paragraph(Reminders.verseText(bible, translationId, reference));
+        EditText learned = editText("O que Deus falou comigo hoje", true);
+        EditText practice = editText("O que quero colocar em prática", true);
+        EditText prayer = editText("Minha oração de hoje", true);
+        EditText note = editText("Anotação pessoal", true);
+        if (saved != null) {
+            learned.setText(saved.getAsString("learned"));
+            practice.setText(saved.getAsString("practice"));
+            prayer.setText(saved.getAsString("prayer"));
+            note.setText(saved.getAsString("personal_note"));
+        }
+        content.addView(verse);
+        content.addView(actionButton("Carregar versículo", "Mostrar o texto da referência digitada",
+                () -> verseText.setText(Reminders.verseText(bible, translationId, verse.getText().toString()))));
+        content.addView(verseText);
+        for (EditText field : new EditText[]{learned, practice, prayer, note}) {
+            field.setMinLines(3);
+            content.addView(field);
+        }
+        content.addView(actionButton("Concluir e salvar", "Salvar o momento com Deus de hoje", () -> {
+            userData.saveDevotional(today, verse.getText().toString().trim(), verseText.getText().toString(),
+                    learned.getText().toString(), practice.getText().toString(),
+                    prayer.getText().toString(), note.getText().toString());
+            toast("Momento com Deus de hoje salvo.");
+        }));
+        content.addView(actionButton("Histórico do momento com Deus", "Ler os dias anteriores", this::showMomentHistory));
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(content);
+        showCustomScreen("Meu momento com Deus", scroll, this::showMoreOptions);
+        focusForTalkBack(verse, "Meu momento com Deus. Versículo do dia: " + reference + ".");
+    }
+
+    private void showMomentHistory() {
+        List<android.content.ContentValues> entries = userData.devotionalEntries();
+        if (entries.isEmpty()) {
+            toast("Ainda não há momentos salvos.");
+            return;
+        }
+        String[] labels = new String[entries.size()];
+        for (int index = 0; index < entries.size(); index++) {
+            labels[index] = shortDay(entries.get(index).getAsString("devotional_date")) + ". " +
+                    entries.get(index).getAsString("verse_reference");
+        }
+        showChoiceDialog("Histórico", "Escolha um dia para ler.", labels, which -> {
+            android.content.ContentValues row = entries.get(which);
+            showTextScreen("Momento com Deus de " + shortDay(row.getAsString("devotional_date")),
+                    "Versículo: " + row.getAsString("verse_reference") + "\n\n" + row.getAsString("verse_text") +
+                            "\n\nO que Deus falou comigo: " + row.getAsString("learned") +
+                            "\n\nPrática: " + row.getAsString("practice") + "\n\nOração: " + row.getAsString("prayer") +
+                            "\n\nAnotação: " + row.getAsString("personal_note"), this::showMoment);
+        });
+    }
+
+    // Favoritos, histórico e memorização ---------------------------------------
+    private String bookName(String code, String saved) {
+        if (saved != null && !saved.isEmpty()) return saved;
+        Models.Book book = null;
+        for (Models.Book candidate : bible.books(translationId)) {
+            if (candidate.code.equals(code)) book = candidate;
+        }
+        return book == null ? code : book.name;
+    }
+
+    private void showFavorites() {
+        List<android.content.ContentValues> favorites = userData.favorites();
+        LinearLayout root = screen("Favoritos", this::showMoreOptions);
+        List<String> labels = new ArrayList<>();
+        for (android.content.ContentValues favorite : favorites) {
+            String verse = favorite.getAsString("verse");
+            labels.add(bookName(favorite.getAsString("book_code"), favorite.getAsString("book_name")) + " " +
+                    favorite.getAsInteger("chapter") + ("*".equals(verse) ? "" : ":" + verse) +
+                    (favorite.getAsString("category_name") != null ? ". " + favorite.getAsString("category_name") : ""));
+        }
+        if (labels.isEmpty()) labels.add("Nenhum favorito. No menu de um versículo, escolha Adicionar marcador.");
+        ListView list = listView(labels);
+        list.setContentDescription("Versículos favoritos");
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            if (favorites.isEmpty()) return;
+            android.content.ContentValues favorite = favorites.get(position);
+            showChoiceDialog(labels.get(position), "Escolha uma ação.", new String[]{"Abrir passagem", "Remover dos favoritos"},
+                    which -> {
+                        String verse = favorite.getAsString("verse");
+                        if (which == 0) {
+                            openSaved(favorite.getAsString("translation_id"), favorite.getAsString("book_code"),
+                                    favorite.getAsInteger("chapter"), "*".equals(verse) ? "1" : verse);
+                        } else {
+                            userData.removeFavorite(favorite.getAsString("translation_id"), favorite.getAsString("book_code"),
+                                    favorite.getAsInteger("chapter"), verse);
+                            toast("Removido dos favoritos.");
+                            showFavorites();
+                        }
+                    });
+        });
+        root.addView(list, fill());
+        setContentView(root);
+        focusForTalkBack(list, "Favoritos. " + favorites.size() + " itens.");
+    }
+
+    /** Abre uma posição salva, trocando para a tradução em que ela foi guardada. */
+    private void openSaved(String translation, String bookCode, int chapter, String verse) {
+        for (Models.Translation item : bible.translations()) {
+            if (item.id.equals(translation)) translationId = translation;
+        }
+        Models.Book book = null;
+        for (Models.Book candidate : bible.books(translationId)) {
+            if (candidate.code.equals(bookCode)) book = candidate;
+        }
+        if (book == null) {
+            toast("Este livro não existe na tradução atual.");
+            return;
+        }
+        selectedBook = book;
+        selectedChapter = Math.max(1, Math.min(chapter, bible.chapterCount(translationId, bookCode)));
+        selectVerse(verse == null ? "1" : verse.split("-")[0]);
+        savePosition();
+        showVerses();
+    }
+
+    private void showReadingHistory() {
+        List<android.content.ContentValues> history = userData.readingHistory();
+        LinearLayout root = screen("Histórico de leitura", this::showMoreOptions);
+        int streak = Reminders.readingStreak(userData.readingDays());
+        root.addView(paragraph(streak > 0 ? "Você leu em " + streak + (streak == 1 ? " dia seguido." : " dias seguidos.")
+                : "Comece hoje uma nova sequência de leitura."));
+        String today = LocalDate.now().toString();
+        String yesterday = LocalDate.now().minusDays(1).toString();
+        List<String> labels = new ArrayList<>();
+        for (android.content.ContentValues row : history) {
+            String day = row.getAsString("accessed_at").substring(0, 10);
+            labels.add((day.equals(today) ? "Hoje" : day.equals(yesterday) ? "Ontem" : shortDay(day)) + ": " +
+                    row.getAsString("book_name") + " " + row.getAsInteger("chapter"));
+        }
+        if (labels.isEmpty()) labels.add("Nenhuma leitura registrada ainda.");
+        ListView list = listView(labels);
+        list.setContentDescription("Capítulos lidos recentemente");
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            if (history.isEmpty()) return;
+            android.content.ContentValues row = history.get(position);
+            openSaved(row.getAsString("translation_id"), row.getAsString("book_code"), row.getAsInteger("chapter"),
+                    row.getAsString("verse"));
+        });
+        root.addView(list, fill());
+        root.addView(actionButton("Limpar histórico", "Apagar todo o histórico de leitura",
+                () -> confirm("Limpar histórico", "Apagar todo o histórico de leitura?", () -> {
+                    userData.clearReadingHistory();
+                    showReadingHistory();
+                })));
+        setContentView(root);
+        focusForTalkBack(list, "Histórico de leitura.");
+    }
+
+    private void showMemorization() {
+        List<android.content.ContentValues> verses = userData.memorizedVerses();
+        LinearLayout root = screen("Memorização de versículos", this::showMoreOptions);
+        root.addView(paragraph("Para adicionar, abra o menu de um versículo e escolha Adicionar à memorização."));
+        List<String> labels = new ArrayList<>();
+        for (android.content.ContentValues row : verses) {
+            labels.add(row.getAsString("book_name") + " " + row.getAsInteger("chapter") + ":" + row.getAsString("verse"));
+        }
+        if (labels.isEmpty()) labels.add("Nenhum versículo para memorizar ainda.");
+        ListView list = listView(labels);
+        list.setContentDescription("Versículos para memorizar");
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            if (verses.isEmpty()) return;
+            android.content.ContentValues row = verses.get(position);
+            String[] levels = {"Praticar no nível fácil", "Praticar no nível médio", "Praticar no nível difícil",
+                    "Revelar o versículo", "Remover da memorização"};
+            showChoiceDialog(labels.get(position), "Escolha como praticar.", levels, which -> {
+                String text = row.getAsString("verse_text");
+                if (which <= 2) {
+                    showTextScreen("Complete o versículo", hideWords(text, 3 - which) +
+                            "\n\nTente dizer o versículo completo. Depois, escolha Revelar o versículo.", this::showMemorization);
+                } else if (which == 3) {
+                    showTextScreen(labels.get(position), text, this::showMemorization);
+                } else {
+                    Models.Book book = new Models.Book(0, row.getAsString("book_code"), row.getAsString("book_name"));
+                    userData.toggleMemorized(row.getAsString("translation_id"), book, row.getAsInteger("chapter"),
+                            new Models.Verse(row.getAsString("verse"), text));
+                    showMemorization();
+                }
+            });
+        });
+        root.addView(list, fill());
+        setContentView(root);
+        focusForTalkBack(list, "Memorização.");
+    }
+
+    /** Esconde uma palavra a cada "step" palavras; fácil esconde menos. */
+    static String hideWords(String text, int step) {
+        String[] words = text.split(" ");
+        StringBuilder result = new StringBuilder();
+        for (int index = 0; index < words.length; index++) {
+            if (result.length() > 0) result.append(' ');
+            boolean letters = words[index].replaceAll("[^\\p{L}]", "").length() > 2;
+            result.append(letters && index % step == step - 1 ? "lacuna" : words[index]);
+        }
+        return result.toString();
+    }
+
+    // Lembrete diário -----------------------------------------------------------
+    private void showReminderSettings() {
+        Map<String, Runnable> options = new LinkedHashMap<>();
+        boolean enabled = Reminders.enabled(preferences);
+        options.put((enabled ? "Desativar" : "Ativar") + " o lembrete diário. Agora " +
+                (enabled ? "ativado" : "desativado"), () -> {
+            preferences.edit().putBoolean("reminder_enabled", !enabled).apply();
+            Reminders.schedule(this);
+            if (!enabled) ensureNotificationPermission(true);
+            showReminderSettings();
+        });
+        options.put("Horário do lembrete: " + Reminders.timeLabel(preferences), () -> {
+            String[] times = new String[48];
+            for (int index = 0; index < 48; index++) {
+                times[index] = String.format(Locale.ROOT, "%02d:%02d", index / 2, (index % 2) * 30);
+            }
+            showChoiceDialog("Horário do lembrete", "Escolha a hora do lembrete diário.", times, which -> {
+                preferences.edit().putInt("reminder_minutes", which * 30).apply();
+                Reminders.schedule(this);
+                toast("Lembrete marcado para " + times[which] + ".");
+                showReminderSettings();
+            });
+        });
+        options.put("Ouvir o lembrete de hoje agora", () -> {
+            String message = Reminders.buildMessage(this);
+            showTextScreen("Lembrete de hoje", message, this::showReminderSettings);
+        });
+        options.put("Permitir notificações da Bíblia" + (notificationsAllowed() ? ". Já permitidas" : ""),
+                () -> ensureNotificationPermission(true));
+        showMenuScreen("Lembrete diário", this::showMoreOptions, options);
+    }
+
+    // Backup compatível com o Windows ------------------------------------------
+    private static final int BACKUP_EXPORT = 7003;
+    private static final int BACKUP_IMPORT = 7004;
+
+    private void showBackup() {
+        Map<String, Runnable> options = new LinkedHashMap<>();
+        options.put("Exportar backup", () -> {
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/json")
+                    .addCategory(Intent.CATEGORY_OPENABLE)
+                    .putExtra(Intent.EXTRA_TITLE, "biblia-agb-backup-" + LocalDate.now() + ".json");
+            startActivityForResult(intent, BACKUP_EXPORT);
+        });
+        options.put("Importar backup", () -> confirm("Importar backup",
+                "As anotações, favoritos, planos e orações deste aparelho serão substituídos pelos do backup. Continuar?",
+                () -> startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), BACKUP_IMPORT)));
+        LinearLayout root = screen("Backup e restauração", this::showMoreOptions);
+        root.addView(paragraph("O backup usa o mesmo formato da Bíblia AGB para Windows: dá para levar anotações, " +
+                "favoritos, planos, orações e quiz do celular para o computador e do computador para o celular."));
+        List<String> labels = new ArrayList<>(options.keySet());
+        ListView list = listView(labels);
+        list.setContentDescription("Backup e restauração");
+        list.setOnItemClickListener((parent, view, position, id) -> options.get(labels.get(position)).run());
+        root.addView(list, fill());
+        setContentView(root);
+        focusForTalkBack(list, "Backup e restauração.");
+    }
+
+    private void handleBackupResult(int requestCode, Uri uri) {
+        new Thread(() -> {
+            String message;
+            try {
+                if (requestCode == BACKUP_EXPORT) {
+                    byte[] json = userData.exportPayload().toString(2).getBytes(StandardCharsets.UTF_8);
+                    try (OutputStream output = getContentResolver().openOutputStream(uri)) {
+                        if (output == null) throw new IllegalStateException();
+                        output.write(json);
+                    }
+                    message = "Backup exportado. Ele pode ser importado no Windows ou em outro celular.";
+                } else {
+                    String text;
+                    try (InputStream input = getContentResolver().openInputStream(uri);
+                         ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+                        if (input == null) throw new IllegalStateException();
+                        byte[] chunk = new byte[8192];
+                        int read;
+                        while ((read = input.read(chunk)) >= 0) {
+                            buffer.write(chunk, 0, read);
+                            if (buffer.size() > 50_000_000) throw new IllegalArgumentException("Arquivo grande demais.");
+                        }
+                        text = buffer.toString(StandardCharsets.UTF_8.name());
+                    }
+                    userData.importPayload(new org.json.JSONObject(text));
+                    message = "Backup importado com sucesso.";
+                }
+            } catch (IllegalArgumentException error) {
+                message = error.getMessage() == null ? "Arquivo de backup inválido." : error.getMessage();
+            } catch (Throwable error) {
+                message = requestCode == BACKUP_EXPORT ? "Não foi possível exportar o backup."
+                        : "Não foi possível importar: o arquivo não é um backup válido da Bíblia AGB.";
+            }
+            final String result = message;
+            runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed()) {
+                    new AlertDialog.Builder(this).setTitle("Backup").setMessage(result)
+                            .setPositiveButton("OK", null).show();
+                }
+            });
+        }, "backup").start();
+    }
+
+    // Leitura contínua ----------------------------------------------------------
+    private boolean continuousActive;
+    private long continuousStopAt;
+    private boolean continuousStopAtChapterEnd;
+    private List<Models.Verse> continuousVerses = new ArrayList<>();
+
+    private void chooseContinuousReading() {
+        if (!ttsReady) {
+            toast("A voz do Android ainda não está pronta. Tente novamente em instantes.");
+            return;
+        }
+        String[] timers = {"Sem temporizador", "Parar no fim deste capítulo", "Parar depois de 15 minutos",
+                "Parar depois de 30 minutos", "Parar depois de 60 minutos"};
+        showChoiceDialog("Ler em voz alta", "Escolha quando a leitura deve parar.", timers, which -> {
+            long[] minutes = {0, 0, 15, 30, 60};
+            continuousStopAtChapterEnd = which == 1;
+            continuousStopAt = minutes[which] > 0 ? System.currentTimeMillis() + minutes[which] * 60_000 : 0;
+            startContinuousReading();
+        });
+    }
+
+    private void startContinuousReading() {
+        continuousActive = true;
+        continuousVerses = bible.chapter(translationId, selectedBook.code, selectedChapter);
+        int start = Math.max(0, verseIndex(continuousVerses, selectedVerse == null ? "1" : selectedVerse.number));
+        applyVoice();
+        tts.speak(currentChapterReference(), TextToSpeech.QUEUE_FLUSH, null, "titulo");
+        for (int index = start; index < continuousVerses.size(); index++) {
+            Models.Verse verse = continuousVerses.get(index);
+            tts.speak(verse.number + ". " + verse.text, TextToSpeech.QUEUE_ADD, null, "continuo-" + index);
+        }
+        showVerses();
+    }
+
+    /** Acompanha o versículo lido e passa ao próximo capítulo no fim. */
+    private void continueReading(String utteranceId) {
+        if (!continuousActive) return;
+        int index;
+        try {
+            index = Integer.parseInt(utteranceId.substring("continuo-".length()));
+        } catch (NumberFormatException error) {
+            return;
+        }
+        if (index >= 0 && index < continuousVerses.size()) {
+            selectedVerse = continuousVerses.get(index);
+            savePosition();
+        }
+        if (continuousStopAt > 0 && System.currentTimeMillis() >= continuousStopAt) {
+            stopContinuousReading("O temporizador terminou. Leitura em voz alta encerrada.");
+            return;
+        }
+        if (index < continuousVerses.size() - 1) return;
+        if (continuousStopAtChapterEnd) {
+            stopContinuousReading("Fim do capítulo. Leitura em voz alta encerrada.");
+            return;
+        }
+        if (selectedChapter >= bible.chapterCount(translationId, selectedBook.code)) {
+            stopContinuousReading("Fim do livro de " + selectedBook.name + ". Leitura em voz alta encerrada.");
+            return;
+        }
+        selectedChapter++;
+        selectVerse("1");
+        savePosition();
+        startContinuousReading();
+    }
+
+    private void stopContinuousReading(String message) {
+        boolean wasActive = continuousActive;
+        continuousActive = false;
+        if (ttsReady) tts.stop();
+        if (wasActive) {
+            toast(message);
+            if (!isFinishing() && !isDestroyed() && chapterSwipeEnabled) showVerses();
+        }
     }
 
     /** Interpreta Livro capítulo:número e mantém mensagens de erro acessíveis. */
@@ -1945,6 +2774,11 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Recebe o documento escolhido pelo usuário e grava o devocional. */
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if ((requestCode == BACKUP_EXPORT || requestCode == BACKUP_IMPORT) && resultCode == RESULT_OK &&
+                data != null && data.getData() != null) {
+            handleBackupResult(requestCode, data.getData());
+            return;
+        }
         if (requestCode == WORSHIP_VOICE_SEARCH && resultCode == RESULT_OK && data != null) {
             ArrayList<String> results = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
             if (results != null && !results.isEmpty() && worshipInput != null) {
@@ -2210,12 +3044,44 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     @Override protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (intent.getBooleanExtra(DevotionalNotifications.OPEN_DEVOTIONALS, false) && bible != null) {
+        if (intent.getBooleanExtra(Reminders.OPEN_PLANS, false) && bible != null) {
+            openActivePlan();
+        } else if (intent.getBooleanExtra(DevotionalNotifications.OPEN_DEVOTIONALS, false) && bible != null) {
             showOnlineDevotionals();
         }
     }
 
+    @Override protected void onResume() {
+        super.onResume();
+        if (bible != null) deliverPendingAi();
+    }
+
+    /** Se o aplicativo fechou na última vez, explica e permite copiar o relatório. */
+    private void showLastCrashReport() {
+        String report = CrashLog.consume(this);
+        if (report.isEmpty()) return;
+        new AlertDialog.Builder(this).setTitle("A Bíblia fechou inesperadamente")
+                .setMessage("Na última vez, o aplicativo fechou por um erro. Seus dados estão preservados. " +
+                        "Se quiser ajudar a corrigir, copie o relatório e envie para Diego.")
+                .setPositiveButton("Copiar relatório", (dialog, which) -> copy(report))
+                .setNeutralButton("Enviar por e-mail", (dialog, which) -> {
+                    Uri uri = Uri.parse("mailto:diego@audiogames.com.br").buildUpon()
+                            .appendQueryParameter("subject", "Relatório de erro da Bíblia AGB")
+                            .appendQueryParameter("body", report).build();
+                    try {
+                        startActivity(new Intent(Intent.ACTION_SENDTO, uri));
+                    } catch (Exception error) {
+                        copy(report);
+                    }
+                })
+                .setNegativeButton("Fechar", null).show();
+    }
+
     @Override protected void onDestroy() {
+        if (aiProgressDialog != null) {
+            try { aiProgressDialog.dismiss(); } catch (Exception ignored) { }
+            aiProgressDialog = null;
+        }
         stopAndReleaseRadio();
         if (tts != null) {
             tts.stop();

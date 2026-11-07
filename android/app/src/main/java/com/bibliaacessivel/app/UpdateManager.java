@@ -25,12 +25,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class UpdateManager {
     static final String CURRENT_CHANGELOG =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
-            "A pesquisa por voz do Modo culto não pede mais a permissão do microfone: quem escuta é o reconhecedor de voz do próprio Android.\n\n" +
-            "Os devocionais do site agora são verificados duas vezes por dia, economizando bateria e dados móveis.\n\n" +
-            "O aplicativo acompanha o tema escuro do Android, e os textos longos mostram a barra de rolagem.\n\n" +
-            "Na tela de Atualizações, o foco inicial vai direto para Verificar atualizações, e o resumo muda na hora ao alternar as opções.\n\n" +
-            "A Rádio Gospel não pula mais de louvor quando a lista é atualizada durante a reprodução.\n\n" +
-            "A Ajuda foi revisada, e os erros longos do Teólogo de IA ficaram mais claros.\n\n" +
+            "O Teólogo de IA não fecha mais o aplicativo. A resposta espera você voltar se o celular bloquear durante o pedido, " +
+            "há um botão Cancelar, e as falhas do Google Gemini são explicadas em português. Se o modelo escolhido for desativado, " +
+            "a Bíblia escolhe outro sozinha.\n\n" +
+            "Devocionais novos do site são avisados em até 15 minutos, com notificação de prioridade alta.\n\n" +
+            "Novo Lembrete diário: no horário que você escolher, versículo do dia, leitura do plano e dias seguidos de leitura.\n\n" +
+            "Novidades vindas do Windows: Planos de leitura, Diário de oração, Meu momento com Deus, Favoritos, " +
+            "Histórico de leitura e Memorização de versículos.\n\n" +
+            "Ler em voz alta: em Versículos, a Bíblia lê o capítulo e segue para os próximos, com temporizador.\n\n" +
+            "Backup e restauração no mesmo formato do Windows, para levar seus dados do celular ao computador e de volta.\n\n" +
+            "Se o aplicativo fechar por algum erro, na próxima abertura ele mostra o relatório para você copiar e enviar.\n\n" +
+            "Mais opções foi organizado por assunto.\n\n" +
             "A atualização preserva traduções, posição, notas, favoritos, quiz, planos, configurações e chave da inteligência artificial.";
 
     private final Activity activity;
