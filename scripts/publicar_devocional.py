@@ -49,6 +49,33 @@ def connect(host: str, port: int, user: str, password: str):
     return plain, "FTP"
 
 
+def ask_password_window() -> str:
+    """Pede a senha numa janela nativa do Qt, legível pelo NVDA e pronta para digitar."""
+    from PySide6.QtCore import Qt, QTimer
+    from PySide6.QtWidgets import QApplication, QInputDialog, QLineEdit
+
+    app = QApplication.instance() or QApplication([])
+    dialog = QInputDialog()
+    dialog.setWindowTitle("Publicar devocional — senha do FTP")
+    dialog.setLabelText("Digite a senha do FTP do site e pressione Enter:")
+    dialog.setTextEchoMode(QLineEdit.Password)
+    dialog.setOkButtonText("Publicar")
+    dialog.setCancelButtonText("Cancelar")
+    dialog.setWindowFlag(Qt.WindowStaysOnTopHint, True)
+
+    def bring_to_front():
+        dialog.raise_()
+        dialog.activateWindow()
+
+    QTimer.singleShot(200, bring_to_front)
+    accepted = dialog.exec() == QInputDialog.Accepted
+    password = dialog.textValue()
+    app.processEvents()
+    if not accepted or not password:
+        raise SystemExit("Publicação cancelada. Nada foi enviado.")
+    return password
+
+
 def download(client, path: str) -> bytes | None:
     """Baixa um arquivo remoto ou devolve None quando ele não existe nesse caminho."""
     buffer = io.BytesIO()
@@ -96,6 +123,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=21)
     parser.add_argument("--user", default="diego@audiogames.com.br")
     parser.add_argument("--simular", action="store_true", help="Mostra o resultado sem conectar nem enviar.")
+    parser.add_argument("--janela", action="store_true", help="Pede a senha numa janela do Windows.")
     args = parser.parse_args()
 
     post = build_post(args.arquivo)
@@ -114,7 +142,7 @@ def main() -> None:
         print("Simulação concluída. Nada foi enviado.")
         return
 
-    password = getpass.getpass("Senha FTP: ")
+    password = ask_password_window() if args.janela else getpass.getpass("Senha FTP: ")
     client, protocol = connect(args.host, args.port, args.user, password)
     try:
         print(f"Conectado por {protocol}.")
