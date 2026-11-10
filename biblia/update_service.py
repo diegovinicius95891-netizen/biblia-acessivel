@@ -13,7 +13,9 @@ import logging
 import re
 import urllib.error
 import urllib.parse
+import time
 import urllib.request
+import zipfile
 from dataclasses import dataclass
 from functools import total_ordering
 from pathlib import Path
@@ -31,6 +33,10 @@ ALLOWED_DOWNLOAD_HOSTS = {
     "release-assets.githubusercontent.com",
     "github-releases.githubusercontent.com",
 }
+
+
+PACKAGE_EXECUTABLE = "BibliaAcessivel/BibliaAcessivel.exe"
+NETWORK_ATTEMPTS = 3
 
 
 class UpdateError(RuntimeError):
@@ -166,27 +172,67 @@ class UpdateService:
         )
         return urllib.request.urlopen(request, timeout=self.timeout)
 
+    def _fetch_json(self, url: str):
+        """Lê JSON da API com novas tentativas para falhas passageiras de rede."""
+        last_error = None
+        for attempt in range(NETWORK_ATTEMPTS):
+            try:
+                with self._request(url) as response:
+                    return json.loads(response.read().decode("utf-8"))
+            except urllib.error.HTTPError as error:
+                # 4xx não melhora repetindo; 5xx e limites temporários sim.
+                if error.code < 500 and error.code != 429:
+                    raise
+                last_error = error
+            except (OSError, urllib.error.URLError) as error:
+                last_error = error
+            if attempt + 1 < NETWORK_ATTEMPTS:
+                time.sleep(1.5 * (attempt + 1))
+        raise last_error
+
     def check(self, current_version: str) -> ReleaseInfo | None:
-        """Consulta releases publicadas e devolve a atualização estável mais nova."""
-        # O canal Windows marca sua publicação estável como ``latest``. Esse
-        # endpoint evita respostas vazias observadas na listagem paginada.
-        url = f"https://api.github.com/repos/{self.repository}/releases/latest"
-        LOGGER.info("Verificando atualizações: versão=%s url=%s", current_version, url)
-        try:
-            with self._request(url) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-            if isinstance(payload, dict):
-                payload = [payload]
-            if not isinstance(payload, list):
-                raise UpdateError("A resposta do serviço de atualização é inválida.")
-            result = parse_release_payload(payload, current_version)
-            LOGGER.info("Verificação concluída: encontrada=%s", result.version if result else "nenhuma")
-            return result
-        except (OSError, urllib.error.URLError, json.JSONDecodeError, UpdateError) as error:
-            LOGGER.warning("Falha na verificação de atualização: %s", error)
+        """Consulta releases publicadas e devolve a atualização estável mais nova.
+
+        A lista completa é consultada primeiro porque o mesmo repositório também
+        guarda versões antigas do Android: se uma delas ficar marcada como
+        ``latest``, o Windows ainda encontra a sua. ``/latest`` fica como reserva
+        para respostas vazias observadas na listagem paginada.
+        """
+        urls = (
+            f"https://api.github.com/repos/{self.repository}/releases?per_page=30",
+            f"https://api.github.com/repos/{self.repository}/releases/latest",
+        )
+        LOGGER.info("Verificando atualizações: versão=%s", current_version)
+        failures = []
+        for url in urls:
+            try:
+                payload = self._fetch_json(url)
+                if isinstance(payload, dict):
+                    payload = [payload]
+                if not isinstance(payload, list):
+                    raise UpdateError("A resposta do serviço de atualização é inválida.")
+                result = parse_release_payload(payload, current_version)
+            except UpdateError as error:
+                LOGGER.warning("Falha na verificação de atualização em %s: %s", url, error)
+                failures.append(error)
+                continue
+            except (OSError, urllib.error.URLError, json.JSONDecodeError) as error:
+                LOGGER.warning("Falha na verificação de atualização em %s: %s", url, error)
+                failures.append(error)
+                continue
+            if result:
+                LOGGER.info("Verificação concluída: encontrada=%s", result.version)
+                return result
+            if payload:
+                LOGGER.info("Verificação concluída: encontrada=nenhuma")
+                return None
+        if failures and len(failures) == len(urls):
+            error = failures[0]
             if isinstance(error, UpdateError):
-                raise
+                raise error
             raise UpdateError("Não foi possível verificar atualizações agora. Tente novamente mais tarde.") from error
+        LOGGER.info("Verificação concluída: encontrada=nenhuma")
+        return None
 
     def _download_file(
         self,
@@ -238,15 +284,48 @@ class UpdateService:
             expected = parts[0].lower()
             if not re.fullmatch(r"[0-9a-f]{64}", expected):
                 raise UpdateError("O arquivo de integridade publicado é inválido.")
+            if len(parts) > 1 and parts[-1].lstrip("*") != release.asset.name:
+                raise UpdateError("O arquivo de integridade publicado não corresponde ao pacote.")
             self._download_file(release.asset, destination, cancel, progress)
-            actual = hashlib.sha256(destination.read_bytes()).hexdigest()
+            actual = file_sha256(destination)
             if actual != expected:
                 destination.unlink(missing_ok=True)
                 raise UpdateError(
                     "A atualização foi baixada, mas não passou na verificação de integridade. "
                     "Nenhum arquivo foi instalado."
                 )
+            try:
+                validate_package(destination)
+            except UpdateError:
+                destination.unlink(missing_ok=True)
+                raise
             LOGGER.info("Download e SHA-256 validados: versão=%s arquivo=%s", release.version, destination)
             return actual
         finally:
             hash_path.unlink(missing_ok=True)
+
+
+def file_sha256(path: Path) -> str:
+    """Calcula o SHA-256 em blocos, sem carregar o pacote inteiro na memória."""
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def validate_package(archive: Path) -> None:
+    """Confere se o ZIP abre, está íntegro, traz o EXE e não escreve fora da pasta."""
+    try:
+        with zipfile.ZipFile(archive) as package:
+            # O Compress-Archive do Windows PowerShell 5.1 grava barras invertidas.
+            names = {name.replace("\\", "/") for name in package.namelist()}
+            for name in names:
+                if name.startswith("/") or ":" in name or ".." in name.split("/"):
+                    raise UpdateError("O pacote de atualização contém caminhos inválidos.")
+            if PACKAGE_EXECUTABLE not in names:
+                raise UpdateError("O pacote de atualização não contém o aplicativo.")
+            if package.testzip() is not None:
+                raise UpdateError("O pacote de atualização está corrompido.")
+    except zipfile.BadZipFile as error:
+        raise UpdateError("O pacote de atualização está corrompido.") from error

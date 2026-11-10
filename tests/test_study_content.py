@@ -35,11 +35,11 @@ class QuizCatalogTests(unittest.TestCase):
             self.assertTrue(question[5].strip())
             self.assertTrue(question[6].strip())
 
-    def test_shared_catalog_has_298_unique_study_questions(self):
+    def test_shared_catalog_has_392_unique_study_questions(self):
         """Confere o catálogo final empacotado para os dois aplicativos."""
         questions = load_quiz_catalog(DATA / "quiz_questions.tsv")
-        self.assertEqual(298, len(questions))
-        self.assertEqual(298, len({question.question_id for question in questions}))
+        self.assertEqual(392, len(questions))
+        self.assertEqual(392, len({question.question_id for question in questions}))
         self.assertIn("ordem bíblica", {question.category for question in questions})
         self.assertIn("estrutura da Bíblia", {question.category for question in questions})
 

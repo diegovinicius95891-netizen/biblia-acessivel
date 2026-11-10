@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import zipfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Event
@@ -17,6 +18,7 @@ from biblia.update_service import (
     UpdateError,
     UpdateService,
     parse_release_payload,
+    validate_package,
 )
 
 
@@ -27,6 +29,15 @@ def asset(name, content=b""):
         "browser_download_url": f"https://github.com/owner/repo/releases/download/v2.0.0/{name}",
         "size": len(content),
     }
+
+
+def make_package(names=("BibliaAcessivel/BibliaAcessivel.exe",)):
+    """Cria um ZIP mínimo com a mesma estrutura do pacote publicado."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as package:
+        for name in names:
+            package.writestr(name, b"conteudo")
+    return buffer.getvalue()
 
 
 class FakeResponse(io.BytesIO):
@@ -73,7 +84,7 @@ class UpdateServiceTests(unittest.TestCase):
 
     def test_hash_success_and_failure(self):
         """Aceita o hash correto e apaga o pacote quando o hash diverge."""
-        content = b"pacote testado"
+        content = make_package()
         expected = hashlib.sha256(content).hexdigest().encode()
         release = ReleaseInfo(
             "2.0.0", "v2.0.0", "Notas", "https://github.com/x/y",
@@ -90,6 +101,45 @@ class UpdateServiceTests(unittest.TestCase):
             with self.assertRaises(UpdateError):
                 service.download_and_validate(release, destination, Event())
             self.assertFalse(destination.exists())
+
+    def test_package_validation_rejects_missing_exe_traversal_and_garbage(self):
+        """Só aceita o ZIP com o EXE, sem caminhos para fora e sem corrupção."""
+        with TemporaryDirectory() as directory:
+            archive = Path(directory) / "pacote.zip"
+            archive.write_bytes(make_package(("BibliaAcessivel\\BibliaAcessivel.exe",)))
+            validate_package(archive)
+            for content in (make_package(("BibliaAcessivel/LEIA-ME.txt",)),
+                            make_package(("BibliaAcessivel/BibliaAcessivel.exe", "../fora.txt")),
+                            b"isto nao e um zip"):
+                archive.write_bytes(content)
+                with self.assertRaises(UpdateError):
+                    validate_package(archive)
+
+    def test_hash_file_must_name_the_package(self):
+        """Recusa um .sha256 publicado para outro arquivo."""
+        content = make_package()
+        expected = (hashlib.sha256(content).hexdigest() + "  OutroArquivo.zip").encode()
+        release = ReleaseInfo(
+            "2.0.0", "v2.0.0", "Notas", "https://github.com/x/y",
+            ReleaseAsset("BibliaAcessivel-Windows.zip", "https://github.com/x/package", len(content)),
+            ReleaseAsset("BibliaAcessivel-Windows.zip.sha256", "https://github.com/x/hash", len(expected)),
+        )
+        with TemporaryDirectory() as directory:
+            service = UpdateService()
+            service._request = lambda url: FakeResponse(expected if url.endswith("hash") else content)
+            with self.assertRaises(UpdateError):
+                service.download_and_validate(release, Path(directory) / "p.zip", Event())
+
+    def test_check_skips_android_release_marked_latest(self):
+        """Acha a versão do Windows na lista mesmo com uma do Android mais recente."""
+        payload = [
+            {"tag_name": "android-v9.0.0", "assets": []},
+            {"tag_name": "v9.0.0", "assets": [asset("BibliaAcessivel-Windows.zip", b"x"),
+                                              asset("BibliaAcessivel-Windows.zip.sha256", b"y")]},
+        ]
+        service = UpdateService()
+        service._request = lambda url: FakeResponse(json.dumps(payload).encode())
+        self.assertEqual("9.0.0", service.check("4.6.0").version)
 
     def test_cancelled_download_removes_partial_file(self):
         """Interrompe antes de gravar e não deixa arquivo incompleto."""

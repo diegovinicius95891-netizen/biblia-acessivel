@@ -6,6 +6,7 @@ import base64
 import ctypes
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -25,7 +26,7 @@ from PySide6.QtWidgets import (
 
 from .changelog import CURRENT_CHANGELOG
 from .dialogs import AccessibleButton, AccessibleResultDialog
-from .update_service import ReleaseInfo, UpdateError, UpdateService
+from .update_service import ReleaseInfo, UpdateError, UpdateService, validate_package
 from .version import APP_VERSION, WINDOWS_ASSET_NAME
 
 
@@ -166,6 +167,8 @@ class UpdateController(QObject):
     """Coordena verificação diária, decisões, download, backup e reinício."""
 
     ANNOUNCED_PROGRESS = (10, 25, 50, 75, 100)
+    # Quem deixa o aplicativo aberto por dias também recebe a verificação diária.
+    PERIODIC_CHECK_MS = 6 * 60 * 60 * 1000
 
     def __init__(self, host, app_data_dir: Path, install_dir: Path):
         """Conecta sinais e agenda verificação sem bloquear a abertura da Bíblia."""
@@ -184,9 +187,15 @@ class UpdateController(QObject):
         self.cancel_event = threading.Event()
         self.progress_dialog = None
         self._last_announced = 0
+        self._busy = False
         QTimer.singleShot(1800, self._show_post_update_message)
+        QTimer.singleShot(4000, self._clean_leftovers)
+        self.periodic_timer = QTimer(self)
+        self.periodic_timer.setInterval(self.PERIODIC_CHECK_MS)
+        self.periodic_timer.timeout.connect(self.check_automatically)
         if os.environ.get("BIBLIA_DISABLE_AUTO_UPDATE") != "1":
             QTimer.singleShot(2500, self.check_automatically)
+            self.periodic_timer.start()
 
     def automatic_enabled(self) -> bool:
         """Lê a preferência persistente cujo padrão é ativado."""
@@ -207,6 +216,11 @@ class UpdateController(QObject):
 
     def check_now(self, manual: bool = True):
         """Inicia consulta em segundo plano e informa atividade quando solicitada."""
+        if self._busy:
+            if manual:
+                self.host._announce_for(self.host.help_text, "Já existe uma verificação ou download em andamento.")
+            return
+        self._busy = True
         if manual:
             self.host._announce_for(self.host.help_text, "Verificando atualizações.")
 
@@ -222,6 +236,7 @@ class UpdateController(QObject):
 
     def _checked(self, release: ReleaseInfo | None, manual: bool):
         """Registra a consulta e abre o diálogo quando a versão deve ser oferecida."""
+        self._busy = False
         self.settings.setValue("updates/last_check", date.today().isoformat())
         if not release:
             if manual:
@@ -249,10 +264,12 @@ class UpdateController(QObject):
             later = datetime.now().astimezone() + timedelta(hours=24)
             self.settings.setValue("updates/remind_after", later.isoformat(timespec="seconds"))
         elif dialog.action == "update":
+            self._busy = True
             self._start_download(release)
 
     def _check_failed(self, message: str, manual: bool):
         """Mantém falhas automáticas no log e mostra falhas manuais de forma simples."""
+        self._busy = False
         if not manual:
             self.settings.setValue("updates/last_check", date.today().isoformat())
         if manual:
@@ -291,6 +308,7 @@ class UpdateController(QObject):
 
     def _download_failed(self, message: str):
         """Fecha o progresso e diferencia cancelamento de erro de integridade."""
+        self._busy = False
         if self.progress_dialog:
             self.progress_dialog.close()
             self.progress_dialog = None
@@ -299,6 +317,7 @@ class UpdateController(QObject):
 
     def _downloaded(self, release: ReleaseInfo, archive: Path, digest: str):
         """Confirma instalação somente depois de tamanho e SHA-256 validados."""
+        self._busy = False
         if self.progress_dialog:
             self.progress_dialog.close()
             self.progress_dialog = None
@@ -345,6 +364,8 @@ class UpdateController(QObject):
         executable = Path(sys.executable).resolve()
         if executable.parent != self.install_dir.resolve() or not archive.is_file():
             raise UpdateError("Os caminhos da atualização não puderam ser validados.")
+        validate_package(archive)
+        log = archive.parent / "install.log"
         staging = archive.parent / f"staging-{os.getpid()}"
         rollback = archive.parent / f"rollback-{os.getpid()}"
         command = (
@@ -352,8 +373,11 @@ class UpdateController(QObject):
             f"$pidToWait={os.getpid()}; $archive='{self._ps_quote(archive)}'; "
             f"$staging='{self._ps_quote(staging)}'; $destination='{self._ps_quote(self.install_dir)}'; "
             f"$rollback='{self._ps_quote(rollback)}'; "
-            f"$exe='{self._ps_quote(executable)}'; "
+            f"$exe='{self._ps_quote(executable)}'; $log='{self._ps_quote(log)}'; "
+            "function Log($text){ Add-Content -LiteralPath $log -Value ((Get-Date -Format s) + ' ' + $text) -Encoding UTF8 }; "
+            "Log 'Instalação iniciada.'; "
             "Wait-Process -Id $pidToWait -Timeout 120 -ErrorAction SilentlyContinue; "
+            "Start-Sleep -Milliseconds 800; "
             "if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }; "
             "if (Test-Path -LiteralPath $rollback) { Remove-Item -LiteralPath $rollback -Recurse -Force }; "
             "Expand-Archive -LiteralPath $archive -DestinationPath $staging -Force; "
@@ -363,8 +387,12 @@ class UpdateController(QObject):
             "$programFiles=@('BibliaAcessivel.exe','LEIA-ME.txt','THIRD_PARTY_NOTICES.md'); "
             "foreach($name in $programFiles){$old=Join-Path $destination $name; if(Test-Path -LiteralPath $old){Copy-Item -LiteralPath $old -Destination $rollback -Force}}; "
             "$oldBible=Join-Path $destination 'data\\biblia.db'; if(Test-Path -LiteralPath $oldBible){Copy-Item -LiteralPath $oldBible -Destination (Join-Path $rollback 'data') -Force}; "
-            "$failed=$false; try { Copy-Item -Path (Join-Path $source '*') -Destination $destination -Recurse -Force } "
-            "catch { Copy-Item -Path (Join-Path $rollback '*') -Destination $destination -Recurse -Force; $failed=$true }; "
+            "$failed=$false; try { "
+            "for($try=1; $try -le 5; $try++){ try { Copy-Item -Path (Join-Path $source '*') -Destination $destination -Recurse -Force; break } "
+            "catch { if($try -eq 5){ throw }; Log ('Arquivo em uso, nova tentativa: ' + $_); Start-Sleep -Seconds 2 } }; "
+            "if (-not (Test-Path -LiteralPath $exe)) { throw 'O executável não ficou no lugar.' } } "
+            "catch { Log ('Falha, desfazendo: ' + $_); Copy-Item -Path (Join-Path $rollback '*') -Destination $destination -Recurse -Force; $failed=$true }; "
+            "if(-not $failed){ Log 'Arquivos substituídos.'; Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue }; "
             "Remove-Item -LiteralPath $staging -Recurse -Force; "
             "Remove-Item -LiteralPath $rollback -Recurse -Force; "
             "$env:PYINSTALLER_RESET_ENVIRONMENT='1'; Start-Process -FilePath $exe; if($failed){exit 1}"
@@ -384,12 +412,36 @@ class UpdateController(QObject):
         previous = str(self.settings.value("updates/last_running_version", ""))
         self.settings.setValue("updates/last_running_version", APP_VERSION)
         installing = str(self.settings.value("updates/installing_version", ""))
+        if not installing:
+            return
+        self.settings.remove("updates/installing_version")
         if installing == APP_VERSION and previous != APP_VERSION:
-            self.settings.remove("updates/installing_version")
             QMessageBox.information(
                 self.host, "Atualização concluída",
-                f"Aplicativo atualizado para a versão {APP_VERSION}. As novidades estão no menu Ajuda.",
+                f"Aplicativo atualizado para a versão {APP_VERSION}. As novidades estão em Mais opções, "
+                "Novidades da versão.",
             )
+        elif installing != APP_VERSION:
+            LOGGER.warning("Atualização para %s não concluída; versão atual %s", installing, APP_VERSION)
+            QMessageBox.warning(
+                self.host, "Atualização não concluída",
+                f"A atualização para a versão {installing} não foi concluída e a versão {APP_VERSION} "
+                "continua funcionando. Tente de novo em Mais opções, Verificar atualizações.",
+            )
+
+    def _clean_leftovers(self):
+        """Remove downloads e pastas temporárias esquecidos por atualizações antigas."""
+        updates = self.app_data_dir / "updates"
+        if self._busy or not updates.is_dir():
+            return
+        for entry in updates.iterdir():
+            try:
+                if entry.is_dir() and entry.name.startswith(("staging-", "rollback-")):
+                    shutil.rmtree(entry, ignore_errors=True)
+                elif entry.is_file() and entry.name.endswith((".zip", ".download")):
+                    entry.unlink(missing_ok=True)
+            except OSError:
+                LOGGER.warning("Não foi possível limpar %s", entry)
 
     def show_current_changelog(self):
         """Exibe as novidades locais sem depender da disponibilidade do GitHub."""

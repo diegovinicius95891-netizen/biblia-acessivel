@@ -554,6 +554,13 @@ class UserDataDatabase:
         ).fetchall()
         return [dict(row) for row in rows]
 
+    def is_memorized(self, translation_id: str, book_code: str, chapter: int, verse: str) -> bool:
+        """Diz se o versículo já está na lista de memorização."""
+        return self.connection.execute(
+            """SELECT 1 FROM memorized_verses WHERE translation_id=? AND book_code=?
+               AND chapter=? AND verse=?""", (translation_id, book_code, int(chapter), str(verse))
+        ).fetchone() is not None
+
     def toggle_memorization(self, translation_id: str, book_code: str, book_name: str,
                             chapter: int, verse: str, verse_text: str) -> bool:
         """Adiciona ou remove um versículo da lista de memorização."""

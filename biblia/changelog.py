@@ -1,6 +1,18 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.5.4
+CURRENT_CHANGELOG = """Novidades da versão 4.6.0
+
+Interface parecida com a do Android: cores da Áudio Games Brasil, com fundo azul-escuro, botões azuis com borda dourada e foco dourado bem visível. O alto contraste continua em Configurações.
+
+Menu principal igual ao do celular: Continuar leitura, Trocar de livro, Mais opções e Apoie a Bíblia AGB com uma doação. Alt+1 até Alt+4 continuam funcionando.
+
+Mais opções na mesma ordem do Android, agora com Novidades da versão, Verificar atualizações e Apoie a Bíblia AGB. Ir para uma referência saiu da lista; use Pesquisar na Bíblia ou o Modo culto.
+
+Ações em vários versículos: na tela Versículos, Control+Espaço marca ou desmarca o versículo, mesmo fora de ordem. Depois, Aplicações ou Shift+F10 abre as ações para os selecionados: copiar no formato Provérbios 5:1-2, 6-7 com cada versículo numerado, explicar com IA, favoritar, memorizar, criar anotação e ouvir.
+
+Atualização automática mais segura: o aplicativo procura a versão do Windows mesmo quando há outras publicações no GitHub, tenta de novo quando a internet falha, confere o pacote inteiro antes de instalar, verifica de novo a cada 6 horas se ficar aberto, tenta de novo se algum arquivo estiver em uso, desfaz a troca se algo der errado e avisa quando uma atualização não foi concluída.
+
+Novidades da versão 4.5.4
 
 Interface mais limpa: saíram as opções que levavam ao mesmo lugar por caminhos diferentes.
 

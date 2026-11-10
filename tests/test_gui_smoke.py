@@ -61,7 +61,7 @@ class GuiSmokeTests(unittest.TestCase):
         labels = [window.reader_menu.item(index).text() for index in range(window.reader_menu.count())]
         self.assertTrue(labels[0].startswith("Continuar em "))
         self.assertEqual(
-            ["Livros — Alt+1", "Capítulos — Alt+2", "Mais opções — Alt+4"],
+            ["Trocar de livro — Alt+1", "Mais opções — Alt+4", "Apoie a Bíblia AGB com uma doação"],
             labels[1:],
         )
         self.assertIn(window.active_book_name, window.windowTitle())
@@ -82,7 +82,7 @@ class GuiSmokeTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(window.secondary_pages["reader_chapters"][0], window.page_stack.currentIndex())
         window._handle_escape()
-        self.assertEqual(28, window.more_options.count())
+        self.assertEqual(30, window.more_options.count())
         labels = [window.more_options.item(index).text() for index in range(window.more_options.count())]
         self.assertIn("Harpa Cristã", labels)
         self.assertIn("Status do quiz", labels)
@@ -207,13 +207,15 @@ class GuiSmokeTests(unittest.TestCase):
         window.close()
 
     def test_more_options_are_grouped_with_exit_last(self):
-        """Mantém os 28 recursos agrupados e Sair do aplicativo sempre no fim."""
+        """Mantém os 30 recursos agrupados e Sair do aplicativo sempre no fim."""
         window = self.make_window()
         ids = [window.more_options.item(i).data(Qt.UserRole) for i in range(window.more_options.count())]
-        self.assertEqual(28, len(ids))
+        self.assertEqual(30, len(ids))
         self.assertEqual(len(ids), len(set(ids)))
         self.assertEqual("exit", ids[-1])
-        self.assertEqual("reference", ids[0])
+        self.assertEqual("search", ids[0])
+        self.assertNotIn("reference", ids)
+        self.assertLess(ids.index("donation"), ids.index("exit"))
         self.assertLess(ids.index("search"), ids.index("hymnal"))
         self.assertLess(ids.index("settings"), ids.index("help"))
         # Rotas duplicadas foram removidas: o resumo já está na tela inicial e
@@ -429,6 +431,25 @@ class GuiSmokeTests(unittest.TestCase):
             self.assertIn("Referência: Gênesis 1:1", saved)
             self.assertIn("Reflexão pessoal.", saved)
             window.close()
+
+    def test_marking_several_verses_copies_numbered_ranges(self):
+        """Control+Espaço marca versículos fora de ordem e copia "Livro 1:1-2, 4"."""
+        window = self.make_window()
+        window.open_reader_section("continue_reading")
+        for row in (3, 0, 1):
+            window.verse_list.setCurrentRow(row)
+            QTest.keyClick(window.verse_list, Qt.Key_Space, Qt.ControlModifier)
+        self.assertTrue(window.verse_list.item(0).text().startswith("Selecionado. "))
+        reference = window.marked_reference()
+        self.assertTrue(reference.endswith(f"{window.active_chapter}:1-2, 4"), reference)
+        with patch("biblia.main_window.ApplicationsDialog.choose", return_value="copy_reference"):
+            QTest.keyClick(window.verse_list, Qt.Key_F10, Qt.ShiftModifier)
+        copied = QApplication.clipboard().text().splitlines()
+        self.assertEqual(reference, copied[0])
+        self.assertEqual(["1.", "2.", "4."], [line.split()[0] for line in copied[1:]])
+        window.next_chapter()
+        self.assertFalse(window.verse_marks)
+        window.close()
 
     def test_api_key_dialog_is_masked_and_enter_confirms(self):
         """Confere a caixa protegida e a confirmação direta pelo Enter."""

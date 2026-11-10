@@ -20,6 +20,8 @@ from PySide6.QtGui import (
     QAccessible,
     QAccessibleAnnouncementEvent,
     QAction,
+    QBrush,
+    QColor,
     QDesktopServices,
     QKeySequence,
     QShortcut,
@@ -87,14 +89,57 @@ VOICE_OFF = "__off__"
 # Ordem única de Mais opções: leitura, estudo, devoção, quiz e, por último, sistema.
 # "Sair do aplicativo" fica sempre no fim para não ser ativado por engano no meio da lista.
 MORE_OPTIONS_ORDER = (
-    "reference", "search", "translations", "comparison", "plans", "history",
+    "search", "translations", "comparison", "plans", "history",
     "favorites", "worship",
     "ai_studies", "topics", "characters", "memorization",
     "daily_devotional", "devotional", "notes", "prayers", "online_devotionals", "radio_gospel",
     "hymnal",
     "quiz", "quiz_status", "statistics",
-    "settings", "backup", "ideas", "help", "legal", "exit",
+    "settings", "backup", "changelog", "updates", "donation", "ideas", "help", "legal", "exit",
 )
+PIX_KEY = "diego@audiogames.com.br"
+# Cores da identidade AGB usadas no Android: azul do logo, azul escuro e dourado.
+AGB_STYLE = (
+    "QWidget { background: #031633; color: #ffffff; } "
+    "QGroupBox { border: 1px solid #F4C95D; border-radius: 10px; margin-top: 14px; padding-top: 8px; } "
+    "QGroupBox::title { subcontrol-origin: margin; left: 10px; color: #F4C95D; } "
+    "QPushButton { background: #00285E; color: #ffffff; border: 2px solid #F4C95D; "
+    "border-radius: 12px; padding: 8px 14px; min-height: 28px; } "
+    "QPushButton:hover { background: #0B3D80; } "
+    "QPushButton:focus { background: #F4C95D; color: #031633; } "
+    "QListWidget, QLineEdit, QComboBox, QPlainTextEdit, QTextEdit, QSpinBox { background: #00285E; "
+    "color: #ffffff; border: 1px solid #F4C95D; border-radius: 8px; padding: 4px; } "
+    "QListWidget::item { padding: 6px; } "
+    "QListWidget::item:selected, QComboBox QAbstractItemView::item:selected "
+    "{ background: #F4C95D; color: #031633; } "
+    "QComboBox QAbstractItemView { background: #00285E; color: #ffffff; } "
+    "QMenuBar, QMenu, QStatusBar { background: #00285E; color: #ffffff; } "
+    "QMenuBar::item:selected, QMenu::item:selected { background: #F4C95D; color: #031633; } "
+    "QProgressBar { border: 1px solid #F4C95D; border-radius: 6px; text-align: center; } "
+    "QProgressBar::chunk { background: #F4C95D; }"
+)
+
+
+def verse_ranges(numbers) -> str:
+    """Junta números seguidos em intervalos: 1, 2, 6, 7, 9 vira "1-2, 6-7, 9"."""
+    numbers = [str(number) for number in numbers]
+    parts = []
+    index = 0
+    while index < len(numbers):
+        end = index
+        while end + 1 < len(numbers) and _consecutive(numbers[end], numbers[end + 1]):
+            end += 1
+        parts.append(numbers[index] if end == index else f"{numbers[index]}-{numbers[end]}")
+        index = end + 1
+    return ", ".join(parts)
+
+
+def _consecutive(first: str, second: str) -> bool:
+    """Diz se o segundo versículo vem logo depois do primeiro."""
+    try:
+        return int(second.strip()) == int(first.strip()) + 1
+    except ValueError:
+        return False
 APP_DISPLAY_NAME = "Bíblia AGB (Audio Games Brasil)"
 SHORTCUTS = {
     "search": "Ctrl+F", "reference": "Ctrl+G", "favorite": "Ctrl+D",
@@ -175,9 +220,14 @@ class VerseList(QListWidget):
     applicationsRequested = Signal()
     chapterRequested = Signal(int)
     activateRequested = Signal()
+    markRequested = Signal()
 
     def keyPressEvent(self, event):
         """Abre o menu contextual pelo teclado ou delega a tecla à lista."""
+        if event.key() == Qt.Key_Space and event.modifiers() & Qt.ControlModifier:
+            self.markRequested.emit()
+            event.accept()
+            return
         if event.key() == Qt.Key_Left:
             self.chapterRequested.emit(-1)
             event.accept()
@@ -297,6 +347,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(APP_DISPLAY_NAME)
         self.resize(1100, 760)
         self.setAccessibleName(APP_DISPLAY_NAME)
+        self.verse_marks = set()
         self._build_ui()
         self._build_menu()
         self._build_shortcuts()
@@ -306,7 +357,7 @@ class MainWindow(QMainWindow):
         self.update_controller = UpdateController(self, self.app_data_dir, self.install_dir)
         self.reader_menu.setFocus()
         self.statusBar().showMessage(
-            "Pronto. Escolha Continuar leitura, Livros, Capítulos ou Mais opções. Alt+1 até Alt+4 abrem as telas."
+            "Pronto. Escolha Continuar leitura, Trocar de livro ou Mais opções. Alt+1 até Alt+4 abrem as telas."
         )
 
     # Interface ---------------------------------------------------------
@@ -332,6 +383,7 @@ class MainWindow(QMainWindow):
         self.settings_section = self._build_settings_section()
         self.legal_section = self._build_legal_section()
         self.help_section = self._build_help_section()
+        self.donation_section = self._build_donation_section()
 
         self._add_secondary_page("translations", "Traduções", self.translation_section, self.translation_combo)
         self._add_secondary_page("comparison", "Comparar traduções", self.comparison_section, self.comparison_source)
@@ -342,6 +394,7 @@ class MainWindow(QMainWindow):
         self._add_secondary_page("settings", "Configurações", self.settings_section, self.settings_options)
         self._add_secondary_page("legal", "Licenças, leis e justificativa", self.legal_section, self.legal_text)
         self._add_secondary_page("help", "Ajuda e atalhos", self.help_section, self.help_text)
+        self._add_secondary_page("donation", "Apoie a Bíblia AGB", self.donation_section, self.donation_text)
         # Recursos extensos permanecem num controlador separado para evitar
         # transformar esta janela em um arquivo ainda mais monolítico.
         from .extended_features import ExtendedFeatures
@@ -376,9 +429,9 @@ class MainWindow(QMainWindow):
         # Versículos não aparece como item próprio: Continuar leitura já abre essa tela.
         for label, page_id in (
             ("Continuar leitura — carregando posição", "continue_reading"),
-            ("Livros — Alt+1", "reader_books"),
-            ("Capítulos — Alt+2", "reader_chapters"),
+            ("Trocar de livro — Alt+1", "reader_books"),
             ("Mais opções — Alt+4", "reader_more"),
+            ("Apoie a Bíblia AGB com uma doação", "donation"),
         ):
             item = QListWidgetItem(label)
             item.setData(Qt.UserRole, page_id)
@@ -480,13 +533,15 @@ class MainWindow(QMainWindow):
         self.verse_list.setAccessibleName("Seção Versículos")
         self.verse_list.setAccessibleDescription(
             "Cima e baixo navegam. Esquerda e direita mudam o capítulo. "
-            "Enter lê em voz alta. Aplicações ou Shift F10 abre as ações do versículo."
+            "Enter lê em voz alta. Aplicações ou Shift F10 abre as ações do versículo. "
+            "Control Espaço marca vários versículos para ações em conjunto."
         )
         self.verse_list.activateRequested.connect(self.speak_current_verse)
         self.verse_list.itemDoubleClicked.connect(lambda _item: self.speak_current_verse())
         self.verse_list.currentItemChanged.connect(self._verse_changed)
         self.verse_list.chapterRequested.connect(self.change_chapter_from_reading)
         self.verse_list.applicationsRequested.connect(self.show_verse_menu)
+        self.verse_list.markRequested.connect(self.toggle_verse_mark)
         self.verse_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.verse_list.customContextMenuRequested.connect(self.show_verse_menu_at)
         verses_layout.addWidget(self.verse_list, 1)
@@ -504,12 +559,14 @@ class MainWindow(QMainWindow):
         options = (
             ("Traduções", "translations"),
             ("Comparar traduções", "comparison"),
-            ("Ir para uma referência", "reference"),
             ("Pesquisar na Bíblia", "search"),
             ("Fazer devocional", "devotional"),
             ("Anotações por dia", "notes"),
             ("Configurações", "settings"),
-            ("Licenças, leis e justificativa de uso", "legal"),
+            ("Novidades da versão", "changelog"),
+            ("Verificar atualizações", "updates"),
+            ("Apoie a Bíblia AGB com uma doação", "donation"),
+            ("Licenças, leis e justificativa", "legal"),
             ("Ajuda e atalhos", "help"),
             ("Sair do aplicativo", "exit"),
         )
@@ -526,6 +583,9 @@ class MainWindow(QMainWindow):
     def open_reader_section(self, item_or_id):
         """Abre uma das quatro telas principais e posiciona o foco na lista correta."""
         page_id = item_or_id.data(Qt.UserRole) if isinstance(item_or_id, QListWidgetItem) else item_or_id
+        if page_id == "donation":
+            self.open_more_option("donation")
+            return
         continuing = page_id == "continue_reading"
         if continuing:
             page_id = "reader_verses"
@@ -647,6 +707,12 @@ class MainWindow(QMainWindow):
         page_id = item_or_id.data(Qt.UserRole) if isinstance(item_or_id, QListWidgetItem) else item_or_id
         if page_id == "exit":
             self.request_exit()
+            return
+        if page_id == "changelog":
+            self.show_current_changelog()
+            return
+        if page_id == "updates":
+            self.check_updates_now()
             return
         if page_id == "ideas":
             query = QUrlQuery()
@@ -927,7 +993,8 @@ class MainWindow(QMainWindow):
         self.help_text.set_text(
             "BÍBLIA AGB (AUDIO GAMES BRASIL)\n\n"
             "NAVEGAÇÃO POR SEÇÕES\n"
-            "Na tela principal, cima e baixo percorrem Continuar leitura, Livros, Capítulos e Mais opções. "
+            "Na tela principal, como no Android, cima e baixo percorrem Continuar leitura, Trocar de livro, "
+            "Mais opções e Apoie a Bíblia AGB com uma doação. "
             "Continuar leitura abre os Versículos na posição salva. "
             "Alt+1 abre Livros, Alt+2 abre Capítulos, Alt+3 continua a leitura e Alt+4 abre Mais opções. "
             "O caminho natural é Livros, depois Capítulos, depois Versículos: Enter em Livros leva aos capítulos "
@@ -941,6 +1008,15 @@ class MainWindow(QMainWindow):
             "A lista está organizada por assunto: primeiro leitura e pesquisa, depois estudos, depois devoção e "
             "oração, depois quiz e estatísticas e, por último, configurações, backup, suporte, ajuda, licenças "
             "e Sair do aplicativo.\n\n"
+            "VÁRIOS VERSÍCULOS\n"
+            "Na tela Versículos, Control+Espaço marca ou desmarca o versículo atual; marque quantos quiser, "
+            "mesmo fora de ordem. Com algum marcado, Aplicações ou Shift+F10 abre as ações para os selecionados: "
+            "copiar no formato Provérbios 5:1-2, 6-7 com cada versículo numerado embaixo, copiar só o texto, "
+            "explicar com IA, adicionar ou remover dos favoritos, memorizar, criar anotação, ouvir e limpar "
+            "a seleção. A seleção vale para o capítulo aberto.\n\n"
+            "ATUALIZAÇÕES\n"
+            "No computador, o aplicativo verifica sozinho uma nova versão no GitHub e confere a integridade "
+            "do arquivo antes de instalar. Também dá para verificar em Mais opções, Verificar atualizações.\n\n"
             "INTELIGÊNCIA ARTIFICIAL\n"
             "Aplicações ou Shift+F10 abre uma lista acessível. Cima e baixo navegam; Espaço ou "
             "Enter executa. Em Livros há resumo do livro e Sobre este livro, com autoria e contexto; em Capítulos, resumo do capítulo; e "
@@ -1387,6 +1463,7 @@ class MainWindow(QMainWindow):
             self.current_translation_id(), self.active_book_code, self.active_chapter
         )
         self._loading = True
+        self.verse_marks.clear()
         self.verse_list.clear()
         selected_row = 0
         for index, row in enumerate(rows):
@@ -1628,8 +1705,131 @@ class MainWindow(QMainWindow):
             self.verse_list.setCurrentItem(item)
         self.show_verse_menu(position)
 
+    def toggle_verse_mark(self):
+        """Marca ou desmarca o versículo atual e diz como está a seleção."""
+        item = self.verse_list.currentItem()
+        if not item or item.data(Qt.UserRole + 1) is None:
+            return
+        number = str(item.data(Qt.UserRole + 1))
+        added = number not in self.verse_marks
+        if added:
+            self.verse_marks.add(number)
+        else:
+            self.verse_marks.discard(number)
+        self._paint_verse_item(item)
+        message = f"Versículo {number} {'selecionado' if added else 'desmarcado'}. "
+        if self.verse_marks:
+            count = len(self.verse_marks)
+            message += (
+                f"{count} {'selecionado' if count == 1 else 'selecionados'}: {self.marked_reference()}. "
+                "Aplicações abre as ações para os selecionados."
+            )
+        else:
+            message += "Nenhum versículo selecionado."
+        self._announce_for(self.verse_list, message)
+
+    def _paint_verse_item(self, item):
+        """Mostra em texto e em cor se o versículo está marcado."""
+        number = str(item.data(Qt.UserRole + 1))
+        text = f"{number}. {item.data(Qt.UserRole)}"
+        marked = number in self.verse_marks
+        item.setText(f"Selecionado. {text}" if marked else text)
+        item.setBackground(QColor(201, 162, 39, 110) if marked else QBrush())
+
+    def marked_items(self):
+        """Itens marcados na ordem do capítulo."""
+        return [
+            self.verse_list.item(row) for row in range(self.verse_list.count())
+            if self.verse_list.item(row).data(Qt.UserRole + 1) is not None
+            and str(self.verse_list.item(row).data(Qt.UserRole + 1)) in self.verse_marks
+        ]
+
+    def marked_reference(self) -> str:
+        """Referência como "Provérbios 5:1-2, 6-7"."""
+        numbers = [item.data(Qt.UserRole + 1) for item in self.marked_items()]
+        return f"{self.active_book_name} {self.active_chapter}:{verse_ranges(numbers)}"
+
+    def clear_verse_marks(self, announce=True):
+        """Desmarca todos os versículos do capítulo."""
+        self.verse_marks.clear()
+        for row in range(self.verse_list.count()):
+            item = self.verse_list.item(row)
+            if item.data(Qt.UserRole + 1) is not None:
+                self._paint_verse_item(item)
+        if announce:
+            self._announce_for(self.verse_list, "Seleção limpa.")
+
+    def show_marked_verses_menu(self):
+        """Ações em massa para os versículos marcados, como no Android."""
+        items = self.marked_items()
+        if not items:
+            return
+        reference = self.marked_reference()
+        numbered = "\n".join(f"{item.data(Qt.UserRole + 1)}. {item.data(Qt.UserRole)}" for item in items)
+        with_reference = f"{reference}\n{numbered}"
+        selected = ApplicationsDialog.choose(
+            self,
+            f"Ações para {reference}",
+            (
+                ("Copiar referência e texto", "copy_reference"),
+                ("Copiar somente o texto", "copy_text"),
+                ("Gerar explicação dos versículos com inteligência artificial", "ai"),
+                ("Adicionar aos favoritos", "favorite_add"),
+                ("Remover dos favoritos", "favorite_remove"),
+                ("Adicionar à memorização", "memorize"),
+                ("Criar anotação", "note"),
+                ("Ouvir os versículos", "speak"),
+                ("Limpar seleção", "clear"),
+            ),
+        )
+        translation = self.current_translation_id()
+        if selected == "copy_reference":
+            QApplication.clipboard().setText(with_reference)
+            self.statusBar().showMessage("Referência e texto copiados.")
+        elif selected == "copy_text":
+            QApplication.clipboard().setText(" ".join(str(item.data(Qt.UserRole)) for item in items))
+            self.statusBar().showMessage("Texto copiado.")
+        elif selected == "ai":
+            self.generate_ai_for_scope("marked")
+        elif selected in ("favorite_add", "favorite_remove"):
+            add = selected == "favorite_add"
+            changed = 0
+            for item in items:
+                key = (translation, self.active_book_code, self.active_chapter, str(item.data(Qt.UserRole + 1)))
+                if self.user_data.is_bookmarked(*key) == add:
+                    continue
+                if self.user_data.toggle_bookmark(*key):
+                    self.user_data.enrich_favorite(key, self.active_book_name)
+                changed += 1
+            self._announce_for(self.verse_list, f"{changed} versículos {'adicionados aos' if add else 'removidos dos'} favoritos.")
+        elif selected == "memorize":
+            changed = 0
+            for item in items:
+                verse = str(item.data(Qt.UserRole + 1))
+                if self.user_data.is_memorized(translation, self.active_book_code, self.active_chapter, verse):
+                    continue
+                self.user_data.toggle_memorization(translation, self.active_book_code, self.active_book_name,
+                                                   self.active_chapter, verse, str(item.data(Qt.UserRole)))
+                changed += 1
+            self.extended.refresh_memory()
+            self._announce_for(self.verse_list, f"{changed} versículos adicionados à memorização.")
+        elif selected == "note":
+            title, body, accepted = NoteEditorDialog.get_note(self, reference)
+            if accepted:
+                self.user_data.add_note(translation, self.active_book_code, self.active_book_name,
+                                        self.active_chapter, verse_ranges([i.data(Qt.UserRole + 1) for i in items]),
+                                        numbered, title, body)
+                self.statusBar().showMessage("Anotação salva. Consulte Mais opções, Anotações por dia.")
+        elif selected == "speak":
+            self._speak_text(with_reference)
+        elif selected == "clear":
+            self.clear_verse_marks()
+
     def show_verse_menu(self, position=None):
         """Apresenta cópia, marcador, voz e IA em lista explicitamente acessível."""
+        if self.verse_marks:
+            self.show_marked_verses_menu()
+            return
         key = self._current_verse_key()
         if not key:
             self._warn(
@@ -2257,7 +2457,7 @@ class MainWindow(QMainWindow):
             "border: 2px solid #ffffff; } "
             "QPushButton { background: #000000; color: #ffffff; border: 2px solid #ffffff; padding: 5px; }"
             if self.high_contrast
-            else ""
+            else AGB_STYLE
         )
         if self.tts:
             self.tts.setRate(self.speech_rate)
@@ -2284,6 +2484,7 @@ class MainWindow(QMainWindow):
             "book": self.book_list,
             "chapter": self.chapter_list,
             "verse": self.verse_list,
+            "marked": self.verse_list,
         }[task]
         self._announce_for(
             source_widget,
@@ -2385,6 +2586,14 @@ class MainWindow(QMainWindow):
                 "Termine obrigatoriamente com uma conclusão completa."
             )
             return instruction, text, f"Resumo de {book_name}, capítulo {chapter}"
+        if task == "marked":
+            reference = self.marked_reference()
+            text = "\n".join(f"{item.data(Qt.UserRole + 1)}. {item.data(Qt.UserRole)}" for item in self.marked_items())
+            instruction = (
+                f"Explique {reference} em linguagem simples, em no máximo 400 palavras. "
+                "Indique o sentido observável no texto e evite afirmar uma única interpretação doutrinária."
+            )
+            return instruction, text, f"Explicação de {reference}"
         item = self.verse_list.currentItem()
         if not item or item.data(Qt.UserRole + 1) is None:
             self._warn("Texto necessário", "Selecione um número da seção Versículos para pedir a explicação.")
@@ -2430,6 +2639,10 @@ class MainWindow(QMainWindow):
             if item.data(Qt.UserRole + 2) == "ending"
             else f"{item.data(Qt.UserRole + 1)}. {item.data(Qt.UserRole)}"
         )
+        self._speak_text(spoken_text)
+
+    def _speak_text(self, spoken_text: str):
+        """Fala pela voz SAPI ou entrega o texto ao leitor de tela."""
         if self.voice_name == VOICE_OFF:
             self._announce_for(self.verse_list, spoken_text)
             return
@@ -2474,6 +2687,34 @@ class MainWindow(QMainWindow):
         self.help_text.setFocus()
         if self.help_text.count():
             self.help_text.setCurrentRow(0)
+
+    def _build_donation_section(self):
+        """Mostra a chave Pix para doações de qualquer valor, como no Android."""
+        section = QGroupBox("Apoie a Bíblia AGB")
+        layout = QVBoxLayout(section)
+        self.donation_text = ReadingTextList("Apoie a Bíblia AGB")
+        self.donation_text.set_text(
+            "A Bíblia AGB é gratuita, sem anúncios e feita para ser acessível. Se ela abençoa a sua vida, "
+            "você pode ajudar a manter o projeto com uma doação pelo Pix, do valor que quiser.\n\n"
+            f"Chave Pix (e-mail): {PIX_KEY}. Recebedor: Diego, no Nubank.\n\n"
+            "Como doar: copie a chave, abra o aplicativo do seu banco, escolha Pix, depois Transferir ou "
+            "Pagar com chave, cole a chave e digite o valor. Confira se o nome do recebedor é Diego antes "
+            "de confirmar. Que Deus abençoe!"
+        )
+        layout.addWidget(self.donation_text, 1)
+        copy_button = AccessibleButton("&Copiar chave Pix")
+        copy_button.setAccessibleDescription(f"Copiar {PIX_KEY} para colar no app do banco")
+        copy_button.clicked.connect(self.copy_pix_key)
+        layout.addWidget(copy_button)
+        return section
+
+    def copy_pix_key(self):
+        """Copia a chave Pix e explica o próximo passo."""
+        QApplication.clipboard().setText(PIX_KEY)
+        self._announce_for(
+            self.donation_text,
+            "Chave Pix copiada. Abra o app do seu banco, escolha Pix, Pagar com chave, e cole.",
+        )
 
     def check_updates_now(self):
         """Solicita verificação imediata pela opção da Ajuda."""
