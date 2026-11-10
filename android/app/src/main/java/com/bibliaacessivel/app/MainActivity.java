@@ -78,6 +78,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private Models.Book selectedBook;
     private int selectedChapter;
     private Models.Verse selectedVerse;
+    /** Versículos marcados para ações em massa; valem só para o capítulo em que foram marcados. */
+    private final Set<String> multiSelection = new java.util.HashSet<>();
+    private String multiSelectionChapter = "";
     private String pendingDevotional;
     private EditText worshipInput;
     private TextView worshipStatus;
@@ -415,22 +418,201 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         List<Models.Verse> verses = bible.chapter(translationId, selectedBook.code, selectedChapter);
         userData.recordReading(translationId, selectedBook, selectedChapter,
                 selectedVerse == null ? "1" : selectedVerse.number);
-        ListView list = listView(verses);
+        String chapterKey = translationId + "|" + selectedBook.code + "|" + selectedChapter;
+        if (!chapterKey.equals(multiSelectionChapter)) {
+            multiSelection.clear();
+            multiSelectionChapter = chapterKey;
+        }
+        ListView list = verseListView(verses);
         list.setContentDescription("Versículos de " + currentChapterReference() +
                 ". Deslize com dois dedos para a esquerda para voltar o capítulo ou para a direita para avançar.");
+        Button single = actionButton("Aplicações do versículo atual",
+                "Abrir ações de " + currentReference(), this::showVerseActions);
+        Button bulk = actionButton("", "", () -> showBulkVerseActions(verses));
+        Button clear = actionButton("Limpar seleção", "Desmarcar todos os versículos selecionados", () -> {
+            multiSelection.clear();
+            showVerses();
+            toast("Seleção limpa.");
+        });
+        Runnable refresh = () -> {
+            ((ArrayAdapter<?>) list.getAdapter()).notifyDataSetChanged();
+            boolean selecting = !multiSelection.isEmpty();
+            String label = "Ações para " + multiSelection.size() +
+                    (multiSelection.size() == 1 ? " versículo selecionado: " : " versículos selecionados: ") +
+                    selectionReference(verses);
+            bulk.setText(label);
+            bulk.setContentDescription(label);
+            bulk.setVisibility(selecting ? View.VISIBLE : View.GONE);
+            clear.setVisibility(selecting ? View.VISIBLE : View.GONE);
+            single.setVisibility(selecting ? View.GONE : View.VISIBLE);
+        };
         list.setOnItemClickListener((parent, view, position, id) -> {
+            if (!multiSelection.isEmpty()) {
+                toggleVerseSelection(list, verses, position, refresh);
+                return;
+            }
             selectedVerse = verses.get(position);
             savePosition();
             showVerseActions();
         });
+        list.setOnItemLongClickListener((parent, view, position, id) -> {
+            toggleVerseSelection(list, verses, position, refresh);
+            return true;
+        });
         root.addView(list, fill());
-        root.addView(actionButton("Aplicações do versículo atual",
-                "Abrir ações de " + currentReference(), this::showVerseActions));
-        root.addView(paragraph("Ative um versículo para abrir suas ações. Também há botões e gesto de dois dedos para trocar de capítulo."));
+        root.addView(bulk);
+        root.addView(clear);
+        root.addView(single);
+        root.addView(paragraph("Ative um versículo para abrir suas ações. Para escolher vários, toque duas vezes " +
+                "e segure um versículo; depois, um toque marca ou desmarca outros. As ações para os " +
+                "selecionados ficam no fim da tela. Também há botões e gesto de dois dedos para trocar de capítulo."));
+        refresh.run();
         setContentView(root);
         list.setSelection(verseIndex(verses, selectedVerse == null ? "1" : selectedVerse.number));
         // Durante a leitura contínua, a voz já anuncia o capítulo; o TalkBack não fala por cima.
         focusForTalkBack(list, continuousActive ? "" : "Versículos de " + currentChapterReference() + ".");
+    }
+
+    /** Lista de versículos que mostra, em texto e em cor, quais estão selecionados. */
+    private ListView verseListView(List<Models.Verse> verses) {
+        ListView list = new ListView(this);
+        list.setAdapter(new ArrayAdapter<Models.Verse>(this, android.R.layout.simple_list_item_1, verses) {
+            @Override public View getView(int position, View convertView, ViewGroup parent) {
+                TextView view = (TextView) super.getView(position, convertView, parent);
+                Models.Verse verse = verses.get(position);
+                boolean selected = multiSelection.contains(verse.number);
+                view.setText(selected ? "Selecionado. " + verse : verse.toString());
+                view.setTextSize(18);
+                view.setMinHeight(dp(52));
+                view.setGravity(Gravity.CENTER_VERTICAL);
+                view.setBackgroundColor(selected ? 0x66C9A227 : 0x00000000);
+                return view;
+            }
+        });
+        list.setFocusable(true);
+        return list;
+    }
+
+    /** Marca ou desmarca um versículo e diz quantos estão selecionados. */
+    private void toggleVerseSelection(ListView list, List<Models.Verse> verses, int position, Runnable refresh) {
+        Models.Verse verse = verses.get(position);
+        boolean added = multiSelection.add(verse.number);
+        if (!added) multiSelection.remove(verse.number);
+        refresh.run();
+        String message = "Versículo " + verse.number + (added ? " selecionado. " : " desmarcado. ");
+        message += multiSelection.isEmpty() ? "Nenhum versículo selecionado."
+                : multiSelection.size() + (multiSelection.size() == 1 ? " selecionado: " : " selecionados: ") +
+                selectionReference(verses) + ". As ações ficam no fim da tela.";
+        list.announceForAccessibility(message);
+    }
+
+    /** Versículos selecionados na ordem do capítulo. */
+    private List<Models.Verse> selectedVerses(List<Models.Verse> verses) {
+        List<Models.Verse> result = new ArrayList<>();
+        for (Models.Verse verse : verses) if (multiSelection.contains(verse.number)) result.add(verse);
+        return result;
+    }
+
+    /** Referência como "Provérbios 5:1-2, 6-7". */
+    private String selectionReference(List<Models.Verse> verses) {
+        List<String> numbers = new ArrayList<>();
+        for (Models.Verse verse : selectedVerses(verses)) numbers.add(verse.number);
+        return selectedBook.name + " " + selectedChapter + ":" + verseRanges(numbers);
+    }
+
+    /** Junta números seguidos em intervalos: 1, 2, 6, 7, 9 vira "1-2, 6-7, 9". */
+    static String verseRanges(List<String> numbers) {
+        StringBuilder text = new StringBuilder();
+        int index = 0;
+        while (index < numbers.size()) {
+            int end = index;
+            while (end + 1 < numbers.size() && consecutive(numbers.get(end), numbers.get(end + 1))) end++;
+            if (text.length() > 0) text.append(", ");
+            text.append(numbers.get(index));
+            if (end > index) text.append("-").append(numbers.get(end));
+            index = end + 1;
+        }
+        return text.toString();
+    }
+
+    private static boolean consecutive(String first, String second) {
+        try {
+            return Integer.parseInt(second.trim()) == Integer.parseInt(first.trim()) + 1;
+        } catch (NumberFormatException error) {
+            return false;
+        }
+    }
+
+    /** Ações em massa para os versículos selecionados. */
+    private void showBulkVerseActions(List<Models.Verse> verses) {
+        List<Models.Verse> chosen = selectedVerses(verses);
+        if (chosen.isEmpty()) return;
+        String reference = selectionReference(verses);
+        StringBuilder numbered = new StringBuilder();
+        StringBuilder plain = new StringBuilder();
+        for (Models.Verse verse : chosen) {
+            numbered.append("\n").append(verse);
+            plain.append(plain.length() == 0 ? "" : " ").append(verse.text);
+        }
+        String withReference = reference + numbered;
+        String[] actions = {
+                "Copiar referência e texto", "Copiar somente o texto",
+                "Gerar explicação dos versículos com IA", "Adicionar aos favoritos", "Remover dos favoritos",
+                "Adicionar à memorização", "Criar anotação", "Ouvir os versículos", "Limpar seleção"
+        };
+        showChoiceDialog("Ações para " + reference, chosen.size() + " versículos. Escolha uma ação.",
+                actions, which -> {
+                    switch (which) {
+                        case 0:
+                            copy(withReference);
+                            break;
+                        case 1:
+                            copy(plain.toString());
+                            break;
+                        case 2:
+                            runAi("Explicação de " + reference,
+                                    "Explique " + reference + " em linguagem simples, em no máximo 400 palavras.",
+                                    () -> withReference, this::showVerses);
+                            break;
+                        case 3:
+                        case 4: {
+                            boolean add = which == 3;
+                            int changed = 0;
+                            for (Models.Verse verse : chosen) {
+                                boolean marked = userData.isBookmarked(translationId, selectedBook.code,
+                                        selectedChapter, verse.number);
+                                if (marked == add) continue;
+                                userData.toggleBookmark(translationId, selectedBook.code, selectedChapter, verse.number);
+                                if (add) userData.setBookmarkBookName(translationId, selectedBook.code,
+                                        selectedChapter, verse.number, selectedBook.name);
+                                changed++;
+                            }
+                            toast(changed + (add ? " versículos adicionados aos favoritos."
+                                    : " versículos removidos dos favoritos."));
+                            break;
+                        }
+                        case 5: {
+                            int changed = 0;
+                            for (Models.Verse verse : chosen) {
+                                if (userData.isMemorized(translationId, selectedBook.code, selectedChapter, verse.number)) continue;
+                                userData.toggleMemorized(translationId, selectedBook, selectedChapter, verse);
+                                changed++;
+                            }
+                            toast(changed + " versículos adicionados à memorização.");
+                            break;
+                        }
+                        case 6:
+                            createNote(reference, chosen.get(0), withReference);
+                            break;
+                        case 7:
+                            speakOrAnnounce(getWindow().getDecorView(), withReference);
+                            break;
+                        default:
+                            multiSelection.clear();
+                            showVerses();
+                            toast("Seleção limpa.");
+                    }
+                });
     }
 
     /** Reúne recursos secundários numa lista nativa navegável. */
@@ -1127,7 +1309,11 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "O texto bíblico é lido diretamente na lista de Versículos. Com o TalkBack ligado, deslize para a direita " +
                 "para ouvir a próxima opção ou para a esquerda para ouvir a opção anterior. Toque duas vezes " +
                 "para abrir. O gesto Voltar do Android retorna à tela anterior. Ao ativar um versículo, " +
-                "o menu de ações abre sem precisar segurar.\n\nESTUDOS COM IA\n\nMais opções, Estudos " +
+                "o menu de ações abre sem precisar segurar.\n\nVÁRIOS VERSÍCULOS\n\nToque duas vezes e segure um " +
+                "versículo para selecioná-lo. Com algum versículo selecionado, um toque marca ou desmarca outros, " +
+                "em qualquer ordem. No fim da tela, Ações para os versículos selecionados copia, explica com IA, " +
+                "favorita, memoriza, cria anotação ou lê todos de uma vez. Limpar seleção desmarca tudo.\n\n" +
+                "ESTUDOS COM IA\n\nMais opções, Estudos " +
                 "oferece exegese, hermenêutica, contexto histórico, teologia bíblica, comparação de " +
                 "interpretações, aplicação e pergunta livre. A pergunta sempre pode ser editada antes do " +
                 "envio. O Teólogo de IA é um assistente de estudo e não substitui orientação pastoral.\n\nVOZ\n\nAtivar a opção " +
@@ -1576,7 +1762,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                             break;
                         }
                         case 1: showVerseAiStudies(); break;
-                        case 2: createNote(); break;
+                        case 2: createNote(currentReference(), selectedVerse, ""); break;
                         case 3: copy(selectedVerse.text); break;
                         case 4: copy(currentReference() + " — " + selectedVerse.text); break;
                         case 5:
@@ -1610,15 +1796,16 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     }
 
     /** Solicita título e corpo e grava a nota somente quando houver conteúdo. */
-    private void createNote() {
+    private void createNote(String reference, Models.Verse anchor, String initialBody) {
         LinearLayout layout = rootLayout();
         EditText title = editText("Título da anotação", false);
-        title.setText(currentReference());
+        title.setText(reference);
         EditText body = editText("Texto da anotação", true);
+        body.setText(initialBody);
         layout.addView(title);
         layout.addView(body);
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Criar anotação para " + currentReference())
+                .setTitle("Criar anotação para " + reference)
                 .setView(layout)
                 .setPositiveButton("Salvar", null)
                 .setNegativeButton("Cancelar", null)
@@ -1630,8 +1817,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                         body.requestFocus();
                         return;
                     }
-                    userData.addNote(translationId, selectedBook, selectedChapter, selectedVerse,
-                            title.getText().toString().trim().isEmpty() ? currentReference() : title.getText().toString(),
+                    userData.addNote(translationId, selectedBook, selectedChapter, anchor,
+                            title.getText().toString().trim().isEmpty() ? reference : title.getText().toString(),
                             body.getText().toString().trim());
                     toast("Anotação salva em Mais opções, Anotações por dia.");
                     dialog.dismiss();

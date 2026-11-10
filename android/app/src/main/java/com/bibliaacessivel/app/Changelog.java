@@ -7,6 +7,10 @@ final class Changelog {
     static final String CURRENT =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
             "As atualizações agora chegam somente pela Google Play. O atualizador do GitHub foi removido.\n\n" +
+            "Ações em massa nos versículos: toque duas vezes e segure um versículo para selecioná-lo; depois, um " +
+            "toque marca ou desmarca outros, mesmo fora de ordem. No fim da tela aparecem as ações para os " +
+            "selecionados: copiar no formato Provérbios 5:1-2, 6-7 com cada versículo numerado embaixo, explicar " +
+            "com IA, favoritar, memorizar, criar anotação e ouvir.\n\n" +
             "O quiz bíblico ganhou 94 perguntas novas sobre Antigo e Novo Testamento, Jesus, personagens, " +
             "livros e versículos conhecidos: agora são 392.\n\n" +
             "A opção Ir para uma referência saiu de Mais opções; use Pesquisar na Bíblia ou o Modo culto.\n\n" +

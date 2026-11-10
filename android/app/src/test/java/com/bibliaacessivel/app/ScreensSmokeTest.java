@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
@@ -73,6 +74,28 @@ public final class ScreensSmokeTest {
             if (screen[1] != null) assertEquals(screen[0], screen[1], heading(activity));
         }
         assertTrue(heading(activity).length() > 0);
+
+        // Seleção múltipla: segurar marca o 1, um toque marca o 3, e o botão de ações mostra os dois.
+        call(activity, "showVerses");
+        ViewGroup page = (ViewGroup) ((ViewGroup) activity.findViewById(android.R.id.content)).getChildAt(0);
+        android.widget.ListView verses = null;
+        for (int i = 0; i < page.getChildCount(); i++) {
+            if (page.getChildAt(i) instanceof android.widget.ListView) verses = (android.widget.ListView) page.getChildAt(i);
+        }
+        assertNotNull(verses);
+        verses.getOnItemLongClickListener().onItemLongClick(verses, null, 0, 0);
+        verses.getOnItemClickListener().onItemClick(verses, null, 2, 2);
+        boolean found = false;
+        for (int i = 0; i < page.getChildCount(); i++) {
+            View child = page.getChildAt(i);
+            if (child instanceof android.widget.Button && child.getVisibility() == View.VISIBLE &&
+                    ((android.widget.Button) child).getText().toString().startsWith("Ações para 2 versículos")) {
+                assertTrue(((android.widget.Button) child).getText().toString(),
+                        ((android.widget.Button) child).getText().toString().endsWith(":1, 3"));
+                found = true;
+            }
+        }
+        assertTrue("Botão de ações em massa", found);
 
         // O plano de João pode ser iniciado, lido e marcado, e o lembrete monta a mensagem do dia.
         UserDatabase data = (UserDatabase) field(activity, "userData");

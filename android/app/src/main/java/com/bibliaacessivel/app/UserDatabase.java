@@ -256,6 +256,11 @@ final class UserDatabase extends SQLiteOpenHelper {
     }
 
     // Memorização ------------------------------------------------------------
+    boolean isMemorized(String translationId, String bookCode, int chapter, String verse) {
+        return !rows("SELECT 1 AS x FROM memorized_verses WHERE translation_id=? AND book_code=? AND chapter=? AND verse=?",
+                new String[]{translationId, bookCode, Integer.toString(chapter), verse}).isEmpty();
+    }
+
     boolean toggleMemorized(String translationId, Models.Book book, int chapter, Models.Verse verse) {
         SQLiteDatabase db = getWritableDatabase();
         String[] key = {translationId, book.code, Integer.toString(chapter), verse.number};
