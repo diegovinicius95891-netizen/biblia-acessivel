@@ -6,6 +6,13 @@
     <!-- O WorkManager traz um serviço em primeiro plano que a Bíblia não usa; sem ele, a Play não exige declaração. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
 
+    <!-- Android 11+: sem isto o app só enxerga alguns mecanismos de voz instalados. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

@@ -1088,7 +1088,10 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     /** Exibe opções persistentes de IA, voz, velocidade e contraste do sistema. */
     private void showSettings() {
         Map<String, Runnable> options = new LinkedHashMap<>();
-        options.put("Colar ou alterar chave do Google Gemini", this::editApiKey);
+        String savedKey = secureStore.loadApiKey();
+        options.put(savedKey == null || savedKey.trim().isEmpty()
+                ? "Chave do Google Gemini: não configurada. Toque para colar a chave"
+                : "Chave do Google Gemini: configurada. Toque para alterar", () -> editApiKey(this::showSettings));
         options.put("Obter chave da API do Google", this::openGoogleApiKeyPage);
         options.put("Escolher modelo de inteligência artificial. Atual: " +
                 preferences.getString("ai_model", AI_MODELS[0]), this::chooseModel);
@@ -1741,7 +1744,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         if (apiKey.isEmpty()) {
             new AlertDialog.Builder(this).setTitle("Chave necessária")
                     .setMessage("Abra Mais opções, Configurações e informe sua chave do Google Gemini.")
-                    .setPositiveButton("Colar chave", (dialog, which) -> editApiKey())
+                    .setPositiveButton("Colar chave", (dialog, which) -> editApiKey(null))
                     .setNeutralButton("Obter chave", (dialog, which) -> openGoogleApiKeyPage())
                     .setNegativeButton("Cancelar", null).show();
             return;
@@ -1826,7 +1829,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     }
 
     /** Edita a chave em campo protegido e salva pelo Android Keystore. */
-    private void editApiKey() {
+    private void editApiKey(Runnable afterSave) {
         EditText input = editText("Chave da API do Google Gemini", false);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         input.setText(secureStore.loadApiKey());
@@ -1834,7 +1837,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 .setView(input).setPositiveButton("Salvar", (dialog, which) -> {
                     try {
                         secureStore.saveApiKey(input.getText().toString());
-                        toast("Chave salva com proteção do Android Keystore.");
+                        toast(input.getText().toString().trim().isEmpty() ? "Chave removida."
+                                : "Chave configurada e salva com proteção do Android Keystore.");
+                        if (afterSave != null) afterSave.run();
                     } catch (Exception error) {
                         toast("Não foi possível proteger a chave.");
                     }
