@@ -13,14 +13,13 @@ android {
     }
 
     defaultConfig {
-        // Na Play o app foi registrado como com.audiogamesbrasil.biblia; o APK do GitHub mantém o pacote antigo
-        // para continuar atualizando os aparelhos que já o têm.
+        // Na Play o app é com.audiogamesbrasil.biblia; o APK de teste local mantém o pacote antigo
+        // para instalar por cima da versão já presente no celular.
         applicationId playStoreBuild ? 'com.audiogamesbrasil.biblia' : 'com.bibliaacessivel.app'
         minSdk 26
         targetSdk 37
-        versionCode 29
-        versionName '4.7.4'
-        buildConfigField 'boolean', 'GITHUB_UPDATES', (!playStoreBuild).toString()
+        versionCode 30
+        versionName '4.8.0'
     }
 
     compileOptions {
@@ -33,7 +32,6 @@ android {
     }
 
     sourceSets {
-        main.manifest.srcFile playStoreBuild ? 'src/play/AndroidManifest.xml' : 'src/main/AndroidManifest.xml'
         main.assets.srcDir layout.buildDirectory.dir('generated/bibleAssets').get().asFile
         test.resources.srcDir rootProject.file('../data')
     }

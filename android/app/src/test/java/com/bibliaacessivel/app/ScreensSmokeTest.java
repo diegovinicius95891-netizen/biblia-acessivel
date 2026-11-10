@@ -43,15 +43,7 @@ public final class ScreensSmokeTest {
     }
 
     @Test public void everyNewScreenOpensWithTheRealBible() throws Exception {
-        // Certificado público oficial: a conferência de autenticidade passa como num APK verdadeiro.
         android.app.Application application = org.robolectric.RuntimeEnvironment.getApplication();
-        byte[] certificate;
-        try (java.io.InputStream input = getClass().getClassLoader().getResourceAsStream("official-cert.der")) {
-            certificate = input.readAllBytes();
-        }
-        org.robolectric.Shadows.shadowOf(application.getPackageManager())
-                .getInternalMutablePackageInfo(application.getPackageName()).signatures =
-                new android.content.pm.Signature[]{new android.content.pm.Signature(certificate)};
         // No aparelho o WorkManager inicia sozinho; no teste ele é iniciado com uma execução direta.
         androidx.work.WorkManager.initialize(application, new androidx.work.Configuration.Builder()
                 .setExecutor(Runnable::run).build());

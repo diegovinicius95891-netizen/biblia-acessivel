@@ -70,7 +70,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private QuizCatalog quizCatalog;
     private UserDatabase userData;
     private SecureStore secureStore;
-    private UpdateManager updateManager;
     private SharedPreferences preferences;
     private TextToSpeech tts;
     private boolean ttsReady;
@@ -114,17 +113,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                         else finish();
                     });
         }
-        if (BuildConfig.GITHUB_UPDATES && !AppIntegrity.hasExpectedSignature(this)) {
-            LinearLayout root = rootLayout();
-            root.addView(heading("Não foi possível confirmar esta instalação"));
-            root.addView(paragraph("A autenticidade do aplicativo não pôde ser confirmada. Baixe novamente pelo link oficial."));
-            setContentView(root);
-            return;
-        }
         preferences = getSharedPreferences("settings", MODE_PRIVATE);
         userData = new UserDatabase(this);
         secureStore = new SecureStore(this);
-        if (BuildConfig.GITHUB_UPDATES) updateManager = new UpdateManager(this, userData, preferences);
         tts = createTts();
         showLoading();
         new Thread(() -> {
@@ -150,7 +141,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                     } else {
                         showMainMenu();
                     }
-                    if (BuildConfig.GITHUB_UPDATES) updateManager.onAppReady();
                     DevotionalNotifications.schedule(this);
                     Reminders.schedule(this);
                     getWindow().getDecorView().postDelayed(this::ensureDevotionalNotificationPermission, 1200);
@@ -469,7 +459,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         options.put("Lembrete diário", this::showReminderSettings);
         options.put("Configurações", this::showSettings);
         options.put("Backup e restauração", this::showBackup);
-        if (BuildConfig.GITHUB_UPDATES) options.put("Atualizações", this::showUpdates);
+        options.put("Novidades da versão", () -> showTextScreen("Novidades da versão " +
+                BuildConfig.VERSION_NAME, Changelog.CURRENT, this::showMoreOptions));
         options.put("Ideias, sugestões e suporte", this::openIdeasEmail);
         options.put("Ajuda", this::showHelp);
         options.put("Licenças, leis e justificativa", this::showLegal);
@@ -1096,18 +1087,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         options.put("Escolher modelo de inteligência artificial. Atual: " +
                 preferences.getString("ai_model", AI_MODELS[0]), this::chooseModel);
         options.put("Voz e velocidade da leitura. " + voiceSummary(), this::showVoiceSettings);
-        if (BuildConfig.GITHUB_UPDATES) {
-            options.put("Alternar atualizações automáticas. " +
-                    (preferences.getBoolean("updates_automatic", true) ? "Ativadas" : "Desativadas"), () -> {
-                updateManager.toggleAutomatic();
-                showSettings();
-            });
-            options.put("Alternar notificações de atualização. " +
-                    (preferences.getBoolean("updates_notify", true) ? "Ativadas" : "Desativadas"), () -> {
-                updateManager.toggleNotifications();
-                showSettings();
-            });
-        }
         options.put("Alternar avisos de novos devocionais. " +
                 (preferences.getBoolean("devotionals_notify", true) ? "Ativados" : "Desativados"),
                 this::toggleDevotionalNotifications);
@@ -1172,11 +1151,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "culto, digite uma passagem e confirme: o texto aparece imediatamente, sem precisar tocar " +
                 "em Ler versículo. A Rádio Gospel toca pela internet os louvores publicados no site. " +
                 "Ideias, sugestões e suporte abre um e-mail para Diego.\n\n" +
-                (BuildConfig.GITHUB_UPDATES
-                        ? "ATUALIZAÇÕES\n\nA versão Android consulta somente releases android-v " +
-                        "e baixa somente BibliaAcessivel-Android.apk com seu SHA-256. O Windows usa outro pacote. " +
-                        "A consulta automática pode ser desligada nas Configurações.\n\n"
-                        : "ATUALIZAÇÕES\n\nAs novas versões chegam pela Google Play.\n\n") +
+                "ATUALIZAÇÕES\n\nAs novas versões chegam pela Google Play.\n\n" +
                 "DEVOCIONAIS DO SITE\n\n" +
                 "A seção Devocionais novos do site mostra todos os textos publicados por Diego e guarda a última " +
                 "cópia para leitura sem internet. O Android verifica a cada 15 minutos, mesmo com o aplicativo " +
@@ -1559,36 +1534,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             text.append(worshipAdapter.getItem(index)).append('\n');
         }
         copy(text.toString());
-    }
-
-    /** Reúne verificação, novidades, APK pendente e preferências Android. */
-    private void showUpdates() {
-        if (!BuildConfig.GITHUB_UPDATES) return;
-        LinearLayout root = screen("Atualizações Android", this::showMoreOptions);
-        TextView summary = paragraph("");
-        Runnable refreshSummary = () -> summary.setText("Versão instalada: " +
-                BuildConfig.VERSION_NAME + ". " + updateManager.settingsSummary());
-        refreshSummary.run();
-        root.addView(summary);
-        Button check = actionButton("Verificar atualizações", "Consultar agora releases Android",
-                () -> updateManager.checkNow(true));
-        root.addView(check);
-        root.addView(actionButton("Instalar atualização baixada",
-                "Abrir no instalador do Android o APK já validado", updateManager::installPending));
-        root.addView(actionButton("Novidades da versão", "Ler novidades disponíveis offline",
-                updateManager::showChangelog));
-        root.addView(actionButton("Alternar atualizações automáticas",
-                "Ativar ou desativar a verificação diária", () -> {
-                    updateManager.toggleAutomatic();
-                    refreshSummary.run();
-                }));
-        root.addView(actionButton("Alternar notificações",
-                "Ativar ou desativar avisos de nova versão", () -> {
-                    updateManager.toggleNotifications();
-                    refreshSummary.run();
-                }));
-        setContentView(root);
-        focusForTalkBack(check, "Verificar atualizações.");
     }
 
     /** Mantém a IA como primeira ação do livro. */
