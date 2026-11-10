@@ -125,7 +125,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         userData = new UserDatabase(this);
         secureStore = new SecureStore(this);
         if (BuildConfig.GITHUB_UPDATES) updateManager = new UpdateManager(this, userData, preferences);
-        tts = new TextToSpeech(this, this);
+        tts = createTts();
         showLoading();
         new Thread(() -> {
             try {
@@ -1092,8 +1092,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         options.put("Obter chave da API do Google", this::openGoogleApiKeyPage);
         options.put("Escolher modelo de inteligência artificial. Atual: " +
                 preferences.getString("ai_model", AI_MODELS[0]), this::chooseModel);
-        options.put("Escolher voz do Android ou desativar", this::chooseVoice);
-        options.put("Velocidade da voz", this::chooseSpeechRate);
+        options.put("Voz e velocidade da leitura. " + voiceSummary(), this::showVoiceSettings);
         if (BuildConfig.GITHUB_UPDATES) {
             options.put("Alternar atualizações automáticas. " +
                     (preferences.getBoolean("updates_automatic", true) ? "Ativadas" : "Desativadas"), () -> {
@@ -1893,39 +1892,185 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 items.length + " modelos disponíveis.");
     }
 
-    /** Lista vozes instaladas pelo Android e inclui a desativação. */
+    static final float MIN_RATE = 0.5f;
+    static final float MAX_RATE = 3.0f;
+    static final float RATE_STEP = 0.05f;
+    private static final float[] RATE_OPTIONS = {0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f};
+
+    /** Cria o TTS com o mecanismo escolhido; vazio usa o mecanismo padrão do Android. */
+    private TextToSpeech createTts() {
+        String engine = preferences.getString("tts_engine", "");
+        return engine.isEmpty() ? new TextToSpeech(this, this) : new TextToSpeech(this, this, engine);
+    }
+
+    /** Velocidade no formato falado pelo leitor de tela, por exemplo "1,25 X". */
+    static String rateLabel(float rate) {
+        String number = String.format(new Locale("pt", "BR"), "%.2f", rate);
+        if (number.endsWith("0")) number = number.substring(0, number.length() - 1);
+        if (number.endsWith(",0")) number = number.substring(0, number.length() - 2);
+        return number + " X";
+    }
+
+    private float speechRate() {
+        float rate = preferences.getFloat("speech_rate", 1.0f);
+        return Math.max(MIN_RATE, Math.min(MAX_RATE, rate));
+    }
+
+    private String engineLabel() {
+        String engine = preferences.getString("tts_engine", "");
+        if (engine.isEmpty()) return "padrão do Android";
+        if (tts != null) for (TextToSpeech.EngineInfo info : tts.getEngines()) {
+            if (info.name.equals(engine)) return info.label;
+        }
+        return engine;
+    }
+
+    private String voiceLabel() {
+        String voice = preferences.getString("voice", "");
+        if (VOICE_OFF.equals(voice)) return "desativada, o TalkBack lê";
+        return voice.isEmpty() ? "padrão do mecanismo" : voice;
+    }
+
+    private String voiceSummary() {
+        return "Velocidade " + rateLabel(speechRate()) + ", mecanismo " + engineLabel();
+    }
+
+    /** Mecanismo, voz, velocidade (controle deslizante ou opções) e teste da voz. */
+    private void showVoiceSettings() {
+        LinearLayout root = screen("Voz e velocidade", this::showSettings);
+        root.addView(paragraph("Esta voz lê em voz alta os capítulos e os versículos. " +
+                "Ela é separada da voz do seu leitor de tela."));
+        root.addView(actionButton("Mecanismo de voz: " + engineLabel(),
+                "Escolher outro programa de voz instalado no celular", this::chooseEngine));
+        root.addView(actionButton("Voz: " + voiceLabel(),
+                "Escolher uma voz do mecanismo atual", this::chooseVoice));
+        boolean slider = preferences.getBoolean("rate_slider", true);
+        root.addView(actionButton("Ajuste da velocidade: " + (slider ? "controle deslizante" : "lista de opções"),
+                "Trocar entre controle deslizante e lista de opções", () -> {
+                    preferences.edit().putBoolean("rate_slider", !slider).apply();
+                    showVoiceSettings();
+                    toast(slider ? "Velocidade por lista de opções." : "Velocidade por controle deslizante.");
+                }));
+        if (slider) {
+            TextView label = paragraph("Velocidade: " + rateLabel(speechRate()));
+            root.addView(label);
+            android.widget.SeekBar bar = new android.widget.SeekBar(this);
+            bar.setMax(Math.round((MAX_RATE - MIN_RATE) / RATE_STEP));
+            bar.setProgress(Math.round((speechRate() - MIN_RATE) / RATE_STEP));
+            bar.setContentDescription("Velocidade da voz");
+            bar.setMinimumHeight(dp(56));
+            Runnable describe = () -> {
+                String text = rateLabel(MIN_RATE + bar.getProgress() * RATE_STEP);
+                label.setText("Velocidade: " + text);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) bar.setStateDescription(text);
+                else bar.setContentDescription("Velocidade da voz, " + text);
+            };
+            describe.run();
+            bar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                    float rate = MIN_RATE + progress * RATE_STEP;
+                    preferences.edit().putFloat("speech_rate", rate).apply();
+                    if (ttsReady) tts.setSpeechRate(rate);
+                    describe.run();
+                }
+
+                @Override public void onStartTrackingTouch(android.widget.SeekBar seekBar) { }
+
+                @Override public void onStopTrackingTouch(android.widget.SeekBar seekBar) { }
+            });
+            root.addView(bar, fill());
+        } else {
+            root.addView(actionButton("Velocidade: " + rateLabel(speechRate()),
+                    "Escolher a velocidade numa lista", this::chooseSpeechRate));
+        }
+        root.addView(actionButton("Testar a voz", "Ouvir a voz e a velocidade escolhidas", this::testVoice));
+        setContentView(root);
+        focusForTalkBack(root.getChildAt(2), "Voz e velocidade");
+    }
+
+    /** Lê uma frase de exemplo com a voz e a velocidade atuais. */
+    private void testVoice() {
+        if (VOICE_OFF.equals(preferences.getString("voice", ""))) {
+            toast("A voz está desativada. Escolha uma voz para testar.");
+            return;
+        }
+        if (!ttsReady) {
+            toast("A voz ainda não está pronta. Tente novamente em instantes.");
+            return;
+        }
+        applyVoice();
+        tts.speak("Esta é a voz da Bíblia AGB, na velocidade " + rateLabel(speechRate()) +
+                ". Porque Deus amou o mundo de tal maneira que deu o seu Filho unigênito.",
+                TextToSpeech.QUEUE_FLUSH, null, "teste");
+    }
+
+    /** Lista os mecanismos de voz instalados (Google, Samsung, eSpeak, Vocalizer e outros). */
+    private void chooseEngine() {
+        List<TextToSpeech.EngineInfo> engines = tts == null ? new ArrayList<>() : tts.getEngines();
+        List<String> labels = new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        labels.add("Padrão do Android");
+        values.add("");
+        for (TextToSpeech.EngineInfo info : engines) {
+            labels.add(info.label);
+            values.add(info.name);
+        }
+        showChoiceDialog("Mecanismo de voz", "Escolha o programa de voz. " + engines.size() +
+                        " instalados.", labels.toArray(new String[0]), which -> {
+                    preferences.edit().putString("tts_engine", values.get(which)).putString("voice", "").apply();
+                    if (continuousActive) stopContinuousReading("Leitura em voz alta encerrada.");
+                    try { tts.shutdown(); } catch (Exception ignored) { }
+                    ttsReady = false;
+                    tts = createTts();
+                    toast("Mecanismo de voz: " + labels.get(which));
+                    showVoiceSettings();
+                });
+    }
+
+    /** Lista as vozes do mecanismo atual, em português primeiro, e inclui a desativação. */
     private void chooseVoice() {
         List<String> labels = new ArrayList<>();
         List<String> values = new ArrayList<>();
         labels.add("Desativada — TalkBack repete ao ativar");
         values.add(VOICE_OFF);
-        labels.add("Voz padrão do Android");
+        labels.add("Voz padrão do mecanismo");
         values.add("");
         if (ttsReady && tts.getVoices() != null) {
             List<Voice> voices = new ArrayList<>(tts.getVoices());
-            voices.sort(Comparator.comparing(Voice::getName));
+            String portuguese = new Locale("pt").getLanguage();
+            voices.sort(Comparator.comparing((Voice voice) -> !voice.getLocale().getLanguage().equals(portuguese))
+                    .thenComparing(voice -> voice.getLocale().getDisplayName())
+                    .thenComparing(Voice::getName));
             for (Voice voice : voices) {
-                if (voice.getLocale().getLanguage().equals(new Locale("pt").getLanguage())) {
-                    labels.add(voice.getName() + " — " + voice.getLocale().getDisplayName());
-                    values.add(voice.getName());
-                }
+                if (voice.getFeatures() != null && voice.getFeatures().contains(
+                        TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)) continue;
+                labels.add(voice.getName() + " — " + voice.getLocale().getDisplayName() +
+                        (voice.isNetworkConnectionRequired() ? ", precisa de internet" : ""));
+                values.add(voice.getName());
             }
+        } else {
+            toast("A voz ainda está carregando. A lista completa aparece em instantes.");
         }
-        showChoiceDialog("Voz do Android", "Escolha uma voz.", labels.toArray(new String[0]), which -> {
+        showChoiceDialog("Voz", "Escolha uma voz. " + (labels.size() - 2) + " vozes disponíveis.",
+                labels.toArray(new String[0]), which -> {
                     preferences.edit().putString("voice", values.get(which)).apply();
                     applyVoice();
                     toast("Voz selecionada: " + labels.get(which));
+                    showVoiceSettings();
                 });
     }
 
-    /** Ajusta a velocidade em valores compreensíveis, sem controle deslizante inacessível. */
+    /** Lista de velocidades fixas, para quem prefere não usar o controle deslizante. */
     private void chooseSpeechRate() {
-        String[] labels = {"Lenta", "Normal", "Rápida"};
-        float[] values = {0.75f, 1.0f, 1.35f};
-        showChoiceDialog("Velocidade da voz", "Escolha a velocidade.", labels, which -> {
-                    preferences.edit().putFloat("speech_rate", values[which]).apply();
-                    if (ttsReady) tts.setSpeechRate(values[which]);
-                    toast("Velocidade: " + labels[which]);
+        String[] labels = new String[RATE_OPTIONS.length];
+        for (int i = 0; i < labels.length; i++) labels[i] = rateLabel(RATE_OPTIONS[i]) +
+                (RATE_OPTIONS[i] == 1.0f ? ", normal" : "");
+        showChoiceDialog("Velocidade da voz", "Escolha a velocidade. Atual: " + rateLabel(speechRate()),
+                labels, which -> {
+                    preferences.edit().putFloat("speech_rate", RATE_OPTIONS[which]).apply();
+                    if (ttsReady) tts.setSpeechRate(RATE_OPTIONS[which]);
+                    toast("Velocidade: " + rateLabel(RATE_OPTIONS[which]));
+                    showVoiceSettings();
                 });
     }
 
@@ -1944,7 +2089,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void applyVoice() {
         if (!ttsReady) return;
         tts.setLanguage(new Locale("pt", "BR"));
-        tts.setSpeechRate(preferences.getFloat("speech_rate", 1.0f));
+        tts.setSpeechRate(speechRate());
         String wanted = preferences.getString("voice", "");
         if (!wanted.isEmpty() && !VOICE_OFF.equals(wanted)) {
             Set<Voice> voices = tts.getVoices();
