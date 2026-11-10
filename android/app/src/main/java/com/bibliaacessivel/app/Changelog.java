@@ -7,6 +7,10 @@ final class Changelog {
     static final String CURRENT =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
             "As atualizações agora chegam somente pela Google Play. O atualizador do GitHub foi removido.\n\n" +
+            "O quiz bíblico ganhou 94 perguntas novas sobre Antigo e Novo Testamento, Jesus, personagens, " +
+            "livros e versículos conhecidos: agora são 392.\n\n" +
+            "A opção Ir para uma referência saiu de Mais opções; use Pesquisar na Bíblia ou o Modo culto.\n\n" +
+            "Corrigido um fechamento possível na Rádio Gospel ao trocar de louvor rapidamente.\n\n" +
             "Nova tela Voz e velocidade, em Configurações: escolha o mecanismo de voz instalado (Google, Samsung, " +
             "eSpeak e outros) e a voz; ajuste a velocidade por controle deslizante ou por lista, como 1,25 X; " +
             "e use o botão Testar a voz. Agora aparecem todos os mecanismos de voz instalados.\n\n" +

@@ -11,7 +11,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-/** Lê o mesmo catálogo TSV de 298 perguntas utilizado pelo aplicativo Windows. */
+/** Lê o mesmo catálogo TSV de perguntas utilizado pelo aplicativo Windows. */
 final class QuizCatalog {
     static final String[] DIFFICULTIES = {"todas", "fácil", "médio", "difícil"};
     final List<Question> questions;

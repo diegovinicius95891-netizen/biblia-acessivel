@@ -256,7 +256,7 @@ class GuiSmokeTests(unittest.TestCase):
                 self.assertNotEqual(window.main_page_index, window.page_stack.currentIndex())
                 self.assertTrue(window.focusWidget().accessibleName())
         self.assertEqual(640, window.extended.hymnal_list.count())
-        self.assertEqual(298, window.extended.quiz_list.count())
+        self.assertEqual(392, window.extended.quiz_list.count())
         self.assertEqual(72, len(window.extended.ai_study_themes))
         self.assertEqual(2, window.extended.ai_scope_list.count())
         self.assertFalse(window.extended.ai_theme_search.isEnabled())

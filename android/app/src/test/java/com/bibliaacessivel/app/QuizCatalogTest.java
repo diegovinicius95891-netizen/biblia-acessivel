@@ -20,12 +20,12 @@ public final class QuizCatalogTest {
         return QuizCatalog.parse(input);
     }
 
-    @Test public void sharedCatalogHas298UniqueQuestions() throws Exception {
+    @Test public void sharedCatalogHas392UniqueQuestions() throws Exception {
         QuizCatalog catalog = catalog();
-        assertEquals(298, catalog.questions.size());
+        assertEquals(392, catalog.questions.size());
         Set<String> identifiers = new HashSet<>();
         for (QuizCatalog.Question question : catalog.questions) identifiers.add(question.id);
-        assertEquals(298, identifiers.size());
+        assertEquals(392, identifiers.size());
         assertTrue(catalog.categories.length >= 9);
     }
 

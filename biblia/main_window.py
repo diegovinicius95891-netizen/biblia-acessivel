@@ -955,7 +955,7 @@ class MainWindow(QMainWindow):
             "RECURSOS LOCAIS\n"
             "Mais opções também contém Estudos — Teólogo de IA com temas cotidianos pesquisáveis e escolha entre o texto atual e a Bíblia toda, planos de leitura, favoritos com categorias, histórico, temas, "
             "personagens, memorização, Harpa Cristã com 640 hinos, quiz com "
-            "298 perguntas, Status do quiz, comparação de traduções, estatísticas, Modo culto, Rádio Gospel e backup. "
+            "392 perguntas, Status do quiz, comparação de traduções, estatísticas, Modo culto, Rádio Gospel e backup. "
             "Cada pergunta conta uma vez; somente Recomeçar quiz do zero libera todas novamente. A Rádio "
             "Gospel toca pela internet os louvores publicados no site e oferece controles acessíveis. "
             "Ideias, sugestões e suporte abre um e-mail para diego@audiogames.com.br. "

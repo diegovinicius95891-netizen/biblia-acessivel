@@ -437,7 +437,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void showMoreOptions() {
         // Agrupado por assunto, como no Windows: leitura, estudo, devoção, quiz e sistema.
         Map<String, Runnable> options = new LinkedHashMap<>();
-        options.put("Ir para uma referência", this::showReference);
         options.put("Pesquisar na Bíblia", this::showSearch);
         options.put("Traduções", this::showTranslations);
         options.put("Comparar traduções", this::showComparison);
@@ -719,25 +718,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         return verses.isEmpty() ? "Texto indisponível nesta tradução." : verses.get(0).text;
     }
 
-    /** Navega para uma referência digitada em português. */
-    private void showReference() {
-        LinearLayout root = screen("Ir para uma referência", this::showMoreOptions);
-        EditText input = editText("Referência, exemplo João 3:16", false);
-        input.setSingleLine(true);
-        input.setImeOptions(EditorInfo.IME_ACTION_GO);
-        root.addView(input);
-        Button go = actionButton("Ir para referência", "Abrir a referência digitada", () -> {
-            if (loadReference(input.getText().toString())) showVerses();
-        });
-        input.setOnEditorActionListener((view, actionId, event) -> {
-            go.performClick();
-            return true;
-        });
-        root.addView(go);
-        setContentView(root);
-        focusForTalkBack(input, "Digite a referência bíblica.");
-    }
-
     /** Pesquisa localmente sem depender de internet. */
     private void showSearch() {
         LinearLayout root = screen("Pesquisar na Bíblia", this::showMoreOptions);
@@ -972,14 +952,24 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .setUsage(AudioAttributes.USAGE_MEDIA).build());
             radioPlayer.setDataSource(track.audioUrl);
+            // O louvor pode ter sido trocado ou parado antes de a tarefa chegar; tocar um player já
+            // liberado fecharia o app.
             radioPlayer.setOnPreparedListener(player -> runOnUiThread(() -> {
+                if (player != radioPlayer || isFinishing() || isDestroyed()) return;
                 radioPreparing = false;
-                player.start();
+                try {
+                    player.start();
+                } catch (IllegalStateException error) {
+                    return;
+                }
                 if (radioStatus != null) radioStatus.setText("Tocando: " + track + ".");
             }));
-            radioPlayer.setOnCompletionListener(player -> runOnUiThread(() -> changeRadioTrack(1)));
+            radioPlayer.setOnCompletionListener(player -> runOnUiThread(() -> {
+                if (player == radioPlayer && !isFinishing() && !isDestroyed()) changeRadioTrack(1);
+            }));
             radioPlayer.setOnErrorListener((player, what, extra) -> {
                 runOnUiThread(() -> {
+                    if (player != radioPlayer || isFinishing() || isDestroyed()) return;
                     radioPreparing = false;
                     if (radioStatus != null) radioStatus.setText("Não foi possível tocar este louvor.");
                     toast("Não foi possível tocar o louvor. Confira a conexão e tente novamente.");
@@ -1144,7 +1134,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "Ouvir ou repetir no menu do versículo usa a " +
                 "voz escolhida. Se a voz estiver desligada, o TalkBack anuncia novamente o texto.\n\n" +
                 "HARPA, QUIZ E MODO CULTO\n\nA Harpa Cristã possui 640 hinos pesquisáveis e funciona " +
-                "offline. O quiz possui 298 perguntas e cada uma conta somente uma vez. Recomeçar quiz do zero, " +
+                "offline. O quiz possui 392 perguntas e cada uma conta somente uma vez. Recomeçar quiz do zero, " +
                 "em Status do quiz, é a única forma de liberar tudo novamente. Traduções e testamentos usam caixas de combinação com feedback; Livros também oferece Todos os livros e pesquisa por nome. " +
                 "No Teólogo de IA, Temas para estudo permite escolher entre o texto atual e a Bíblia toda, pesquisar temas cotidianos e editar a pergunta antes de enviar. " +
                 "Comparar traduções separa origem e destino e permite inverter as duas. No Modo " +
