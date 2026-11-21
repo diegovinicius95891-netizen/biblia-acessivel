@@ -1259,9 +1259,8 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         options.put("Escolher modelo de inteligência artificial. Atual: " +
                 preferences.getString("ai_model", AI_MODELS[0]), this::chooseModel);
         options.put("Voz e velocidade da leitura. " + voiceSummary(), this::showVoiceSettings);
-        options.put("Alternar avisos de novos devocionais. " +
-                (preferences.getBoolean("devotionals_notify", true) ? "Ativados" : "Desativados"),
-                this::toggleDevotionalNotifications);
+        options.put("Avisos de novos devocionais. " + DevotionalNotifications.summary(preferences),
+                this::showDevotionalNotificationSettings);
         options.put("Lembrete diário de leitura. " + (Reminders.enabled(preferences)
                 ? "Ativado às " + Reminders.timeLabel(preferences) : "Desativado"), this::showReminderSettings);
         options.put("Permitir notificações da Bíblia" + (notificationsAllowed() ? ". Já permitidas" : ""),
@@ -1346,17 +1345,52 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "pelo Android Keystore. A IA é opcional e exige internet.", this::showMoreOptions);
     }
 
-    /** Alterna o trabalho diário e solicita permissão apenas quando necessário. */
-    private void toggleDevotionalNotifications() {
-        boolean enabled = !preferences.getBoolean("devotionals_notify", true);
-        preferences.edit().putBoolean("devotionals_notify", enabled).apply();
-        DevotionalNotifications.schedule(this);
-        if (enabled) {
-            preferences.edit().remove("devotionals_permission_prompt_version").apply();
-            ensureDevotionalNotificationPermission();
-        }
-        toast("Notificações de devocionais " + (enabled ? "ativadas." : "desativadas."));
-        showSettings();
+    /** Ligar ou desligar, e escolher entre avisar na hora ou num horário fixo. */
+    private void showDevotionalNotificationSettings() {
+        Map<String, Runnable> options = new LinkedHashMap<>();
+        boolean enabled = preferences.getBoolean("devotionals_notify", true);
+        boolean timed = DevotionalNotifications.scheduledMode(preferences);
+        options.put((enabled ? "Desativar" : "Ativar") + " os avisos. Agora " +
+                (enabled ? "ativados" : "desativados"), () -> {
+            preferences.edit().putBoolean("devotionals_notify", !enabled).apply();
+            DevotionalNotifications.schedule(this);
+            if (!enabled) {
+                preferences.edit().remove("devotionals_permission_prompt_version").apply();
+                ensureDevotionalNotificationPermission();
+            }
+            toast("Avisos de devocionais " + (!enabled ? "ativados." : "desativados."));
+            showDevotionalNotificationSettings();
+        });
+        options.put("Avisar na hora em que o devocional sair" + (!timed ? ". Selecionado" : ""), () -> {
+            preferences.edit().putString("devotionals_mode", "now").apply();
+            DevotionalNotifications.schedule(this);
+            toast("Você será avisado assim que um devocional novo sair.");
+            showDevotionalNotificationSettings();
+        });
+        options.put("Avisar em um horário fixo" + (timed ? ". Selecionado, às " +
+                DevotionalNotifications.timeLabel(preferences) : ""), () -> {
+            preferences.edit().putString("devotionals_mode", "time").apply();
+            DevotionalNotifications.schedule(this);
+            toast("Aviso diário às " + DevotionalNotifications.timeLabel(preferences) + ".");
+            showDevotionalNotificationSettings();
+        });
+        options.put("Horário do aviso: " + DevotionalNotifications.timeLabel(preferences), () -> {
+            String[] times = new String[48];
+            for (int index = 0; index < 48; index++) {
+                times[index] = String.format(Locale.ROOT, "%02d:%02d", index / 2, (index % 2) * 30);
+            }
+            showChoiceDialog("Horário do aviso", "Escolha a hora em que quer receber os devocionais novos.",
+                    times, which -> {
+                        preferences.edit().putInt("devotionals_minutes", which * 30)
+                                .putString("devotionals_mode", "time").apply();
+                        DevotionalNotifications.schedule(this);
+                        toast("Aviso diário às " + times[which] + ".");
+                        showDevotionalNotificationSettings();
+                    });
+        });
+        options.put("Permitir notificações da Bíblia" + (notificationsAllowed() ? ". Já permitidas" : ""),
+                () -> ensureNotificationPermission(true));
+        showMenuScreen("Avisos de devocionais", this::showSettings, options);
     }
 
     /** Explica e pede a permissão do Android 13 ou superior uma única vez. */

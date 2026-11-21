@@ -14,10 +14,17 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.ExistingWorkPolicy;
 import androidx.work.NetworkType;
+import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 /** Agenda a verificação a cada 15 minutos e publica avisos nativos sem expor dados pessoais. */
@@ -27,19 +34,47 @@ final class DevotionalNotifications {
     static final String CHANNEL_ID = "new_devotionals_alert";
     private static final String OLD_CHANNEL_ID = "new_devotionals";
     private static final String PERIODIC_NAME = "daily-devotional-check";
+    private static final String SCHEDULED_NAME = "devotional-at-time";
     /** O menor intervalo que o Android permite para verificações em segundo plano. */
     static final long CHECK_INTERVAL_MINUTES = 15;
 
     private DevotionalNotifications() {}
 
+    /** Modo "horário fixo": junta os devocionais novos e avisa uma vez por dia na hora escolhida. */
+    static boolean scheduledMode(SharedPreferences preferences) {
+        return "time".equals(preferences.getString("devotionals_mode", "now"));
+    }
+
+    static int minutesOfDay(SharedPreferences preferences) {
+        return preferences.getInt("devotionals_minutes", 8 * 60);
+    }
+
+    static String timeLabel(SharedPreferences preferences) {
+        int minutes = minutesOfDay(preferences);
+        return String.format(Locale.ROOT, "%02d:%02d", minutes / 60, minutes % 60);
+    }
+
+    static String summary(SharedPreferences preferences) {
+        if (!preferences.getBoolean("devotionals_notify", true)) return "Desativados";
+        return scheduledMode(preferences) ? "Todo dia às " + timeLabel(preferences) : "Na hora em que sair";
+    }
+
     static void schedule(Context context) {
         SharedPreferences preferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
         WorkManager manager = WorkManager.getInstance(context);
         createChannel(context);
+        PushMessaging.sync(context);
         if (!preferences.getBoolean("devotionals_notify", true)) {
             manager.cancelUniqueWork(PERIODIC_NAME);
+            manager.cancelUniqueWork(SCHEDULED_NAME);
             return;
         }
+        if (scheduledMode(preferences)) {
+            manager.cancelUniqueWork(PERIODIC_NAME);
+            scheduleNextAtTime(context);
+            return;
+        }
+        manager.cancelUniqueWork(SCHEDULED_NAME);
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED).build();
         // O aviso de devocional novo deve chegar rápido: a consulta leva poucos bytes.
@@ -49,6 +84,21 @@ final class DevotionalNotifications {
         manager.enqueueUniquePeriodicWork(PERIODIC_NAME, ExistingPeriodicWorkPolicy.UPDATE, periodic);
         // Remove a consulta imediata que versões anteriores disparavam a cada abertura.
         manager.cancelUniqueWork(PERIODIC_NAME + "-now");
+    }
+
+    /** Agenda a próxima conferência no horário escolhido; o worker reagenda a seguinte. */
+    static void scheduleNextAtTime(Context context) {
+        SharedPreferences preferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE);
+        int minutes = minutesOfDay(preferences);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime next = LocalDate.now().atTime(LocalTime.of(minutes / 60, minutes % 60));
+        if (!next.isAfter(now)) next = next.plusDays(1);
+        WorkManager.getInstance(context).enqueueUniqueWork(SCHEDULED_NAME, ExistingWorkPolicy.REPLACE,
+                new OneTimeWorkRequest.Builder(DevotionalWorker.class)
+                        .setInitialDelay(Duration.between(now, next).toMillis(), TimeUnit.MILLISECONDS)
+                        .setConstraints(new Constraints.Builder()
+                                .setRequiredNetworkType(NetworkType.CONNECTED).build())
+                        .build());
     }
 
     static void createChannel(Context context) {

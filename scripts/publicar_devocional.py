@@ -21,6 +21,8 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 PUBLIC_URL = "https://audiogames.com.br/diego/devocionais/posts.json"
+KEYS_DIR = Path(r"C:\Winvox\Treino\chaves-play-biblia")
+PUSH_TOPIC = "devocionais"
 REMOTE_CANDIDATES = (
     "devocionais/posts.json",
     "diego/devocionais/posts.json",
@@ -111,6 +113,40 @@ def build_post(text_file: Path) -> dict:
     }
 
 
+def send_push(post: dict) -> None:
+    """Avisa na hora, pelo Firebase, todos os celulares inscritos no tópico de devocionais.
+
+    Usa a conta de serviço guardada na pasta de chaves. Se ela faltar ou o envio
+    falhar, o devocional já está publicado e o app avisa na consulta periódica.
+    """
+    accounts = sorted(KEYS_DIR.glob("*firebase-adminsdk*.json"))
+    if not accounts:
+        print("Aviso instantâneo não enviado: chave do Firebase não encontrada.")
+        return
+    try:
+        from google.auth.transport.requests import Request as AuthRequest
+        from google.oauth2 import service_account
+        import requests
+
+        credentials = service_account.Credentials.from_service_account_file(
+            str(accounts[0]), scopes=["https://www.googleapis.com/auth/firebase.messaging"])
+        credentials.refresh(AuthRequest())
+        message = {"message": {
+            "topic": PUSH_TOPIC,
+            # Mensagem só de dados: o próprio app monta a notificação e respeita o modo escolhido.
+            "data": {"id": post["id"], "titulo": post["titulo"]},
+            "android": {"priority": "high", "ttl": "86400s"},
+        }}
+        response = requests.post(
+            f"https://fcm.googleapis.com/v1/projects/{credentials.project_id}/messages:send",
+            headers={"Authorization": f"Bearer {credentials.token}"}, json=message, timeout=30)
+        response.raise_for_status()
+        print("Aviso instantâneo enviado para os celulares.")
+    except Exception as error:
+        print(f"Aviso instantâneo não enviado ({type(error).__name__}). O app avisa na próxima consulta.",
+              file=sys.stderr)
+
+
 def serialize(posts: list) -> bytes:
     """Reproduz exatamente a formatação atual do posts.json (4 espaços, UTF-8 legível)."""
     return json.dumps(posts, ensure_ascii=False, indent=4).encode("utf-8")
@@ -123,12 +159,18 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=21)
     parser.add_argument("--user", default="diego@audiogames.com.br")
     parser.add_argument("--simular", action="store_true", help="Mostra o resultado sem conectar nem enviar.")
+    parser.add_argument("--substituir", action="store_true",
+                        help="Apaga o devocional publicado com o mesmo título e publica o novo no lugar.")
     parser.add_argument("--janela", action="store_true", help="Pede a senha numa janela do Windows.")
     args = parser.parse_args()
 
     post = build_post(args.arquivo)
     public = fetch_public()
     posts = json.loads(public.decode("utf-8"))
+    if args.substituir:
+        before = len(posts)
+        posts = [item for item in posts if item.get("titulo") != post["titulo"]]
+        print(f"Devocionais apagados com o mesmo título: {before - len(posts)}.")
     if any(item.get("titulo") == post["titulo"] for item in posts):
         raise SystemExit(f"Já existe um devocional publicado com o título: {post['titulo']}")
     updated = serialize([post, *posts])
@@ -177,6 +219,7 @@ def main() -> None:
     published = json.loads(fetch_public().decode("utf-8"))
     if published and published[0].get("id") == post["id"]:
         print("Confirmado no site: o novo devocional é o primeiro da lista.")
+        send_push(post)
         print("A Bíblia AGB no Android e no Windows vai avisar na próxima verificação.")
     else:
         print("Atenção: o site ainda não mostra o novo devocional. Confira em alguns minutos.", file=sys.stderr)

@@ -25,11 +25,15 @@ final class BibleRepository implements AutoCloseable {
     BibleRepository(Context context) throws IOException {
         File target = new File(context.getNoBackupFilesDir(), "biblia.db");
         SharedPreferences state = context.getSharedPreferences("bible_assets", Context.MODE_PRIVATE);
-        boolean needsRefresh = !target.exists() ||
-                state.getInt(ASSET_VERSION_KEY, 0) != BuildConfig.VERSION_CODE;
-        if (needsRefresh) {
-            installBundledDatabase(context, target);
-            state.edit().putInt(ASSET_VERSION_KEY, BuildConfig.VERSION_CODE).apply();
+        // A tela e o lembrete em segundo plano podem abrir a Bíblia ao mesmo tempo logo após
+        // uma atualização; sem a trava, os dois gravariam o mesmo biblia.db.new e corromperiam a cópia.
+        synchronized (BibleRepository.class) {
+            boolean needsRefresh = !target.exists() ||
+                    state.getInt(ASSET_VERSION_KEY, 0) != BuildConfig.VERSION_CODE;
+            if (needsRefresh) {
+                installBundledDatabase(context, target);
+                state.edit().putInt(ASSET_VERSION_KEY, BuildConfig.VERSION_CODE).commit();
+            }
         }
         database = SQLiteDatabase.openDatabase(target.getAbsolutePath(), null,
                 SQLiteDatabase.OPEN_READONLY);
@@ -78,7 +82,7 @@ final class BibleRepository implements AutoCloseable {
             }
             try (Cursor cursor = candidate.rawQuery(
                     "SELECT COUNT(*) FROM (SELECT translation_id FROM verses " +
-                            "GROUP BY translation_id HAVING COUNT(DISTINCT book_code)=66)", null)) {
+                            "GROUP BY translation_id HAVING COUNT(DISTINCT book_code) IN (66,73))", null)) {
                 cursor.moveToFirst();
                 completeTranslations = cursor.getInt(0);
             }
@@ -88,8 +92,9 @@ final class BibleRepository implements AutoCloseable {
                 cursor.moveToFirst();
                 chapters = cursor.getInt(0);
             }
+            // A edição católica tem 73 livros e mais capítulos; as demais, 66 e 1189.
             if (translations < 5 || completeTranslations != translations ||
-                    chapters != translations * 1189) {
+                    chapters < translations * 1189) {
                 throw new IOException("A atualização dos textos bíblicos não passou na verificação.");
             }
         } catch (RuntimeException error) {
@@ -125,7 +130,7 @@ final class BibleRepository implements AutoCloseable {
         return result;
     }
 
-    /** Lista os 66 livros em ordem canônica, sem separar testamentos. */
+    /** Lista todos os livros da tradução em ordem canônica, sem separar testamentos. */
     List<Models.Book> books(String translationId) {
         List<Models.Book> result = new ArrayList<>();
         result.addAll(books(translationId, false));

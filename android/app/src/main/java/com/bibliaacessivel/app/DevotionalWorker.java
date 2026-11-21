@@ -34,9 +34,19 @@ public final class DevotionalWorker extends Worker {
             preferences.edit().putString("devotionals_latest_id", latest)
                     .putLong("devotionals_last_background_check_time", System.currentTimeMillis()).apply();
             if (newCount > 0) DevotionalNotifications.show(context, posts.get(0), newCount);
+            rescheduleIfTimed(context, preferences);
             return Result.success();
         } catch (Exception error) {
-            return getRunAttemptCount() < 3 ? Result.retry() : Result.success();
+            if (getRunAttemptCount() < 3) return Result.retry();
+            rescheduleIfTimed(context, preferences);
+            return Result.success();
+        }
+    }
+
+    /** No modo horário fixo cada execução é única: deixa marcada a do dia seguinte. */
+    private static void rescheduleIfTimed(Context context, SharedPreferences preferences) {
+        if (DevotionalNotifications.scheduledMode(preferences)) {
+            DevotionalNotifications.scheduleNextAtTime(context);
         }
     }
 }

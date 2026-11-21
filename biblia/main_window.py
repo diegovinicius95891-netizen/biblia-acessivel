@@ -1348,13 +1348,15 @@ class MainWindow(QMainWindow):
         self._announce_for(self.book_list, message)
 
     def show_all_books(self):
-        """Exibe os 66 livros sem alterar as setas antigas de testamento."""
+        """Exibe todos os livros da tradução sem alterar as setas antigas de testamento."""
         self.testament = self.ALL_TESTAMENTS
         self.settings.setValue("position/testament", self.testament)
         self.book_search.clear()
         self._populate_books()
         self.book_list.setFocus()
-        self._announce_for(self.book_list, "Todos os livros selecionados. 66 livros. Escolha o livro.")
+        self._announce_for(
+            self.book_list, f"Todos os livros selecionados. {self.book_list.count()} livros. Escolha o livro."
+        )
 
     def search_books(self):
         """Pesquisa em todos os livros e mantém resultados na própria lista acessível."""
@@ -1402,13 +1404,11 @@ class MainWindow(QMainWindow):
         if query:
             self.testament_label.setText(f"Pesquisa em todos os livros. {len(visible)} resultados.")
         elif self.testament == self.ALL_TESTAMENTS:
-            self.testament_label.setText("Todos os livros selecionados. 66 livros. Escolha o livro.")
+            self.testament_label.setText(f"Todos os livros selecionados. {len(visible)} livros. Escolha o livro.")
         else:
-            self.testament_label.setText(
-                "Antigo Testamento selecionado. 39 livros. Escolha o livro."
-                if self.testament == self.OLD_TESTAMENT
-                else "Novo Testamento selecionado. 27 livros. Escolha o livro."
-            )
+            # A contagem vem da lista: a Bíblia Católica tem 46 livros no Antigo Testamento.
+            name = "Antigo Testamento" if self.testament == self.OLD_TESTAMENT else "Novo Testamento"
+            self.testament_label.setText(f"{name} selecionado. {len(visible)} livros. Escolha o livro.")
         self._loading = False
         if self.book_list.count():
             self._populate_chapters(preferred_chapter)

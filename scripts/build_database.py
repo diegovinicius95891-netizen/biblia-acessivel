@@ -11,7 +11,9 @@ import html
 import io
 import os
 import re
+import shutil
 import sqlite3
+import sys
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
@@ -65,6 +67,21 @@ EXPECTED_CHAPTER_COUNTS = (
 EXPECTED_CHAPTERS = {
     code: count for (code, _pt, _en), count in zip(BOOKS, EXPECTED_CHAPTER_COUNTS)
 }
+# Edição católica da BPM: os sete deuterocanônicos entram na ordem católica do
+# Antigo Testamento com números fracionários (16.3 fica entre Neemias e Ester),
+# o que preserva book_number <= 39 para o AT e os números dos 66 livros comuns.
+CATHOLIC_EXTRA_BOOKS = {
+    "TOB": (16.3, "Tobias", 14), "JDT": (16.6, "Judite", 16),
+    "1MA": (17.3, "1 Macabeus", 16), "2MA": (17.6, "2 Macabeus", 15),
+    "WIS": (22.3, "Sabedoria", 19), "SIR": (22.6, "Eclesiástico", 51),
+    "BAR": (25.5, "Baruc", 6),
+}
+# Ester e Daniel com as partes gregas substituem as versões curtas.
+CATHOLIC_REPLACED_BOOKS = {"ESG": "EST", "DAG": "DAN"}
+CATHOLIC_EXPECTED_CHAPTERS = {
+    **EXPECTED_CHAPTERS, "DAN": 14,
+    **{code: chapters for code, (_number, _name, chapters) in CATHOLIC_EXTRA_BOOKS.items()},
+}
 # BPM e WEB seguem a mesma tradição textual e não numeram quatro versículos
 # preservados por Almeida. A lista explícita impede aceitar novas lacunas por
 # acidente sem classificar essas diferenças editoriais legítimas como defeito.
@@ -74,6 +91,16 @@ EXPECTED_NUMERIC_GAPS = {
     "blivre": set(),
     "onbv": set(),
     "web": {("LUK", 17, 36), ("ACT", 8, 37), ("ACT", 15, 34), ("ACT", 24, 7)},
+    # Além das lacunas da BPM, a fonte segue a numeração da Vulgata em Eclesiástico
+    # e a do texto grego em Ester, que não numeram estes versículos.
+    "bpmcat": {("LUK", 17, 36), ("ACT", 8, 37), ("ACT", 15, 34), ("ACT", 24, 7),
+               ("EST", 4, 6), ("EST", 9, 5), ("EST", 9, 30)} | {
+        ("SIR", chapter, verse) for chapter, verse in (
+            (1, 5), (1, 7), (1, 21), (3, 19), (10, 21), (11, 15), (11, 16), (13, 14), (16, 15), (16, 16),
+            (17, 5), (17, 9), (17, 16), (17, 18), (17, 21), (18, 3), (19, 18), (19, 19), (19, 21), (20, 3),
+            (22, 9), (22, 10), (24, 18), (24, 24), (25, 12), *((26, verse) for verse in range(19, 28)),
+        )
+    },
 }
 
 GENERAL_LAW = """
@@ -118,7 +145,17 @@ TRANSLATIONS = [
         ),
     },
     {
-        "id": "almeida", "name": "João Ferreira de Almeida (domínio público)", "language": "Português", "display_order": 2,
+        "id": "bpmcat", "name": "Bíblia Católica — Portuguesa Mundial (73 livros)", "language": "Português (Brasil)",
+        "display_order": 2, "license": "Domínio público (declaração da fonte)",
+        "source": "eBible.org — porbrbsl, com deuterocanônicos", "source_url": "https://ebible.org/details.php?id=porbrbsl",
+        "legal_html": legal_html(
+            "Bíblia Católica — Portuguesa Mundial", "Domínio público, conforme declaração do eBible.org",
+            "eBible.org — porbrbsl", "https://ebible.org/details.php?id=porbrbsl",
+            "É a mesma Bíblia Portuguesa Mundial, organizada no cânon católico de 73 livros: inclui Tobias, Judite, 1 e 2 Macabeus, Sabedoria, Eclesiástico e Baruc, e Ester e Daniel com as partes gregas, todos publicados na mesma edição de domínio público.",
+        ),
+    },
+    {
+        "id": "almeida", "name": "João Ferreira de Almeida (domínio público)", "language": "Português", "display_order": 3,
         "license": "Domínio público", "source": "Open Bibles — por-almeida.usfx.xml",
         "source_url": "https://github.com/seven1m/open-bibles/blob/master/por-almeida.usfx.xml",
         "legal_html": legal_html(
@@ -129,7 +166,7 @@ TRANSLATIONS = [
         ),
     },
     {
-        "id": "blivre", "name": "Bíblia Livre", "language": "Português (Brasil)", "display_order": 3,
+        "id": "blivre", "name": "Bíblia Livre", "language": "Português (Brasil)", "display_order": 4,
         "license": "Creative Commons Atribuição 3.0 Brasil", "source": "Projeto Bíblia Livre — edição de fevereiro de 2018",
         "source_url": "https://github.com/blivre/BibliaLivre",
         "legal_html": legal_html(
@@ -140,7 +177,7 @@ TRANSLATIONS = [
         ),
     },
     {
-        "id": "onbv", "name": "Biblica Open Nova Bíblia Viva", "language": "Português (Brasil)", "display_order": 4,
+        "id": "onbv", "name": "Biblica Open Nova Bíblia Viva", "language": "Português (Brasil)", "display_order": 5,
         "license": "Creative Commons Atribuição-CompartilhaIgual 4.0 Internacional", "source": "Biblica / eBible.org — poronbv",
         "source_url": "https://ebible.org/bible/details.php?id=poronbv",
         "legal_html": legal_html(
@@ -151,7 +188,7 @@ TRANSLATIONS = [
         ),
     },
     {
-        "id": "web", "name": "World English Bible", "language": "English", "display_order": 5,
+        "id": "web", "name": "World English Bible", "language": "English", "display_order": 6,
         "license": "Public Domain", "source": "eBible.org — engwebp",
         "source_url": "https://worldenglish.bible/",
         "legal_html": legal_html(
@@ -189,19 +226,38 @@ def clean_usfm(text: str) -> str:
     return re.sub(r"\s+([,.;:!?])", r"\1", text)
 
 
-def parse_usfm_zip(url: str, english=False):
+def protestant_book(code: str, english=False):
+    """Mapeia somente os 66 livros comuns."""
+    if code not in BOOK_BY_CODE:
+        return None
+    number, pt_name, en_name = BOOK_BY_CODE[code]
+    return number, code, en_name if english else pt_name
+
+
+def catholic_book(code: str, english=False):
+    """Mapeia o cânon católico: 66 livros, deuterocanônicos e Ester e Daniel gregos."""
+    if code in CATHOLIC_EXTRA_BOOKS:
+        number, name, _chapters = CATHOLIC_EXTRA_BOOKS[code]
+        return number, code, name
+    if code in CATHOLIC_REPLACED_BOOKS:
+        return protestant_book(CATHOLIC_REPLACED_BOOKS[code], english)
+    if code in CATHOLIC_REPLACED_BOOKS.values():
+        return None
+    return protestant_book(code, english)
+
+
+def parse_usfm_zip(url: str, english=False, book_map=protestant_book, data: bytes | None = None):
     """Converte um pacote USFM oficial em linhas normalizadas."""
-    archive = zipfile.ZipFile(io.BytesIO(download(url)))
+    archive = zipfile.ZipFile(io.BytesIO(data if data is not None else download(url)))
     for filename in sorted(archive.namelist()):
         if not filename.lower().endswith(".usfm"):
             continue
         raw = archive.read(filename).decode("utf-8-sig", errors="replace")
         id_match = re.search(r"^\\id\s+([A-Z0-9]{3})", raw, re.M)
-        if not id_match or id_match.group(1) not in BOOK_BY_CODE:
+        mapped = book_map(id_match.group(1), english) if id_match else None
+        if not mapped:
             continue
-        code = id_match.group(1)
-        number, pt_name, en_name = BOOK_BY_CODE[code]
-        name = en_name if english else pt_name
+        number, code, name = mapped
         chapter = 0
         current_verse = None
         buffer = []
@@ -308,7 +364,13 @@ def validate_database(connection: sqlite3.Connection):
             raise ValueError(f"{translation_id}: referências duplicadas: {duplicates[:5]}")
 
         actual_gaps = set()
-        for code, expected_count in EXPECTED_CHAPTERS.items():
+        expected_books = CATHOLIC_EXPECTED_CHAPTERS if translation_id == "bpmcat" else EXPECTED_CHAPTERS
+        book_total = connection.execute(
+            "SELECT COUNT(DISTINCT book_code) FROM verses WHERE translation_id=?", (translation_id,)
+        ).fetchone()[0]
+        if book_total != len(expected_books):
+            raise ValueError(f"{translation_id}: {book_total} livros; esperado {len(expected_books)}")
+        for code, expected_count in expected_books.items():
             chapters = [row[0] for row in connection.execute("""
                 SELECT DISTINCT chapter FROM verses
                 WHERE translation_id=? AND book_code=? ORDER BY chapter
@@ -330,6 +392,31 @@ def validate_database(connection: sqlite3.Connection):
                 f"{translation_id}: lacunas {sorted(actual_gaps)}; esperado "
                 f"{sorted(EXPECTED_NUMERIC_GAPS[translation_id])}"
             )
+
+
+BPM_URL = "https://ebible.org/Scriptures/porbrbsl_usfm.zip"
+
+
+def add_catholic_only():
+    """Acrescenta a edição católica ao banco atual sem baixar de novo as outras traduções."""
+    pending_path = DB_PATH.with_suffix(".db.new")
+    shutil.copyfile(DB_PATH, pending_path)
+    connection = sqlite3.connect(pending_path)
+    connection.execute("DELETE FROM verses WHERE translation_id='bpmcat'")
+    connection.execute("DELETE FROM translations")
+    for item in TRANSLATIONS:
+        connection.execute(
+            "INSERT INTO translations VALUES (:id,:name,:language,:license,:source,:source_url,:legal_html,:display_order)", item
+        )
+    print("Importando Bíblia Católica (BPM, 73 livros)…")
+    insert_rows(connection, "bpmcat", parse_usfm_zip(BPM_URL, book_map=catholic_book))
+    connection.commit()
+    validate_database(connection)
+    connection.execute("VACUUM")
+    count = connection.execute("SELECT COUNT(*) FROM verses WHERE translation_id='bpmcat'").fetchone()[0]
+    connection.close()
+    os.replace(pending_path, DB_PATH)
+    print(f"Edição católica adicionada: {count} versículos")
 
 
 def build():
@@ -362,7 +449,10 @@ def build():
         )
 
     print("Importando Bíblia Portuguesa Mundial…")
-    insert_rows(connection, "bpm", parse_usfm_zip("https://ebible.org/Scriptures/porbrbsl_usfm.zip"))
+    bpm_zip = download(BPM_URL)
+    insert_rows(connection, "bpm", parse_usfm_zip(BPM_URL, data=bpm_zip))
+    print("Importando Bíblia Católica (BPM, 73 livros)…")
+    insert_rows(connection, "bpmcat", parse_usfm_zip(BPM_URL, book_map=catholic_book, data=bpm_zip))
     print("Importando João Ferreira de Almeida…")
     insert_rows(connection, "almeida", parse_usfx(download("https://raw.githubusercontent.com/seven1m/open-bibles/master/por-almeida.usfx.xml")))
     print("Importando Bíblia Livre…")
@@ -383,8 +473,11 @@ def build():
 
 
 def main():
-    """Constrói o banco usando somente as cinco fontes completas verificadas."""
-    build()
+    """Constrói o banco; ``--somente-catolica`` só acrescenta a edição católica."""
+    if "--somente-catolica" in sys.argv:
+        add_catholic_only()
+    else:
+        build()
 
 
 if __name__ == "__main__":

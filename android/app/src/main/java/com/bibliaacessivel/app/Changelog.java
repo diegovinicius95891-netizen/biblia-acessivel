@@ -6,6 +6,14 @@ final class Changelog {
 
     static final String CURRENT =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
+            "Avisos de devocionais na hora: quando um devocional novo é publicado, o aviso chega no mesmo " +
+            "momento. Em Configurações, Avisos de novos devocionais, escolha entre Avisar na hora em que o " +
+            "devocional sair ou Avisar em um horário fixo, com o horário que preferir.\n\n" +
+            "Nova tradução: Bíblia Católica, da Bíblia Portuguesa Mundial, com os 73 livros do cânon católico. " +
+            "Inclui Tobias, Judite, 1 e 2 Macabeus, Sabedoria, Eclesiástico e Baruc, e Ester e Daniel com as " +
+            "partes gregas. Escolha em Mais opções, Traduções.\n\n" +
+            "Corrigida uma falha rara ao abrir a Bíblia logo depois de atualizar o aplicativo.\n\n" +
+            "Na versão anterior:\n\n" +
             "As atualizações agora chegam somente pela Google Play. O atualizador do GitHub foi removido.\n\n" +
             "Ações em massa nos versículos: toque duas vezes e segure um versículo para selecioná-lo; depois, um " +
             "toque marca ou desmarca outros, mesmo fora de ordem. No fim da tela aparecem as ações para os " +

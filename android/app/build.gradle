@@ -4,6 +4,20 @@ plugins {
 
 def playStoreBuild = providers.gradleProperty('playStore').orElse('false').get().toBoolean()
 
+// Firebase sem o plugin google-services: o google-services.json fica fora do
+// repositório (pasta de chaves) e só os identificadores públicos entram no BuildConfig.
+def firebaseConfig = [apiKey: '', appId: '', projectId: '', senderId: '']
+def firebaseFile = new File(System.getenv('BIBLIA_FIREBASE_CONFIG') ?:
+        rootProject.file('../../chaves-play-biblia/google-services.json').path)
+if (firebaseFile.isFile()) {
+    def json = new groovy.json.JsonSlurper().parse(firebaseFile)
+    def client = json.client.find { it.client_info.android_client_info.package_name == 'com.audiogamesbrasil.biblia' }
+    if (client) {
+        firebaseConfig = [apiKey: client.api_key[0].current_key, appId: client.client_info.mobilesdk_app_id,
+                          projectId: json.project_info.project_id, senderId: json.project_info.project_number]
+    }
+}
+
 android {
     namespace 'com.bibliaacessivel.app'
     compileSdk 37
@@ -18,8 +32,14 @@ android {
         applicationId playStoreBuild ? 'com.audiogamesbrasil.biblia' : 'com.bibliaacessivel.app'
         minSdk 26
         targetSdk 37
-        versionCode 30
-        versionName '4.8.0'
+        versionCode 31
+        versionName '4.9.0'
+        // Só a versão da Play recebe avisos instantâneos; a de teste local segue consultando o site.
+        def firebase = playStoreBuild ? firebaseConfig : [apiKey: '', appId: '', projectId: '', senderId: '']
+        buildConfigField 'String', 'FIREBASE_API_KEY', "\"${firebase.apiKey}\""
+        buildConfigField 'String', 'FIREBASE_APP_ID', "\"${firebase.appId}\""
+        buildConfigField 'String', 'FIREBASE_PROJECT_ID', "\"${firebase.projectId}\""
+        buildConfigField 'String', 'FIREBASE_SENDER_ID', "\"${firebase.senderId}\""
     }
 
     compileOptions {
@@ -80,6 +100,7 @@ tasks.named('preBuild').configure {
 dependencies {
     implementation 'androidx.core:core:1.19.1'
     implementation 'androidx.work:work-runtime:2.12.0'
+    implementation 'com.google.firebase:firebase-messaging:25.0.1'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.17'
     testImplementation 'org.json:json:20240303'

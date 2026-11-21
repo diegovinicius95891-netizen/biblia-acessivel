@@ -1,6 +1,12 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.6.0
+CURRENT_CHANGELOG = """Novidades da versão 4.7.0
+
+Nova tradução: Bíblia Católica, da Bíblia Portuguesa Mundial, com os 73 livros do cânon católico. Inclui Tobias, Judite, 1 e 2 Macabeus, Sabedoria, Eclesiástico e Baruc, na ordem católica, e Ester e Daniel com as partes gregas. Escolha em Mais opções, Traduções.
+
+A contagem de livros anunciada em Livros agora acompanha a tradução escolhida: 46 livros no Antigo Testamento da Bíblia Católica e 39 nas demais.
+
+Novidades da versão 4.6.0
 
 Interface parecida com a do Android: cores da Áudio Games Brasil, com fundo azul-escuro, botões azuis com borda dourada e foco dourado bem visível. O alto contraste continua em Configurações.
 

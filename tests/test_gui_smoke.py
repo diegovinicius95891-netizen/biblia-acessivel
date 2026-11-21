@@ -95,8 +95,8 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertEqual("Capítulo anterior", window.previous_chapter_button.text().replace("&", ""))
         self.assertEqual("Próximo capítulo", window.next_chapter_button.text().replace("&", ""))
         self.assertIn("Voltar", window.verses_back_button.text().replace("&", ""))
-        self.assertEqual(5, window.translation_list.count())
-        self.assertEqual(5, window.translation_combo.count())
+        self.assertEqual(6, window.translation_list.count())
+        self.assertEqual(6, window.translation_combo.count())
         self.assertEqual(39, window.book_list.count())
 
         window.book_list.setFocus()
