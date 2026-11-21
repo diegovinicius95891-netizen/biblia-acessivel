@@ -32,8 +32,8 @@ android {
         applicationId playStoreBuild ? 'com.audiogamesbrasil.biblia' : 'com.bibliaacessivel.app'
         minSdk 26
         targetSdk 37
-        versionCode 32
-        versionName '4.9.1'
+        versionCode 33
+        versionName '4.10.0'
         // Só a versão da Play recebe avisos instantâneos; a de teste local segue consultando o site.
         def firebase = playStoreBuild ? firebaseConfig : [apiKey: '', appId: '', projectId: '', senderId: '']
         buildConfigField 'String', 'FIREBASE_API_KEY', "\"${firebase.apiKey}\""
@@ -85,11 +85,23 @@ android {
     }
 }
 
+// -PedicaoRestrita=true usa o banco de data_restrito/ (fora do git), com as traduções protegidas
+// entregues só ao teste fechado para pessoas com deficiência visual.
+def restrictedEdition = providers.gradleProperty('edicaoRestrita').orElse('false').get().toBoolean()
+def restrictedDatabase = rootProject.file('../data_restrito/biblia.db')
+if (restrictedEdition && !restrictedDatabase.isFile()) {
+    throw new GradleException('Edição restrita: rode scripts/build_restricted_database.py antes.')
+}
+
 def syncSharedContent = tasks.register('syncSharedContent', Copy) {
-    from rootProject.file('../data')
-    include 'biblia.db', 'harpa_crista.json', 'quiz_questions.tsv', 'ai_study_topics.txt'
-    from rootProject.file('..')
-    include 'THIRD_PARTY_NOTICES.md'
+    from(rootProject.file('../data')) {
+        include 'harpa_crista.json', 'quiz_questions.tsv', 'ai_study_topics.txt'
+        if (!restrictedEdition) include 'biblia.db'
+    }
+    if (restrictedEdition) from(restrictedDatabase)
+    from(rootProject.file('..')) {
+        include 'THIRD_PARTY_NOTICES.md'
+    }
     into layout.buildDirectory.dir('generated/bibleAssets')
 }
 

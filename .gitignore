@@ -37,3 +37,7 @@ BibliaAcessivel-Android.apk.sha256
 # Pacotes da Play: gerados, nunca versionados.
 play-store/*.aab
 BibliaAGB-*-teste.apk
+
+# Edição restrita (teste fechado para pessoas cegas): traduções protegidas nunca vão para o git.
+data_restrito/
+*.aab

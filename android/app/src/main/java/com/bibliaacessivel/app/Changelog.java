@@ -6,6 +6,9 @@ final class Changelog {
 
     static final String CURRENT =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
+            "Edição do teste fechado para pessoas com deficiência visual: 15 traduções a mais, entre elas " +
+            "ARA, ARC, ACF, NAA, NTLH, NVI, NVT, Nova Bíblia Viva, Almeida Século 21, King James Atualizada " +
+            "e A Mensagem. Escolha em Mais opções, Traduções.\n\n" +
             "Duas traduções novas em domínio público: Tradução Brasileira, de 1917, e Almeida 1911, com a " +
             "ortografia da época. Agora são 8 traduções, em Mais opções, Traduções.\n\n" +
             "Avisos de devocionais na hora: quando um devocional novo é publicado, o aviso chega no mesmo " +
