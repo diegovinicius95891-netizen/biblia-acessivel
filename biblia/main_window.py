@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QGroupBox,
+    QPushButton,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -617,14 +618,25 @@ class MainWindow(QMainWindow):
         """Cria a tela com uma caixa de combinação para a tradução padrão."""
         section = QGroupBox("Traduções")
         layout = QVBoxLayout(section)
-        layout.addWidget(QLabel("Escolha a tradução na caixa de combinação e pressione Enter."))
+        layout.addWidget(QLabel(
+            "Escolha a tradução na caixa de combinação. Depois pressione Tab e ative Aplicar tradução."
+        ))
         self.translation_combo = QComboBox()
         self.translation_combo.setAccessibleName("Caixa de combinação de traduções bíblicas")
         self.translation_combo.setAccessibleDescription(
-            "Cima e baixo escolhem a tradução. Pressione Enter para aplicá-la como padrão."
+            "Cima e baixo escolhem a tradução. Depois pressione Tab e ative Aplicar tradução."
         )
+        # Escolher na caixa (setas, clique ou leitor de tela) só anuncia; aplicar é no botão,
+        # como no Android. Enter na lista aberta continua aplicando direto.
+        self.translation_combo.currentIndexChanged.connect(self.announce_translation_choice)
         self.translation_combo.activated.connect(self.select_translation_combo)
         layout.addWidget(self.translation_combo)
+        self.apply_translation_button = QPushButton("Aplicar tradução")
+        self.apply_translation_button.setAccessibleDescription("Confirma a tradução escolhida na caixa acima.")
+        self.apply_translation_button.clicked.connect(
+            lambda: self.select_translation_combo(self.translation_combo.currentIndex())
+        )
+        layout.addWidget(self.apply_translation_button)
         self.translation_feedback = QLabel("Nenhuma tradução carregada.")
         self.translation_feedback.setAccessibleName("Estado da tradução padrão")
         self.translation_feedback.setWordWrap(True)
@@ -1275,6 +1287,19 @@ class MainWindow(QMainWindow):
         self.open_selected_chapter(focus_reading=False)
         self.statusBar().showMessage(f"Tradução marcada: {item.text()}.")
 
+    def announce_translation_choice(self, index: int):
+        """Fala a tradução escolhida e devolve o foco à caixa, à espera da confirmação."""
+        if self._loading or index < 0:
+            return
+        name = self.translation_combo.itemText(index)
+        if self.translation_combo.itemData(index) == self.current_translation_id():
+            message = f"{name} selecionada. Já é a tradução em uso."
+        else:
+            message = f"{name} selecionada. Pressione Tab e ative Aplicar tradução para confirmar."
+        self.translation_feedback.setText(message)
+        self.translation_combo.setFocus()
+        self._announce_for(self.translation_combo, message)
+
     def select_translation_combo(self, index: int):
         """Aplica a escolha visível da caixa e anuncia a nova tradução padrão."""
         if self._loading or index < 0:
@@ -1285,10 +1310,10 @@ class MainWindow(QMainWindow):
             if item.data(Qt.UserRole) == translation_id:
                 self.translation_list.setCurrentItem(item)
                 self.select_current_translation()
-                self._announce_for(
-                    self.translation_combo,
-                    f"Tradução padrão selecionada: {self.translation_combo.currentText()}.",
-                )
+                message = f"Tradução aplicada: {self.translation_combo.itemText(index)}."
+                self.translation_feedback.setText(message)
+                self.translation_combo.setFocus()
+                self._announce_for(self.translation_combo, message)
                 return
 
     def refresh_comparison(self):

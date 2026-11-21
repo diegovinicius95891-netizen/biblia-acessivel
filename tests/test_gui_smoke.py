@@ -95,8 +95,8 @@ class GuiSmokeTests(unittest.TestCase):
         self.assertEqual("Capítulo anterior", window.previous_chapter_button.text().replace("&", ""))
         self.assertEqual("Próximo capítulo", window.next_chapter_button.text().replace("&", ""))
         self.assertIn("Voltar", window.verses_back_button.text().replace("&", ""))
-        self.assertEqual(6, window.translation_list.count())
-        self.assertEqual(6, window.translation_combo.count())
+        self.assertEqual(8, window.translation_list.count())
+        self.assertEqual(8, window.translation_combo.count())
         self.assertEqual(39, window.book_list.count())
 
         window.book_list.setFocus()
@@ -179,6 +179,19 @@ class GuiSmokeTests(unittest.TestCase):
         window._handle_escape()
         self.assertEqual(window.main_page_index, window.page_stack.currentIndex())
         window.close()
+
+    def test_choosing_translation_announces_and_button_applies(self):
+        """Escolher na caixa só anuncia; Aplicar tradução confirma, como no Android."""
+        window = self.make_window()
+        original = window.current_translation_id()
+        index = window.translation_combo.findData("tb")
+        window.translation_combo.setCurrentIndex(index)
+        self.assertEqual(original, window.current_translation_id())
+        self.assertIn("Tradução Brasileira (1917) selecionada", window.translation_feedback.text())
+        self.assertIn("Aplicar tradução", window.translation_feedback.text())
+        window.apply_translation_button.click()
+        self.assertEqual("tb", window.current_translation_id())
+        self.assertIn("Tradução aplicada", window.translation_feedback.text())
 
     def test_escape_returns_along_the_same_route(self):
         """Livros, Capítulos e Versículos voltam um passo por vez até o menu principal."""

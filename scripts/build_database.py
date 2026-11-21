@@ -93,6 +93,8 @@ EXPECTED_NUMERIC_GAPS = {
     "web": {("LUK", 17, 36), ("ACT", 8, 37), ("ACT", 15, 34), ("ACT", 24, 7)},
     # Além das lacunas da BPM, a fonte segue a numeração da Vulgata em Eclesiástico
     # e a do texto grego em Ester, que não numeram estes versículos.
+    "tb": set(),
+    "alm1911": set(),
     "bpmcat": {("LUK", 17, 36), ("ACT", 8, 37), ("ACT", 15, 34), ("ACT", 24, 7),
                ("EST", 4, 6), ("EST", 9, 5), ("EST", 9, 30)} | {
         ("SIR", chapter, verse) for chapter, verse in (
@@ -166,7 +168,27 @@ TRANSLATIONS = [
         ),
     },
     {
-        "id": "blivre", "name": "Bíblia Livre", "language": "Português (Brasil)", "display_order": 4,
+        "id": "tb", "name": "Tradução Brasileira (1917)", "language": "Português (Brasil)", "display_order": 4,
+        "license": "Domínio público", "source": "Tradução Brasileira, edição de 1917",
+        "source_url": "https://pt.wikipedia.org/wiki/Tradu%C3%A7%C3%A3o_Brasileira_da_B%C3%ADblia",
+        "legal_html": legal_html(
+            "Tradução Brasileira (1917)", "Domínio público",
+            "Tradução Brasileira, edição de 1917", "https://pt.wikipedia.org/wiki/Tradu%C3%A7%C3%A3o_Brasileira_da_B%C3%ADblia",
+            "Publicada em 1917 por uma comissão de tradutores já falecidos há mais de setenta anos, a Tradução Brasileira está em domínio público pelo art. 41 da Lei nº 9.610/1998. O texto foi importado de um banco SQLite público, guardado em data/fontes/tb.sqlite.",
+        ),
+    },
+    {
+        "id": "alm1911", "name": "Almeida 1911 (ortografia antiga)", "language": "Português", "display_order": 5,
+        "license": "Domínio público", "source": "Almeida, edição revista de 1911",
+        "source_url": "https://pt.wikipedia.org/wiki/Jo%C3%A3o_Ferreira_de_Almeida",
+        "legal_html": legal_html(
+            "Almeida 1911", "Domínio público",
+            "Almeida, edição revista de 1911", "https://pt.wikipedia.org/wiki/Jo%C3%A3o_Ferreira_de_Almeida",
+            "Tradução de João Ferreira de Almeida (falecido em 1691) na revisão de 1911, cuja proteção patrimonial terminou há décadas pelo art. 41 da Lei nº 9.610/1998. Mantém a ortografia da época. O texto foi importado de um banco SQLite público, guardado em data/fontes/alm1911.sqlite.",
+        ),
+    },
+    {
+        "id": "blivre", "name": "Bíblia Livre", "language": "Português (Brasil)", "display_order": 6,
         "license": "Creative Commons Atribuição 3.0 Brasil", "source": "Projeto Bíblia Livre — edição de fevereiro de 2018",
         "source_url": "https://github.com/blivre/BibliaLivre",
         "legal_html": legal_html(
@@ -177,7 +199,7 @@ TRANSLATIONS = [
         ),
     },
     {
-        "id": "onbv", "name": "Biblica Open Nova Bíblia Viva", "language": "Português (Brasil)", "display_order": 5,
+        "id": "onbv", "name": "Biblica Open Nova Bíblia Viva", "language": "Português (Brasil)", "display_order": 7,
         "license": "Creative Commons Atribuição-CompartilhaIgual 4.0 Internacional", "source": "Biblica / eBible.org — poronbv",
         "source_url": "https://ebible.org/bible/details.php?id=poronbv",
         "legal_html": legal_html(
@@ -188,7 +210,7 @@ TRANSLATIONS = [
         ),
     },
     {
-        "id": "web", "name": "World English Bible", "language": "English", "display_order": 6,
+        "id": "web", "name": "World English Bible", "language": "English", "display_order": 8,
         "license": "Public Domain", "source": "eBible.org — engwebp",
         "source_url": "https://worldenglish.bible/",
         "legal_html": legal_html(
@@ -325,6 +347,28 @@ def parse_usfx(data: bytes):
         yield from rows
 
 
+SOURCES_DIR = ROOT / "data" / "fontes"
+
+
+def parse_sqlite_bible(path: Path):
+    """Lê bancos no formato book/verse (book_reference_id 1 a 66 na ordem protestante)."""
+    source = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    try:
+        rows = source.execute("""
+            SELECT b.book_reference_id, v.chapter, v.verse, v.text
+            FROM verse v JOIN book b ON b.id = v.book_id
+            ORDER BY b.book_reference_id, v.chapter, v.verse
+        """).fetchall()
+    finally:
+        source.close()
+    for number, chapter, verse, text in rows:
+        code, name, _english = BOOKS[int(number) - 1]
+        yield int(number), code, name, int(chapter), str(verse), re.sub(r"\s+", " ", text or "").strip()
+
+
+SQLITE_TRANSLATIONS = {"tb": "tb.sqlite", "alm1911": "alm1911.sqlite"}
+
+
 def insert_rows(connection, translation_id, rows):
     """Insere em lotes para reduzir tempo e memória durante a construção."""
     prepared = []
@@ -397,26 +441,34 @@ def validate_database(connection: sqlite3.Connection):
 BPM_URL = "https://ebible.org/Scriptures/porbrbsl_usfm.zip"
 
 
-def add_catholic_only():
-    """Acrescenta a edição católica ao banco atual sem baixar de novo as outras traduções."""
+def add_translations(translation_ids):
+    """Acrescenta ou refaz traduções no banco atual sem baixar de novo as outras."""
     pending_path = DB_PATH.with_suffix(".db.new")
     shutil.copyfile(DB_PATH, pending_path)
     connection = sqlite3.connect(pending_path)
-    connection.execute("DELETE FROM verses WHERE translation_id='bpmcat'")
     connection.execute("DELETE FROM translations")
     for item in TRANSLATIONS:
         connection.execute(
             "INSERT INTO translations VALUES (:id,:name,:language,:license,:source,:source_url,:legal_html,:display_order)", item
         )
-    print("Importando Bíblia Católica (BPM, 73 livros)…")
-    insert_rows(connection, "bpmcat", parse_usfm_zip(BPM_URL, book_map=catholic_book))
+    for translation_id in translation_ids:
+        connection.execute("DELETE FROM verses WHERE translation_id=?", (translation_id,))
+        print(f"Importando {translation_id}…")
+        if translation_id == "bpmcat":
+            insert_rows(connection, "bpmcat", parse_usfm_zip(BPM_URL, book_map=catholic_book))
+        else:
+            insert_rows(connection, translation_id,
+                        parse_sqlite_bible(SOURCES_DIR / SQLITE_TRANSLATIONS[translation_id]))
     connection.commit()
     validate_database(connection)
     connection.execute("VACUUM")
-    count = connection.execute("SELECT COUNT(*) FROM verses WHERE translation_id='bpmcat'").fetchone()[0]
+    counts = connection.execute(
+        "SELECT translation_id, COUNT(*) FROM verses GROUP BY translation_id ORDER BY translation_id"
+    ).fetchall()
     connection.close()
     os.replace(pending_path, DB_PATH)
-    print(f"Edição católica adicionada: {count} versículos")
+    for translation, count in counts:
+        print(f"  {translation}: {count} versículos")
 
 
 def build():
@@ -453,6 +505,9 @@ def build():
     insert_rows(connection, "bpm", parse_usfm_zip(BPM_URL, data=bpm_zip))
     print("Importando Bíblia Católica (BPM, 73 livros)…")
     insert_rows(connection, "bpmcat", parse_usfm_zip(BPM_URL, book_map=catholic_book, data=bpm_zip))
+    for translation_id, filename in SQLITE_TRANSLATIONS.items():
+        print(f"Importando {translation_id}…")
+        insert_rows(connection, translation_id, parse_sqlite_bible(SOURCES_DIR / filename))
     print("Importando João Ferreira de Almeida…")
     insert_rows(connection, "almeida", parse_usfx(download("https://raw.githubusercontent.com/seven1m/open-bibles/master/por-almeida.usfx.xml")))
     print("Importando Bíblia Livre…")
@@ -473,9 +528,9 @@ def build():
 
 
 def main():
-    """Constrói o banco; ``--somente-catolica`` só acrescenta a edição católica."""
-    if "--somente-catolica" in sys.argv:
-        add_catholic_only()
+    """Constrói o banco; ``--adicionar id1 id2`` só refaz essas traduções no banco atual."""
+    if "--adicionar" in sys.argv:
+        add_translations(sys.argv[sys.argv.index("--adicionar") + 1:])
     else:
         build()
 

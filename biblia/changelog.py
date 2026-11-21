@@ -1,6 +1,12 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.7.0
+CURRENT_CHANGELOG = """Novidades da versão 4.8.0
+
+Duas traduções novas em domínio público: Tradução Brasileira, de 1917, e Almeida 1911, com a ortografia da época. Agora são 8 traduções.
+
+Escolher tradução ficou mais claro: ao escolher na caixa, o aplicativo fala o nome da tradução selecionada e devolve o foco para a caixa. Depois, pressione Tab e ative o novo botão Aplicar tradução para confirmar. Enter na lista aberta continua aplicando direto.
+
+Novidades da versão 4.7.0
 
 Nova tradução: Bíblia Católica, da Bíblia Portuguesa Mundial, com os 73 livros do cânon católico. Inclui Tobias, Judite, 1 e 2 Macabeus, Sabedoria, Eclesiástico e Baruc, na ordem católica, e Ester e Daniel com as partes gregas. Escolha em Mais opções, Traduções.
 

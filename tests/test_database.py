@@ -24,7 +24,7 @@ class DatabaseTests(unittest.TestCase):
     def test_all_translations_have_66_books(self):
         """Garante o cânon protestante completo e os 73 livros da edição católica."""
         self.assertEqual(
-            ["bpm", "bpmcat", "almeida", "blivre", "onbv", "web"],
+            ["bpm", "bpmcat", "almeida", "tb", "alm1911", "blivre", "onbv", "web"],
             [item["id"] for item in self.db.translations()],
         )
         for translation in self.db.translations():
@@ -105,7 +105,7 @@ class DatabaseTests(unittest.TestCase):
         finally:
             connection.close()
         self.assertEqual(
-            {"bpm": 1189, "bpmcat": 1328, "almeida": 1189, "blivre": 1189, "onbv": 1189, "web": 1189},
+            {"bpm": 1189, "bpmcat": 1328, "almeida": 1189, "tb": 1189, "alm1911": 1189, "blivre": 1189, "onbv": 1189, "web": 1189},
             totals,
         )
 
