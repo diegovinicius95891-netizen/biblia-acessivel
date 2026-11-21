@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 
 from .changelog import CURRENT_CHANGELOG
 from .dialogs import AccessibleButton, AccessibleResultDialog
-from .update_service import ReleaseInfo, UpdateError, UpdateService, validate_package
+from .update_service import ReleaseInfo, UpdateError, UpdateService, site_feed_url, validate_package
 from .version import APP_VERSION, WINDOWS_ASSET_NAME
 
 
@@ -177,7 +177,7 @@ class UpdateController(QObject):
         self.app_data_dir = app_data_dir
         self.install_dir = install_dir
         self.settings = QSettings()
-        self.service = UpdateService()
+        self.service = UpdateService(feed_url=site_feed_url(install_dir))
         self.signals = UpdateSignals(self)
         self.signals.checked.connect(self._checked)
         self.signals.check_failed.connect(self._check_failed)

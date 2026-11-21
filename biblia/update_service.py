@@ -32,7 +32,11 @@ ALLOWED_DOWNLOAD_HOSTS = {
     "objects.githubusercontent.com",
     "release-assets.githubusercontent.com",
     "github-releases.githubusercontent.com",
+    "audiogames.com.br",
+    "www.audiogames.com.br",
 }
+SITE_FEED_HOSTS = {"audiogames.com.br", "www.audiogames.com.br"}
+SITE_FEED_FILE = Path("data") / "atualizacao.json"
 
 
 PACKAGE_EXECUTABLE = "BibliaAcessivel/BibliaAcessivel.exe"
@@ -159,10 +163,11 @@ def parse_release_payload(payload: list[dict], current_version: str) -> ReleaseI
 class UpdateService:
     """Consulta e transfere versões do repositório público sem exigir token."""
 
-    def __init__(self, repository: str = RELEASE_REPOSITORY, timeout: int = 15):
-        """Fixa o repositório oficial e um tempo limite curto de rede."""
+    def __init__(self, repository: str = RELEASE_REPOSITORY, timeout: int = 15, feed_url: str | None = None):
+        """Fixa o repositório oficial, ou a lista do site, e um tempo limite curto de rede."""
         self.repository = repository
         self.timeout = timeout
+        self.feed_url = feed_url
 
     def _request(self, url: str):
         """Cria requisição identificada, aceita pela API pública do GitHub."""
@@ -198,7 +203,7 @@ class UpdateService:
         ``latest``, o Windows ainda encontra a sua. ``/latest`` fica como reserva
         para respostas vazias observadas na listagem paginada.
         """
-        urls = (
+        urls = (self.feed_url,) if self.feed_url else (
             f"https://api.github.com/repos/{self.repository}/releases?per_page=30",
             f"https://api.github.com/repos/{self.repository}/releases/latest",
         )
@@ -303,6 +308,23 @@ class UpdateService:
             return actual
         finally:
             hash_path.unlink(missing_ok=True)
+
+
+def site_feed_url(install_dir: Path) -> str | None:
+    """Lista de versões do site da AGB, quando o pacote traz data/atualizacao.json.
+
+    A edição distribuída pelo site guarda esse arquivo ao lado do EXE; como ele vem
+    dentro de cada pacote, a escolha do caminho sobrevive às atualizações.
+    """
+    try:
+        config = json.loads((install_dir / SITE_FEED_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    url = str(config.get("feed", "")) if isinstance(config, dict) else ""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname not in SITE_FEED_HOSTS:
+        return None
+    return url
 
 
 def file_sha256(path: Path) -> str:

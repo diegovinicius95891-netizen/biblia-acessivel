@@ -192,3 +192,28 @@ class UpdateServiceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SiteFeedTests(unittest.TestCase):
+    def test_site_feed_only_accepts_https_audiogames(self):
+        import json
+        import tempfile
+        from biblia.update_service import site_feed_url
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.assertIsNone(site_feed_url(root))
+            (root / "data").mkdir()
+            config = root / "data" / "atualizacao.json"
+            config.write_text(json.dumps({"feed": "https://audiogames.com.br/diego/x/releases.json"}), encoding="utf-8")
+            self.assertEqual(site_feed_url(root), "https://audiogames.com.br/diego/x/releases.json")
+            config.write_text(json.dumps({"feed": "https://exemplo.com/releases.json"}), encoding="utf-8")
+            self.assertIsNone(site_feed_url(root))
+
+    def test_site_release_is_accepted(self):
+        url = "https://audiogames.com.br/diego/x/"
+        payload = [{"tag_name": "v9.0.0", "body": "Notas", "assets": [
+            {"name": "BibliaAcessivel-Windows.zip", "browser_download_url": url + "BibliaAcessivel-Windows.zip", "size": 10},
+            {"name": "BibliaAcessivel-Windows.zip.sha256", "browser_download_url": url + "BibliaAcessivel-Windows.zip.sha256", "size": 1},
+        ]}]
+        from biblia.update_service import parse_release_payload
+        self.assertEqual(parse_release_payload(payload, "4.8.0").version, "9.0.0")
