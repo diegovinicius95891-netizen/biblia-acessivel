@@ -6,6 +6,10 @@ final class Changelog {
 
     static final String CURRENT =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
+            "Botão Continuar leitura: com a opção Mostrar só Continuar leitura, o TalkBack não fala mais o livro " +
+            "e o capítulo.\n\n" +
+            "Ao abrir os menus, como Estudos com IA, o foco vai sempre para a primeira opção.\n\n" +
+            "Na versão 4.11.0:\n\n" +
             "Na Bíblia Católica, a tela Livros agora fala a contagem certa: 46 livros no Antigo Testamento e 73 " +
             "em Todos os livros.\n\n" +
             "Seleção de vários versículos mais prática: depois de usar uma ação, a seleção é limpa sozinha. " +

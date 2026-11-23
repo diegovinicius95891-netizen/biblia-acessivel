@@ -228,9 +228,11 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         backAction = null;
         LinearLayout root = rootLayout();
         root.addView(heading("Bíblia AGB (Audio Games Brasil)"));
-        root.addView(paragraph("Seção Livros. Sua posição é " + currentReference() + "."));
+        root.addView(paragraph("position".equals(continueMode())
+                ? "Seção Livros. Sua posição é " + currentReference() + "." : "Seção Livros."));
+        boolean showPosition = "position".equals(continueMode());
         root.addView(actionButton(continueLabel(),
-                "Continuar a leitura em " + currentReference(), this::showVerses));
+                showPosition ? "Continuar a leitura em " + currentReference() : continueLabel(), this::showVerses));
         root.addView(actionButton("Trocar de livro", "Escolher outro livro, capítulo e versículo",
                 this::confirmBookChoice));
         root.addView(actionButton("Mais opções", "Abrir traduções, pesquisa, notas e configurações",
@@ -238,7 +240,14 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(actionButton("Apoie a Bíblia AGB com uma doação",
                 "Copiar a chave Pix e doar o valor que quiser", this::showDonation));
         setContentView(root);
-        focusForTalkBack(root.getChildAt(2), "Continuar leitura em " + currentReference());
+        focusForTalkBack(root.getChildAt(2), showPosition ? "Continuar leitura em " + currentReference() : "");
+    }
+
+    /** Modo efetivo do botão: um texto próprio vazio volta a mostrar a posição. */
+    private String continueMode() {
+        String mode = preferences.getString("continue_label_mode", "position");
+        if ("custom".equals(mode) && preferences.getString("continue_label_text", "").trim().isEmpty()) return "position";
+        return mode;
     }
 
     /** Texto do botão de continuar, conforme Configurações: com a posição, só "Continuar leitura" ou próprio. */
@@ -717,8 +726,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout root = screen("Estudos — Teólogo de IA", this::showMoreOptions);
         root.addView(paragraph("Escolha uma categoria. A pergunta sugerida poderá ser editada antes do envio. " +
                 "A resposta usa a passagem atual e exige sua chave do Google Gemini."));
-        root.addView(actionButton("Estudar e pesquisar temas com IA",
-                "Estudar e pesquisar temas com inteligência artificial", this::showStudyThemeScope));
+        Button firstStudyOption = actionButton("Estudar e pesquisar temas com IA",
+                "Estudar e pesquisar temas com inteligência artificial", this::showStudyThemeScope);
+        root.addView(firstStudyOption);
         final String translation = translationId;
         final String bookCode = selectedBook.code;
         final int chapter = selectedChapter;
@@ -743,7 +753,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 showAiStudyComposer(topics.get(position), this::showStudies));
         root.addView(list, fill());
         setContentView(root);
-        focusForTalkBack(list, "Categorias de estudo.");
+        focusForTalkBack(firstStudyOption, "");
     }
 
     /** Pergunta primeiro se o tema partirá do texto atual ou da Bíblia toda. */
@@ -3353,18 +3363,26 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         view.requestFocus();
         view.postDelayed(() -> {
             if (!view.isShown()) return;
-            view.requestFocus();
-            View accessibilityTarget = view;
-            if (view instanceof ListView && ((ListView) view).getChildCount() > 0) {
-                accessibilityTarget = ((ListView) view).getChildAt(0);
-            }
-            accessibilityTarget.performAccessibilityAction(
-                    android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
-            view.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_VIEW_FOCUSED);
+            moveAccessibilityFocus(view);
             if (announcement != null && !announcement.isEmpty()) {
                 view.announceForAccessibility(announcement);
             }
         }, 80);
+        view.postDelayed(() -> {
+            if (view.isShown()) moveAccessibilityFocus(view);
+        }, 600);
+    }
+
+    /** Põe o foco do TalkBack no controle ou, numa lista, no primeiro item visível. */
+    private void moveAccessibilityFocus(View view) {
+        view.requestFocus();
+        View accessibilityTarget = view;
+        if (view instanceof ListView && ((ListView) view).getChildCount() > 0) {
+            accessibilityTarget = ((ListView) view).getChildAt(0);
+        }
+        accessibilityTarget.performAccessibilityAction(
+                android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
+        view.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_VIEW_FOCUSED);
     }
 
     /** Cria lista nativa com linhas grandes e quebra de texto. */

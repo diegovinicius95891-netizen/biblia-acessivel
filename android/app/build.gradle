@@ -32,8 +32,8 @@ android {
         applicationId playStoreBuild ? 'com.audiogamesbrasil.biblia' : 'com.bibliaacessivel.app'
         minSdk 26
         targetSdk 37
-        versionCode 34
-        versionName '4.11.0'
+        versionCode 35
+        versionName '4.11.1'
         // Só a versão da Play recebe avisos instantâneos; a de teste local segue consultando o site.
         def firebase = playStoreBuild ? firebaseConfig : [apiKey: '', appId: '', projectId: '', senderId: '']
         buildConfigField 'String', 'FIREBASE_API_KEY', "\"${firebase.apiKey}\""
