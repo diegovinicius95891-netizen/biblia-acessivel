@@ -127,3 +127,19 @@ class DatabaseTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SearchAndGroupTests(unittest.TestCase):
+    def test_search_ignores_accents_and_case(self):
+        db = BibleDatabase(DB_PATH)
+        try:
+            self.assertEqual(len(db.search("almeida", "jeova")), len(db.search("almeida", "Jeová")))
+            self.assertTrue(db.search("almeida", "coracao"))
+        finally:
+            db.close()
+
+    def test_missing_verse_opens_group_that_contains_it(self):
+        from biblia.database import _containing_group
+        rows = [{"verse": "15"}, {"verse": "16"}, {"verse": "19"}]
+        self.assertEqual(_containing_group(rows, 17)["verse"], "16")
+        self.assertIsNone(_containing_group(rows, 16))

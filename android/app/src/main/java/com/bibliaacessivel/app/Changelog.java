@@ -6,7 +6,19 @@ final class Changelog {
 
     static final String CURRENT =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
-            "Edição do teste fechado para pessoas com deficiência visual: 15 traduções a mais, entre elas " +
+            "Na Bíblia Católica, a tela Livros agora fala a contagem certa: 46 livros no Antigo Testamento e 73 " +
+            "em Todos os livros.\n\n" +
+            "Seleção de vários versículos mais prática: depois de usar uma ação, a seleção é limpa sozinha. " +
+            "Com versículos marcados, o Voltar, pelo botão ou pelo gesto, primeiro desmarca tudo e fica na mesma tela.\n\n" +
+            "A pesquisa na Bíblia não depende mais de acento nem de maiúsculas: digitar jeova ou voce encontra " +
+            "Jeová e você.\n\n" +
+            "Em traduções que juntam versículos, como O Livro, A Mensagem e Versão Fácil de Ler, ir para um " +
+            "versículo que está dentro de um trecho agora abre esse trecho, em vez de voltar para o versículo 1.\n\n" +
+            "Texto da NVI revisado: saíram espaços que sobravam antes da vírgula e de outros sinais.\n\n" +
+            "Nova opção em Configurações, Botão Continuar leitura: mostre o livro e o capítulo, só Continuar " +
+            "leitura ou um texto escrito por você.\n\n" +
+            "Na versão anterior:\n\n" +
+            "15 traduções novas, entre elas " +
             "ARA, ARC, ACF, NAA, NTLH, NVI, NVT, Nova Bíblia Viva, Almeida Século 21, King James Atualizada " +
             "e A Mensagem. Escolha em Mais opções, Traduções.\n\n" +
             "Duas traduções novas em domínio público: Tradução Brasileira, de 1917, e Almeida 1911, com a " +

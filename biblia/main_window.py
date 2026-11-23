@@ -777,6 +777,10 @@ class MainWindow(QMainWindow):
 
     def go_back(self):
         """Retorna à tela anterior da rota; sem histórico, volta ao menu principal."""
+        # Com versículos marcados, Voltar e Escape primeiro limpam a seleção e ficam na tela.
+        if self.verse_marks and self.page_stack.currentIndex() == self.secondary_pages["reader_verses"][0]:
+            self.clear_verse_marks()
+            return
         while self._page_history:
             previous = self._page_history.pop()
             if previous == self.main_page_index:
@@ -1847,8 +1851,9 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage("Anotação salva. Consulte Mais opções, Anotações por dia.")
         elif selected == "speak":
             self._speak_text(with_reference)
-        elif selected == "clear":
-            self.clear_verse_marks()
+        # Depois de qualquer ação, a seleção é limpa; a mensagem da ação continua sendo a última falada.
+        if selected:
+            self.clear_verse_marks(announce=selected == "clear")
 
     def show_verse_menu(self, position=None):
         """Apresenta cópia, marcador, voz e IA em lista explicitamente acessível."""

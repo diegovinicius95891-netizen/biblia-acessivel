@@ -10,7 +10,8 @@ a ficha na loja, lendo com o leitor de tela.
 | `BibliaAGB-4.7.0-play.aab` | O aplicativo (Android App Bundle), versão 4.7.0, código 25 | Testes → Teste fechado → Criar versão |
 | `icone-512.png` | Ícone da loja, 512 × 512 | Presença na loja → Ficha principal → Ícone do app |
 | `destaque-1024x500.png` | Imagem de destaque, 1024 × 500 | Ficha principal → Gráfico de recursos |
-| `capturas/*.png` | 6 capturas de tela do celular, 1080 × 1920 | Ficha principal → Capturas de tela do telefone |
+| `capturas/*.png` | 7 capturas de tela do celular, 1080 × 1920 | Ficha principal → Capturas de tela do telefone |
+| `capturas-xr/*.png` | as mesmas 7 capturas, para o Android XR | Ficha principal → Capturas do Android XR |
 | `ficha-da-loja.md` | Nome, descrição curta e descrição completa | Ficha principal |
 | `seguranca-dos-dados.md` | Respostas do formulário Segurança dos dados | Conteúdo do app → Segurança dos dados |
 

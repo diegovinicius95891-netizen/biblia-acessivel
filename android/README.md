@@ -4,7 +4,7 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 
 ## Recursos incluídos
 
-- Bíblia offline com as cinco traduções completas do aplicativo desktop.
+- Bíblia offline com as mesmas traduções do aplicativo para Windows.
 - Tela inicial curta: abrir o capítulo atual, trocar de livro ou abrir Mais opções.
 - A posição exata fica salva; ao escolher um capítulo, é possível começar no início ou escolher o versículo.
 - Capítulo anterior e Próximo capítulo aparecem no início da leitura. Um gesto horizontal de dois dedos também troca o capítulo e o TalkBack anuncia o destino.
@@ -29,28 +29,22 @@ Aplicativo Android nativo, sem Python embutido, compatível com Android 8 ou sup
 - Quiz bíblico com 298 perguntas de estudo e Status do quiz com acertos, erros e aproveitamento.
 - Cada pergunta conta somente uma vez; o botão confirmado Recomeçar quiz do zero é a única forma de liberar todas novamente.
 - Modo culto disponível desde livros, capítulos e versículos, com busca por texto ou voz. Todas as famílias numeradas — Samuel, Reis, Crônicas, Coríntios, Tessalonicenses, Timóteo, Pedro e João — aceitam nomes, ordinais e intervalos; buscas ambíguas abrem uma lista acessível.
-- Atualizador Android próprio, com consulta diária opcional, download cancelável, SHA-256 e backup antes da instalação.
 
 O backup automático do aplicativo está desativado. Notas, marcadores e chave de API permanecem no armazenamento privado do aplicativo e não fazem parte do APK.
 
 O APK de produção é reduzido e ofuscado pelo R8, verifica o certificado oficial ao abrir e atualiza o banco bíblico por troca atômica somente depois de validar traduções, livros e capítulos. Isso corrige instalações antigas que mantinham uma cópia desatualizada do banco.
 
-## Atualizações separadas
+## Atualizações
 
-O Android consulta somente releases com tag `android-vMAJOR.MINOR.PATCH`. Ele aceita exclusivamente os assets `BibliaAcessivel-Android.apk` e `BibliaAcessivel-Android.apk.sha256`. Releases `vMAJOR.MINOR.PATCH` e o pacote ZIP pertencem ao Windows e são ignorados.
-
-Depois de validar o APK, o aplicativo abre o instalador oficial do Android. Na primeira utilização, o sistema pode pedir autorização para instalar aplicativos desta fonte. A atualização usa o mesmo identificador e certificado das versões Android anteriores, preservando os dados privados.
+O Android é atualizado somente pela Google Play. O atualizador próprio pelo GitHub foi removido.
 
 ## Compilar
 
-Requisitos: JDK 17, Android SDK Platform 35 e Build Tools. Defina `JAVA_HOME` e `ANDROID_HOME`, depois execute:
+Requisitos: JDK 17 e Android SDK. Para testar:
 
 ```powershell
 cd android
-.\gradlew.bat testDebugUnitTest lintRelease assembleRelease
-powershell -ExecutionPolicy Bypass -File ..\scripts\package_android_release.ps1
+.\gradlew.bat testDebugUnitTest
 ```
 
-O banco `data/biblia.db` é copiado para os assets durante a compilação; não existe uma segunda cópia versionada no código Android. O APK assinado é criado em `android/app/build/outputs/apk/release/app-release.apk` e o script o copia para a raiz com o nome reconhecido pelo atualizador e seu SHA-256.
-
-O workflow de release reutiliza de forma protegida o certificado das versões anteriores. A impressão SHA-256 pública é conferida antes da publicação, evitando um APK incompatível com a atualização instalada. Consulte [Atualizações Android](../docs/ATUALIZACOES_ANDROID.md).
+Para gerar o AAB assinado da Play, use `.\build_play.ps1 -KeyDirectory C:\Winvox\Treino\chaves-play-biblia` (veja [PLAY_STORE.md](PLAY_STORE.md)). O banco `data/biblia.db` é copiado para os assets durante a compilação.

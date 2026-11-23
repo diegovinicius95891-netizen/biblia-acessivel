@@ -93,9 +93,8 @@ Ao abrir uma versão nova, bancos de notas do formato antigo são migrados autom
 
 A versão está centralizada em `biblia/version.py`. Ao iniciar, o aplicativo consulta em segundo plano, no máximo uma vez por dia, somente Releases estáveis do repositório oficial. Ajuda > Verificar atualizações força uma consulta e Ajuda > Novidades da versão funciona offline. Um pacote só é oferecido quando a release contém `BibliaAcessivel-Windows.zip` e `BibliaAcessivel-Windows.zip.sha256`; o tamanho e o SHA-256 são conferidos antes da instalação. O download pode ser cancelado e nenhuma falha de rede impede a leitura local.
 
-Antes de instalar, é criado um backup consistente na pasta pessoal. Um helper do Windows aguarda o aplicativo fechar, substitui apenas os arquivos distribuíveis e o abre novamente; o banco pessoal, configurações e chave protegida não ficam na pasta substituída. Consulte [docs/ATUALIZACOES.md](docs/ATUALIZACOES.md) para publicar e testar uma versão.
+Antes de instalar, é criado um backup consistente na pasta pessoal. Um helper do Windows aguarda o aplicativo fechar, substitui apenas os arquivos distribuíveis e o abre novamente; o banco pessoal, configurações e chave protegida não ficam na pasta substituída. Para publicar, atualize `biblia/version.py` e `biblia/changelog.py` e envie a tag `vMAJOR.MINOR.PATCH`: o workflow gera o pacote e usa as novidades do changelog como texto da versão.
 
-Consulte [docs/ARQUITETURA.md](docs/ARQUITETURA.md) para a explicação de todos os arquivos e fluxos.
 
 ## Recriar o banco
 

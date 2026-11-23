@@ -7,6 +7,7 @@ import ctypes
 import logging
 import os
 import shutil
+import re
 import subprocess
 import sys
 import threading
@@ -87,6 +88,18 @@ class UpdateSignals(QObject):
     download_failed = Signal(str)
 
 
+def readable_notes(notes: str) -> list[str]:
+    """Parágrafos das novidades sem Markdown, links nem a linha automática do GitHub."""
+    paragraphs = []
+    for line in notes.splitlines():
+        text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", line)
+        text = text.replace("#", "").replace("**", "").replace("`", "").strip().lstrip("*- ").strip()
+        if not text or text.startswith("<!--") or "http" in text or "changelog" in text.casefold():
+            continue
+        paragraphs.append(text)
+    return paragraphs or ["As novidades desta versão estarão em Mais opções, Novidades da versão, depois de atualizar."]
+
+
 class UpdateAvailableDialog(QDialog):
     """Apresenta versão, tamanho, novidades e decisões numa ordem previsível."""
 
@@ -106,10 +119,8 @@ class UpdateAvailableDialog(QDialog):
         self.notes = QListWidget()
         self.notes.setAccessibleName("Novidades da atualização")
         self.notes.setWordWrap(True)
-        for paragraph in release.notes.replace("#", "").splitlines():
-            text = paragraph.strip().lstrip("*- ").strip()
-            if text and not text.startswith("<!--"):
-                self.notes.addItem(QListWidgetItem(text))
+        for text in readable_notes(release.notes):
+            self.notes.addItem(QListWidgetItem(text))
         layout.addWidget(self.notes, 1)
         self.update_button = AccessibleButton("&Atualizar agora")
         self.update_button.setAccessibleName("Atualizar agora")
@@ -416,10 +427,11 @@ class UpdateController(QObject):
             return
         self.settings.remove("updates/installing_version")
         if installing == APP_VERSION and previous != APP_VERSION:
+            news = CURRENT_CHANGELOG.split("\n\nNovidades da versão")[0].split("\n", 1)[-1].strip()
             QMessageBox.information(
                 self.host, "Atualização concluída",
-                f"Aplicativo atualizado para a versão {APP_VERSION}. As novidades estão em Mais opções, "
-                "Novidades da versão.",
+                f"Aplicativo atualizado para a versão {APP_VERSION}.\n\n{news}\n\n"
+                "As novidades das versões anteriores estão em Mais opções, Novidades da versão.",
             )
         elif installing != APP_VERSION:
             LOGGER.warning("Atualização para %s não concluída; versão atual %s", installing, APP_VERSION)

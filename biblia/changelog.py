@@ -1,6 +1,16 @@
 """Novidades locais da versão instalada, disponíveis mesmo sem internet."""
 
-CURRENT_CHANGELOG = """Novidades da versão 4.8.0
+CURRENT_CHANGELOG = """Novidades da versão 4.9.0
+
+Seleção de vários versículos mais prática: depois de usar uma ação nos versículos marcados, a seleção é limpa sozinha. Com versículos marcados, Escape ou o botão Voltar primeiro desmarcam tudo e ficam na tela Versículos.
+
+A pesquisa na Bíblia não depende mais de acento nem de maiúsculas: digitar jeova ou voce encontra Jeová e você.
+
+Em traduções que juntam versículos num trecho só, ir para um versículo que está dentro do trecho agora abre esse trecho.
+
+Ao atualizar, a janela Nova versão disponível mostra as novidades em texto simples, sem links nem códigos, e depois de atualizar o aplicativo já mostra o que mudou.
+
+Novidades da versão 4.8.0
 
 Duas traduções novas em domínio público: Tradução Brasileira, de 1917, e Almeida 1911, com a ortografia da época. Agora são 8 traduções.
 

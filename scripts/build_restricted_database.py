@@ -12,6 +12,7 @@ Os arquivos seguem o formato book/verse (book_reference_id de 1 a 66).
 from __future__ import annotations
 
 import html
+import re
 import shutil
 import sqlite3
 import sys
@@ -46,6 +47,8 @@ def unique_verses(rows):
     """Algumas fontes repetem um versículo; junta os textos numa referência só."""
     merged = {}
     for number, code, name, chapter, verse, text in rows:
+        # Algumas fontes deixam um espaço onde havia nota de rodapé: "Unigênito , para".
+        text = re.sub(r"\s+([,.;:!?])", r"\1", text)
         key = (code, chapter, verse)
         if key in merged:
             if text and text not in merged[key][5]:
@@ -60,10 +63,6 @@ def legal(name: str, owner: str) -> str:
     return f"""
     <h1>{html.escape(name)}</h1>
     <p><b>Situação:</b> obra protegida. Todos os direitos reservados a {html.escape(owner)}.</p>
-    <h2>Justificativa específica</h2>
-    <p>Esta tradução está somente na edição restrita da Bíblia AGB, distribuída pela Áudio Games Brasil,
-    associação sem fins lucrativos, exclusivamente a pessoas com deficiência visual inscritas no teste fechado
-    do aplicativo. Ela não faz parte da versão pública do Windows nem do repositório público.</p>
     <p><b>Base legal:</b> art. 46, I, d, da Lei nº 9.610/1998, que permite a reprodução, sem fins comerciais,
     para uso exclusivo de pessoas com deficiência visual, e Tratado de Marraqueche (Decreto nº 9.522/2018,
     regulamentado pelo Decreto nº 10.882/2021).</p>
@@ -91,7 +90,7 @@ def main() -> None:
         connection.execute(
             "INSERT INTO translations VALUES (?,?,?,?,?,?,?,?)",
             (translation_id, name, "Português", f"Direitos reservados — {owner}",
-             "Edição restrita da Áudio Games Brasil", "", legal(name, owner), order),
+             f"{name}, {owner}", "", legal(name, owner), order),
         )
         insert_rows(connection, translation_id, unique_verses(parse_sqlite_bible(source)))
         books, chapters = connection.execute(

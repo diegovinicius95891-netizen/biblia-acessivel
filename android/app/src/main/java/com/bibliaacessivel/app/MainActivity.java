@@ -229,7 +229,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         LinearLayout root = rootLayout();
         root.addView(heading("Bíblia AGB (Audio Games Brasil)"));
         root.addView(paragraph("Seção Livros. Sua posição é " + currentReference() + "."));
-        root.addView(actionButton("Abrir capítulo " + selectedChapter + " de " + selectedBook.name,
+        root.addView(actionButton(continueLabel(),
                 "Continuar a leitura em " + currentReference(), this::showVerses));
         root.addView(actionButton("Trocar de livro", "Escolher outro livro, capítulo e versículo",
                 this::confirmBookChoice));
@@ -239,6 +239,44 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 "Copiar a chave Pix e doar o valor que quiser", this::showDonation));
         setContentView(root);
         focusForTalkBack(root.getChildAt(2), "Continuar leitura em " + currentReference());
+    }
+
+    /** Texto do botão de continuar, conforme Configurações: com a posição, só "Continuar leitura" ou próprio. */
+    private String continueLabel() {
+        String mode = preferences.getString("continue_label_mode", "position");
+        if ("plain".equals(mode)) return "Continuar leitura";
+        if ("custom".equals(mode)) {
+            String custom = preferences.getString("continue_label_text", "").trim();
+            if (!custom.isEmpty()) return custom;
+        }
+        return "Abrir capítulo " + selectedChapter + " de " + selectedBook.name;
+    }
+
+    /** Escolhe como o botão de continuar a leitura aparece no menu principal. */
+    private void showContinueLabelSettings() {
+        String[] options = {"Mostrar livro e capítulo", "Mostrar só Continuar leitura", "Escrever um texto próprio"};
+        showChoiceDialog("Botão Continuar leitura",
+                "Atual: " + continueLabel() + ". Como o botão deve aparecer no menu principal?",
+                options, which -> {
+                    if (which == 2) {
+                        EditText input = editText("Texto do botão", false);
+                        input.setText(preferences.getString("continue_label_text", ""));
+                        new AlertDialog.Builder(this).setTitle("Texto do botão Continuar leitura")
+                                .setView(input)
+                                .setPositiveButton("Salvar", (dialog, button) -> {
+                                    String text = input.getText().toString().trim();
+                                    preferences.edit().putString("continue_label_mode", text.isEmpty() ? "position" : "custom")
+                                            .putString("continue_label_text", text).apply();
+                                    toast("Botão agora: " + continueLabel() + ".");
+                                    showSettings();
+                                })
+                                .setNegativeButton("Cancelar", null).show();
+                        return;
+                    }
+                    preferences.edit().putString("continue_label_mode", which == 1 ? "plain" : "position").apply();
+                    toast("Botão agora: " + continueLabel() + ".");
+                    showSettings();
+                });
     }
 
     static final String PIX_KEY = "diego@audiogames.com.br";
@@ -286,9 +324,11 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         root.addView(testament);
         TextView feedback = paragraph("");
         root.addView(feedback);
+        int oldCount = bible.books(translationId, false).size();
+        int newCount = bible.books(translationId, true).size();
         testament.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                int count = position == 2 ? 66 : position == 1 ? 27 : 39;
+                int count = position == 2 ? oldCount + newCount : position == 1 ? newCount : oldCount;
                 String name = position == 2 ? "Todos os livros" :
                         position == 1 ? "Novo Testamento" : "Antigo Testamento";
                 feedback.setText(name + " selecionado. " + count + " livros. Ative Escolher livro.");
@@ -401,7 +441,17 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
 
     /** Lista os textos do capítulo e abre suas ações com uma única ativação. */
     private void showVerses() {
-        LinearLayout root = screen("Versículos de " + currentChapterReference(), this::showMainMenu);
+        Runnable[] refreshHolder = new Runnable[1];
+        // Com versículos marcados, Voltar (botão ou gesto) primeiro limpa a seleção e fica na tela.
+        LinearLayout root = screen("Versículos de " + currentChapterReference(), () -> {
+            if (multiSelection.isEmpty() || refreshHolder[0] == null) {
+                showMainMenu();
+                return;
+            }
+            multiSelection.clear();
+            refreshHolder[0].run();
+            getWindow().getDecorView().announceForAccessibility("Seleção limpa.");
+        });
         chapterSwipeEnabled = true;
         root.addView(actionButton("Modo culto", "Abrir pesquisa rápida do Modo culto", this::showWorshipModeFromReading));
         LinearLayout navigation = horizontalRow();
@@ -428,7 +478,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 ". Deslize com dois dedos para a esquerda para voltar o capítulo ou para a direita para avançar.");
         Button single = actionButton("Aplicações do versículo atual",
                 "Abrir ações de " + currentReference(), this::showVerseActions);
-        Button bulk = actionButton("", "", () -> showBulkVerseActions(verses));
+        Button bulk = actionButton("", "", () -> showBulkVerseActions(verses, refreshHolder[0]));
         Button clear = actionButton("Limpar seleção", "Desmarcar todos os versículos selecionados", () -> {
             multiSelection.clear();
             showVerses();
@@ -446,6 +496,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
             clear.setVisibility(selecting ? View.VISIBLE : View.GONE);
             single.setVisibility(selecting ? View.GONE : View.VISIBLE);
         };
+        refreshHolder[0] = refresh;
         list.setOnItemClickListener((parent, view, position, id) -> {
             if (!multiSelection.isEmpty()) {
                 toggleVerseSelection(list, verses, position, refresh);
@@ -544,7 +595,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     }
 
     /** Ações em massa para os versículos selecionados. */
-    private void showBulkVerseActions(List<Models.Verse> verses) {
+    private void showBulkVerseActions(List<Models.Verse> verses, Runnable refresh) {
         List<Models.Verse> chosen = selectedVerses(verses);
         if (chosen.isEmpty()) return;
         String reference = selectionReference(verses);
@@ -562,6 +613,9 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         };
         showChoiceDialog("Ações para " + reference, chosen.size() + " versículos. Escolha uma ação.",
                 actions, which -> {
+                    // Depois de qualquer ação, a seleção é limpa.
+                    multiSelection.clear();
+                    if (refresh != null) refresh.run();
                     switch (which) {
                         case 0:
                             copy(withReference);
@@ -608,8 +662,6 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                             speakOrAnnounce(getWindow().getDecorView(), withReference);
                             break;
                         default:
-                            multiSelection.clear();
-                            showVerses();
                             toast("Seleção limpa.");
                     }
                 });
@@ -1259,6 +1311,7 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
         options.put("Escolher modelo de inteligência artificial. Atual: " +
                 preferences.getString("ai_model", AI_MODELS[0]), this::chooseModel);
         options.put("Voz e velocidade da leitura. " + voiceSummary(), this::showVoiceSettings);
+        options.put("Botão Continuar leitura. Atual: " + continueLabel(), this::showContinueLabelSettings);
         options.put("Avisos de novos devocionais. " + DevotionalNotifications.summary(preferences),
                 this::showDevotionalNotificationSettings);
         options.put("Lembrete diário de leitura. " + (Reminders.enabled(preferences)
@@ -3077,11 +3130,14 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
     private void selectVerse(String number) {
         List<Models.Verse> verses = bible.chapter(translationId, selectedBook.code, selectedChapter);
         selectedVerse = verses.isEmpty() ? null : verses.get(0);
+        int wanted = BibleReference.number(number == null ? "1" : number);
         for (Models.Verse verse : verses) {
             if (verse.number.split("-")[0].equals(number)) {
                 selectedVerse = verse;
                 break;
             }
+            // Traduções que juntam versículos guardam o trecho no primeiro número.
+            if (BibleReference.number(verse.number) <= wanted) selectedVerse = verse;
         }
     }
 

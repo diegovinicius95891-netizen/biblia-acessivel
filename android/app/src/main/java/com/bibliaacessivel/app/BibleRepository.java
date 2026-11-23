@@ -248,10 +248,16 @@ final class BibleRepository implements AutoCloseable {
         int start = BibleReference.number(startVerse);
         int end = endVerse == null ? start : BibleReference.number(endVerse);
         List<Models.Verse> result = new ArrayList<>();
+        Models.Verse group = null;
+        boolean startExists = false;
         for (Models.Verse verse : all) {
             int number = BibleReference.number(verse.number);
+            if (number == start) startExists = true;
+            if (number < start) group = verse;
             if (number >= start && number <= end) result.add(verse);
         }
+        // Pedir o 17 em "16-18" abre o trecho que o contém, em vez de não achar nada.
+        if (!startExists && group != null) result.add(0, group);
         return result;
     }
 
@@ -273,18 +279,28 @@ final class BibleRepository implements AutoCloseable {
         return builder.toString();
     }
 
+    /** Pesquisa sem depender de acento nem de maiúsculas: "jeova" encontra "Jeová". */
     List<String> search(String translationId, String query) {
         List<String> result = new ArrayList<>();
+        String wanted = fold(query).trim();
+        if (wanted.isEmpty()) return result;
         try (Cursor cursor = database.rawQuery(
                 "SELECT book_name,chapter,verse,text FROM verses " +
-                        "WHERE translation_id=? AND text LIKE ? ORDER BY book_number,chapter,verse_sort LIMIT 300",
-                new String[]{translationId, "%" + query + "%"})) {
-            while (cursor.moveToNext()) {
+                        "WHERE translation_id=? ORDER BY book_number,chapter,verse_sort",
+                new String[]{translationId})) {
+            while (cursor.moveToNext() && result.size() < 300) {
+                String text = cursor.getString(3);
+                if (!fold(text).contains(wanted)) continue;
                 result.add(cursor.getString(0) + " " + cursor.getInt(1) + ":" +
-                        cursor.getString(2) + ". " + cursor.getString(3));
+                        cursor.getString(2) + ". " + text);
             }
         }
         return result;
+    }
+
+    static String fold(String value) {
+        return Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT);
     }
 
     String legalText(String translationId) {

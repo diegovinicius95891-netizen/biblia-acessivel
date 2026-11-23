@@ -31,6 +31,8 @@ class BibleDatabase:
         """Abre o banco e configura linhas acessíveis por nome de coluna."""
         self.connection = sqlite3.connect(path)
         self.connection.row_factory = sqlite3.Row
+        # Pesquisa sem depender de acento nem de maiúsculas: "jeova" encontra "Jeová".
+        self.connection.create_function("sem_acento", 1, _fold, deterministic=True)
 
     def close(self) -> None:
         """Libera explicitamente a conexão ao fechar o aplicativo."""
@@ -165,9 +167,9 @@ class BibleDatabase:
         if not words:
             return []
         terms = [query.strip()] if phrase else words
-        conditions = " AND ".join("lower(v.text) LIKE lower(?)" for _ in terms)
+        conditions = " AND ".join("sem_acento(v.text) LIKE ?" for _ in terms)
         book_condition = " AND v.book_code=?" if book_code else ""
-        params = [translation_id, *[f"%{word}%" for word in terms]]
+        params = [translation_id, *[f"%{_fold(word)}%" for word in terms]]
         if book_code:
             params.append(book_code)
         params.append(limit)
@@ -184,11 +186,9 @@ class BibleDatabase:
     def verse(self, translation_id: str, book_code: str, chapter: int, verse: str):
         """Localiza um número, inclusive quando a fonte usa intervalo no campo verse."""
         wanted = str(verse).casefold()
-        return next(
-            (row for row in self.chapter(translation_id, book_code, chapter)
-             if str(row["verse"]).casefold().split("-")[0] == wanted),
-            None,
-        )
+        rows = list(self.chapter(translation_id, book_code, chapter))
+        exact = next((row for row in rows if str(row["verse"]).casefold().split("-")[0] == wanted), None)
+        return exact or _containing_group(rows, _verse_number(verse))
 
     def passage(self, translation_id: str, book_code: str, chapter: int,
                 verse_start: str | None = None, verse_end: str | None = None):
@@ -196,14 +196,37 @@ class BibleDatabase:
         rows = list(self.chapter(translation_id, book_code, chapter))
         if verse_start is None:
             return rows
-        start = int("".join(character for character in str(verse_start) if character.isdigit()))
-        end = int("".join(character for character in str(verse_end or verse_start) if character.isdigit()))
-        selected = []
-        for row in rows:
-            number = int("".join(character for character in str(row["verse"]).split("-")[0] if character.isdigit()))
-            if start <= number <= end:
-                selected.append(row)
+        start = _verse_number(verse_start)
+        end = _verse_number(verse_end or verse_start)
+        selected = [row for row in rows if start <= _verse_number(row["verse"]) <= end]
+        # Traduções que juntam versículos ("16-18") guardam o trecho no primeiro número;
+        # pedir o 17 abre o trecho que o contém, em vez de não achar nada.
+        group = _containing_group(rows, start)
+        if group is not None and group not in selected:
+            selected.insert(0, group)
         return selected
+
+
+def _verse_number(value) -> int:
+    """Número inicial de um versículo como "16", "16a" ou "16-18"."""
+    digits = "".join(character for character in str(value).split("-")[0] if character.isdigit())
+    return int(digits) if digits else 0
+
+
+def _containing_group(rows, number: int):
+    """Último versículo que começa antes do número pedido, quando o número em si não existe."""
+    if any(_verse_number(row["verse"]) == number for row in rows):
+        return None
+    before = [row for row in rows if _verse_number(row["verse"]) < number]
+    return before[-1] if before else None
+
+
+def _fold(value) -> str:
+    """Texto sem acentos e em minúsculas, para comparar pesquisas."""
+    import unicodedata
+
+    text = unicodedata.normalize("NFKD", str(value or "").casefold())
+    return "".join(c for c in text if not unicodedata.combining(c))
 
 
 def _normalize(value: str) -> str:

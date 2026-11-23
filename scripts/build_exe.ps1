@@ -10,6 +10,8 @@ $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) 'biblia_acessivel_p
 $workPath = Join-Path $temporaryRoot 'build'
 $specPath = Join-Path $temporaryRoot 'spec'
 $entryPoint = Join-Path $projectRoot 'app.py'
+# BIBLIA_DIST permite gerar o EXE fora da raiz, sem tocar no aplicativo em uso ali.
+$distPath = if ($env:BIBLIA_DIST) { $env:BIBLIA_DIST } else { $projectRoot }
 $buildPython = if ($env:BIBLIA_BUILD_PYTHON) {
     $env:BIBLIA_BUILD_PYTHON
 } else {
@@ -38,7 +40,7 @@ if ($LASTEXITCODE -ne 0 -or $buildVersions.Trim() -ne '6.8.3|6.21.0') {
     --add-data "$projectRoot\data\harpa_crista.json;data" `
     --add-data "$projectRoot\data\quiz_questions.tsv;data" `
     --add-data "$projectRoot\data\ai_study_topics.txt;data" `
-    --distpath $projectRoot `
+    --distpath $distPath `
     --workpath $workPath `
     --specpath $specPath `
     $entryPoint
@@ -51,7 +53,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Confirma de forma clara onde o resultado foi colocado.
-$executable = Join-Path $projectRoot 'BibliaAcessivel.exe'
+$executable = Join-Path $distPath 'BibliaAcessivel.exe'
 if (-not (Test-Path -LiteralPath $executable)) {
     throw 'O executável não foi criado.'
 }
