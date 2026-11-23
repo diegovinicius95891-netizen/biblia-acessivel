@@ -6,6 +6,10 @@ final class Changelog {
 
     static final String CURRENT =
             "Novidades da versão Android " + BuildConfig.VERSION_NAME + "\n\n" +
+            "Corrigido um vai e volta no Teólogo de IA aberto pelo menu do versículo: Voltar agora leva à tela " +
+            "de versículos e abre o menu do versículo, e Cancelar fecha o menu sem prender você na tela da pergunta.\n\n" +
+            "Bibliotecas do Android atualizadas.\n\n" +
+            "Na versão 4.11.1:\n\n" +
             "Botão Continuar leitura: com a opção Mostrar só Continuar leitura, o TalkBack não fala mais o livro " +
             "e o capítulo.\n\n" +
             "Ao abrir os menus, como Estudos com IA, o foco vai sempre para a primeira opção.\n\n" +

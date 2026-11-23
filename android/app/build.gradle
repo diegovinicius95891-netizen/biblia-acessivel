@@ -32,8 +32,8 @@ android {
         applicationId playStoreBuild ? 'com.audiogamesbrasil.biblia' : 'com.bibliaacessivel.app'
         minSdk 26
         targetSdk 37
-        versionCode 35
-        versionName '4.11.1'
+        versionCode 36
+        versionName '4.11.2'
         // Só a versão da Play recebe avisos instantâneos; a de teste local segue consultando o site.
         def firebase = playStoreBuild ? firebaseConfig : [apiKey: '', appId: '', projectId: '', senderId: '']
         buildConfigField 'String', 'FIREBASE_API_KEY', "\"${firebase.apiKey}\""
@@ -110,9 +110,11 @@ tasks.named('preBuild').configure {
 }
 
 dependencies {
+    // O Firebase traz androidx.activity 1.0.0, que a Play aponta como desatualizada.
+    implementation 'androidx.activity:activity:1.13.0'
     implementation 'androidx.core:core:1.19.1'
     implementation 'androidx.work:work-runtime:2.12.0'
-    implementation 'com.google.firebase:firebase-messaging:25.0.1'
+    implementation 'com.google.firebase:firebase-messaging:26.0.2'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.17'
     testImplementation 'org.json:json:20240303'

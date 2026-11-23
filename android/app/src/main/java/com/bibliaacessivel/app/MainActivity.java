@@ -1883,13 +1883,22 @@ public final class MainActivity extends Activity implements TextToSpeech.OnInitL
                 });
     }
 
+    /**
+     * Voltar de uma tela aberta pelo menu do versículo: primeiro a tela de versículos, depois o menu.
+     * Reabrir só o menu deixava a tela anterior por baixo, e Cancelar ou Voltar caíam nela de novo.
+     */
+    private void returnToVerseActions() {
+        showVerses();
+        showVerseActions();
+    }
+
     /** Mostra as categorias teológicas a partir do menu do versículo atual. */
     private void showVerseAiStudies() {
         List<AiStudyCatalog.Topic> topics = AiStudyCatalog.TOPICS;
         String[] labels = new String[topics.size()];
         for (int index = 0; index < topics.size(); index++) labels[index] = topics.get(index).label;
         showChoiceDialog("Teólogo de IA — " + currentReference(), "Escolha o tipo de estudo.",
-                labels, which -> showAiStudyComposer(topics.get(which), this::showVerseActions));
+                labels, which -> showAiStudyComposer(topics.get(which), this::returnToVerseActions));
     }
 
     /** Solicita título e corpo e grava a nota somente quando houver conteúdo. */
